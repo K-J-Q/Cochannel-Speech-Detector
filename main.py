@@ -13,6 +13,7 @@ from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 import audiomentations
 
+
 def uniquify(path):
     filename, extension = os.path.splitext(path)
     counter = 1
@@ -24,15 +25,37 @@ def uniquify(path):
     return path
 
 
+def __generateCochannel(audio1, audio2):
+    sr1 = audio1[1]
+    sr2 = audio2[1]
+
+    assert sr1 == sr2, "Sample rate not equal!"
+
+    audioLength1 = len(audio1[0][0])
+    audioLength2 = len(audio2[0][0])
+
+    augment = Augmentor()
+
+    if audioLength1 != sr1*4:
+        audio1 = augment.pad_trunc(audio1)
+
+    if audioLength2 != sr1*4:
+        audio2 = augment.pad_trunc(audio2)
+
+    audioMixed = (audio1[0][0]+audio2[0][0])/2
+    return audioMixed, sr1
+
+
 if __name__ == '__main__':
 
     config = ConfigParser()
     config.read('config.ini')
 
     # Get Audio paths for dataset
-    audio_paths = Augmentation.getAudioPaths('./data')
-    test_len = int(
-        int(config['data']['train_percent']) / 100 * len(audio_paths))
+    audio_paths = Augmentation.getAudioPaths(
+        'E:/Processed Singapore Speech Corpus/WAVE/')
+    test_len = int(config['data']['train_percent'] / 100 * len(audio_paths))
+
     audio_train_paths, audio_val_paths = audio_paths[:test_len], audio_paths[
         test_len:]
 

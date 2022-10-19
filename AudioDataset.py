@@ -72,16 +72,9 @@ class AudioDataset(Dataset):
 
         title, _ = os.path.splitext(filename)
 
-        try:
-            fsID, classID, occurrenceID, sliceID = [
-                int(n) for n in title.split('-')
-            ]
-        except ValueError:
-            classID = -1
-
         waveform, sample_rate = self.Augmentor.audio_preprocessing(
             torchaudio.load(self.audio_paths[idx]))
-        
+
         if self.audioAugment:
             waveform = self.audioAugment(waveform.numpy(), sample_rate)
             if not torch.is_tensor(waveform):
@@ -104,6 +97,8 @@ class AudioDataset(Dataset):
                 spectrogram_tensor = transform(spectrogram_tensor)
 
         return [spectrogram_tensor, classID]
+
+    
 
 
 # TODO add __main__ as test function
