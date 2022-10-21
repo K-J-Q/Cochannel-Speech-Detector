@@ -1,12 +1,15 @@
 import torch
 from tqdm import tqdm
 import torchmetrics
+from configparser import ConfigParser
+
+config = ConfigParser()
+config.read('config.ini')
+batch_size = int((config['model']['batch_size']))
 
 
 def train(model, dataloader, cost, optimizer, device):
     acc_metric = torchmetrics.Accuracy().to(device)
-
-    batch_size = len(next(iter(dataloader))[1])
     total_batch = len(dataloader)
     train_loss, train_accuracy = 0, 0
     train_size = len(dataloader.dataset)
@@ -34,11 +37,10 @@ def train(model, dataloader, cost, optimizer, device):
 def eval(model, dataloader, cost, device):
     acc_metric = torchmetrics.Accuracy().to(device)
     confusion_matrix = torchmetrics.classification.MulticlassConfusionMatrix(
-        10).to(device)
-    matrix = torch.zeros([10, 10], device=device)
+        2).to(device)
+    matrix = torch.zeros([2, 2], device=device)
 
     val_size = len(dataloader.dataset)
-    batch_size = len(next(iter(dataloader))[1])
     total_batch = len(dataloader)
 
     val_loss, val_accuracy = 0, 0
@@ -70,4 +72,3 @@ def tensorBoardLogging(writer, train_loss, train_accuracy, val_loss,
     writer.add_scalar('2 Validate/1 Model loss', val_loss, epoch)
     writer.add_scalar('2 Validate/2 Model accuracy', val_accuracy, epoch)
     writer.close()
-

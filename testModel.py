@@ -13,13 +13,14 @@ import matplotlib.pyplot as plt
 random.seed(0)
 torch.manual_seed(0)
 
-class_map = ['air conditioner', 'car horn', 'children playing', 'dog bark',
-             'drilling', 'engine idling', 'gunshot', 'jackhammer', 'siren', 'street music']
+class_map = ['0', '1']
 
 
 def predictFolder(folderPath, model, device):
     # load urban sound dataset
-    audio_paths = Augmentation.getAudio(folderPath)
+    audio_paths = Augmentation.getAudio(folderPath)[500000:510000]
+    audio_paths += Augmentation.getAudio(
+        'E:/Processed Singapore Speech Corpus/ENV')[0:500]
 
     # get a sample from the us dataset for inference
     audio_test_dataset = AudioDataset(audio_paths)
@@ -47,8 +48,9 @@ def predictFile(filePath, model, device):
         pred = model(testData)
         sm = torch.nn.Softmax()
         pred = sm(pred)
-        print(class_map[pred.argmax()])
-        sn.barplot(y=class_map, x=pred[0].cpu().numpy())
+        print(pred)
+        # print(class_map[pred.argmax()])
+        sn.barplot(y=pred[0].cpu().numpy(), x=class_map)
         plt.show()
 
 
@@ -62,5 +64,7 @@ if __name__ == "__main__":
     path = model_paths[int(input('Select saved model > '))]
     model = torch.load(path, map_location=device)
 
-    predictFile('./test/order-99518.wav', model, device)
-    # predictFolder('./data/testset', model, device)
+    # predictFile(
+    #     'E:/Processed Singapore Speech Corpus/WAVE/000010001_0.wav', model, device)
+    predictFolder(
+        'E:/Processed Singapore Speech Corpus/WAVE/', model, device)

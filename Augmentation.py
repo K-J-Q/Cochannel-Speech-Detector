@@ -23,7 +23,8 @@ class Augmentor():
     def pad_trunc(self, aud, reduce_only=False):
         sig, sr = aud
         num_rows, sig_len = sig.shape
-        max_len = int(sr / 1000 * self.audio_duration)
+        max_len = int(sr/1000) * \
+            ((self.audio_duration-1000) if reduce_only else self.audio_duration)
 
         if (sig_len > max_len):
             start_len = random.randint(0, sig_len - max_len)
@@ -59,8 +60,10 @@ class Augmentor():
         if (sr == self.audio_sampling):
             # Nothing to do
             return aud
+        print('resampling process triggered!')
         num_channels = sig.shape[0]
         # Resample first channel
+
         resig = torchaudio.transforms.Resample(sr,
                                                self.audio_sampling)(sig[:1, :])
         if (num_channels > 1):

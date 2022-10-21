@@ -5,56 +5,26 @@ import torchaudio
 from torch.utils.data import Dataset, DataLoader
 import torch
 import torch.nn as nn
-import os
 import machineLearning
-from model import ResNet18, CNNNetwork, M5
+from model import ResNet18, M5, CNNNetwork
 from configparser import ConfigParser
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 import audiomentations
-
-
-def uniquify(path):
-    filename, extension = os.path.splitext(path)
-    counter = 1
-
-    while os.path.exists(path):
-        path = filename + " (" + str(counter) + ")" + extension
-        counter += 1
-
-    return path
-
-
-def __generateCochannel(audio1, audio2):
-    sr1 = audio1[1]
-    sr2 = audio2[1]
-
-    assert sr1 == sr2, "Sample rate not equal!"
-
-    audioLength1 = len(audio1[0][0])
-    audioLength2 = len(audio2[0][0])
-
-    augment = Augmentor()
-
-    if audioLength1 != sr1*4:
-        audio1 = augment.pad_trunc(audio1)
-
-    if audioLength2 != sr1*4:
-        audio2 = augment.pad_trunc(audio2)
-
-    audioMixed = (audio1[0][0]+audio2[0][0])/2
-    return audioMixed, sr1
+import utils
 
 
 if __name__ == '__main__':
-
     config = ConfigParser()
     config.read('config.ini')
 
     # Get Audio paths for dataset
-    audio_paths = Augmentation.getAudioPaths(
-        'E:/Processed Singapore Speech Corpus/WAVE/')
-    test_len = int(config['data']['train_percent'] / 100 * len(audio_paths))
+    audio_paths = Augmentation.getAudio(
+        'E:/Processed Singapore Speech Corpus/WAVE')[0:16000]
+    audio_paths += Augmentation.getAudio(
+        'E:/Processed Singapore Speech Corpus/ENV')
+    test_len = int(
+        int(config['data']['train_percent']) * len(audio_paths) / 100)
 
     audio_train_paths, audio_val_paths = audio_paths[:test_len], audio_paths[
         test_len:]
@@ -100,7 +70,7 @@ if __name__ == '__main__':
     bsize = int(config['model']['batch_size'])
     workers = int(config['model']['num_workers'])
 
-    # create datalaoder for model
+    # create dataloader for model
     train_dataloader = torch.utils.data.DataLoader(
         audio_train_dataset,
         batch_size=bsize,
@@ -112,17 +82,17 @@ if __name__ == '__main__':
     val_dataloader = torch.utils.data.DataLoader(
         audio_val_dataset,
         batch_size=bsize,
-        num_workers=1,
+        num_workers=0,
         shuffle=False,
         pin_memory=True,
     )
 
-    # create model and par4ameters
+    # create model and parameters
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # model = ResNet18.to(device)
+    model = CNNNetwork().to(device)
 
-    model = torch.load('./saved_model/NoAugmentations8K.pt')
+    # model = torch.load('./saved_model/NoAugmentations8K.pt')
 
     lr = float(config['model']['learning_rate'])
     epochs = int(config['model']['num_epochs'])
@@ -135,9 +105,9 @@ if __name__ == '__main__':
 
     # TensorBoard logging (as required)
     if config['logger'].getboolean('master_logger'):
-        writer = SummaryWriter(uniquify(f'./logs/{title}'))
+        writer = SummaryWriter(utils.uniquify(f'./logs/{title}'))
         if config['logger'].getboolean('log_graph'):
-            spec, label = next(iter(train_dataloader))
+            spec, label = next(iter(val_dataloader))
             writer.add_graph(model, spec.to(device))
         writer.close()
     else:
@@ -172,14 +142,15 @@ if __name__ == '__main__':
         print(f'Validating  | Loss: {val_loss} Accuracy: {val_accuracy}% \n')
 
         # save model checkpoint
-        if epoch % 5 == 0 and epoch > 0:
-            torch.save(model, uniquify(
-                f'saved_model/{title}_epoch{epoch}.pt'))
+        if epoch % int(config['model']['checkpoint']) == 0 and epoch > 0:
+            if config['model'].getboolean('save_model_checkpoint'):
+                torch.save(model, utils.uniquify(
+                    f'saved_model/{title}_epoch{epoch}.pt'))
             if config['logger'].getboolean('log_model_params'):
                 writer.add_hparams(
-                    {'Learning Rate': lr, 'Batch Size': bsize, 'Epochs': epoch+10}, {'Accuracy': val_accuracy, 'Loss': val_loss})
+                    {'Learning Rate': lr, 'Batch Size': bsize, 'Epochs': epoch}, {'Accuracy': val_accuracy, 'Loss': val_loss})
 
-    torch.save(model, uniquify(f'saved_model/{title}.pt'))
+    torch.save(model, utils.uniquify(f'saved_model/{title}.pt'))
 
     # Print out values for logging
     if not config['logger'].getboolean('master_logger'):
