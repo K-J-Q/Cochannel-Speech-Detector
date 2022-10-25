@@ -23,22 +23,21 @@ class Augmentor():
     def pad_trunc(self, aud, reduce_only=False):
         sig, sr = aud
         num_rows, sig_len = sig.shape
-        max_len = int(sr/1000) * \
+        target_len = int(sr/1000) * \
             ((self.audio_duration-1000) if reduce_only else self.audio_duration)
 
-        if (sig_len > max_len):
-            start_len = random.randint(0, sig_len - max_len)
-            sig = sig[:, start_len:start_len+max_len]
-            assert (sig.shape[1] == max_len)
+        if (sig_len > target_len):
+            start_len = random.randint(0, sig_len - target_len)
+            sig = sig[:, start_len:start_len+target_len]
+            assert (sig.shape[1] == target_len)
 
-        elif (sig_len < max_len and not reduce_only):
+        elif (sig_len < target_len and not reduce_only):
             # Length of padding to add at the beginning and end of the signal
-            pad_begin_len = random.randint(0, max_len - sig_len)
-            pad_end_len = max_len - sig_len - pad_begin_len
+            pad_begin_len = random.randint(0, target_len - sig_len)
+            pad_end_len = target_len - sig_len - pad_begin_len
 
-            # Pad with 0s
-            pad_begin = torch.zeros((num_rows, pad_begin_len))
-            pad_end = torch.zeros((num_rows, pad_end_len))
+            pad_begin = torch.rand((num_rows, pad_begin_len))*0.05
+            pad_end = torch.rand((num_rows, pad_end_len))*0.05
             sig = torch.cat((pad_begin, sig, pad_end), 1)
         return (sig, sr)
 
@@ -75,11 +74,7 @@ class Augmentor():
 
 
 def getAudioPaths(main_path):
-    audio_paths = []
-    for path in [str(p) for p in Path(main_path).glob('fold*')]:
-        for wav_path in [str(p) for p in Path(path).glob(f'*.wav')]:
-            audio_paths.append(wav_path)
-    return audio_paths
+    return list(Path('./data').glob('**/*.wav'))
 
 
 def getAudio(path):
@@ -87,11 +82,3 @@ def getAudio(path):
     for wav_path in [str(p) for p in Path(path).glob(f'*.wav')]:
         wav_paths.append(wav_path)
     return wav_paths
-
-
-if __name__ == '__main__':
-    paths = getAudioPaths('data')
-    a = torch.zeros([1, 10010000])
-    print(a.shape)
-    a, _ = Augmentor().pad_trunc([a, 8000], False)
-    print(a.shape)

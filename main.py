@@ -19,10 +19,11 @@ if __name__ == '__main__':
     config.read('config.ini')
 
     # Get Audio paths for dataset
-    audio_paths = Augmentation.getAudio(
-        'E:/Processed Singapore Speech Corpus/WAVE')[0:16000]
-    audio_paths += Augmentation.getAudio(
-        'E:/Processed Singapore Speech Corpus/ENV')
+    # audio_paths = Augmentation.getAudio(
+    #     'E:/Processed Singapore Speech Corpus/WAVE')[0:16000]
+
+    audio_paths = Augmentation.getAudio('./data')
+
     test_len = int(
         int(config['data']['train_percent']) * len(audio_paths) / 100)
 
@@ -32,20 +33,22 @@ if __name__ == '__main__':
     if config['data'].getboolean('do_augmentations'):
         transformList = [
             {
-                "audio": [
-                    audiomentations.TimeStretch(min_rate=0.8,
+                "before_cochannel": [audiomentations.Gain(),
+                audiomentations.TimeStretch(min_rate=0.8,
                                                 max_rate=1.2,
                                                 p=0.5,
-                                                leave_length_unchanged=False),
+                                                leave_length_unchanged=False),],
+                "audio": [
+                    
                     audiomentations.AddGaussianNoise(min_amplitude=0.001,
-                                                     max_amplitude=0.025,
-                                                     p=0.5),
+                                                    max_amplitude=0.025,
+                                                    p=0.5),
                     audiomentations.PitchShift(min_semitones=-4,
-                                               max_semitones=4,
-                                               p=0.5),
+                                            max_semitones=4,
+                                            p=0.5),
                     audiomentations.Shift(min_fraction=-0.5,
-                                          max_fraction=0.5,
-                                          p=0.5),
+                                        max_fraction=0.5,
+                                        p=0.5),
                 ],
             },
             {
@@ -54,7 +57,7 @@ if __name__ == '__main__':
                     torchaudio.transforms.FrequencyMasking(80)
                 ],
             },
-        ]
+        ]                           
     else:
         transformList = []
 

@@ -12,7 +12,7 @@ if __name__ == "__main__":
     discarded = 0
 
     audioPaths = list(pathlib.Path(
-        'E:/UrbanSounds8K/').glob('**/*.wav'))
+        './data').glob('**/*.wav'))
 
     print(f"Total audio length {len(audioPaths)}")
 
@@ -31,7 +31,7 @@ if __name__ == "__main__":
             # print(splitIndex, ' ', len(trimmed_audio))
             if len(trimmed_audio) > sampleLength/2:
                 torchaudio.save(
-                    f'E:/Processed Singapore Speech Corpus/ENV/{audioIndex}_{splitIndex}.wav', torch.unsqueeze(trimmed_audio, 0), aud[1])
+                    f'./data/{audioIndex}_{splitIndex}.wav', torch.unsqueeze(trimmed_audio, 0), aud[1])
             else:
                 discarded += 1
 
