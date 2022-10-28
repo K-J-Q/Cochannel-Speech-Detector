@@ -1,7 +1,7 @@
 import torch
 import torchaudio
 import random
-
+import utils
 from torch.utils.data import Dataset, DataLoader
 
 from pathlib import Path
@@ -14,7 +14,7 @@ from audiomentations import Compose
 from configparser import ConfigParser
 
 
-def transformData(audio_paths, generateCochannel, transformParams=None):
+def transformData(audio_paths, generateCochannel=True, transformParams=None):
     """
     Outputs spectrogram in addition to any transforms indicated in transformParams (dictionary)
 
@@ -34,6 +34,7 @@ def transformData(audio_paths, generateCochannel, transformParams=None):
                 if 'audio' in transform else [],
                 beforeCochannelList=transform['before_cochannel']
                 if 'before_cochannel' in transform else [],
+                generateCochannel=generateCochannel
             )
 
             transformedDataset = torch.utils.data.ConcatDataset(
@@ -55,8 +56,8 @@ class AudioDataset(Dataset):
                  specTransformList=None,
                  audioTransformList=None,
                  beforeCochannelList=None,
-                 generateCochannel=False):
-        
+                 generateCochannel=True):
+
         self.specTransformList = specTransformList
         self.beforeCochannelAugment = Compose(
             beforeCochannelList) if beforeCochannelList else None
@@ -73,29 +74,26 @@ class AudioDataset(Dataset):
 
     def __getitem__(self, idx):
 
-        generateCochannel = random.randint(
+        num_speakers = random.randint(
             1, 2) if self.generateCochannel else 1
 
-        path = os.path.basename(os.path.split(self.audio_paths[idx])[0])
+        img_source = os.path.basename(os.path.split(self.audio_paths[idx])[0])
 
-        if path == "ENV":
-            generateCochannel = 1
+        if img_source == "ENV":
+            num_speakers = 1
 
         combinedWaveform = torch.zeros([1, 5*8000])
-        for i in range(generateCochannel):
-            waveform, sample_rate = self.Augmentor.audio_preprocessing(
-                torchaudio.load(self.audio_paths[idx-i]))
+        waveform, sample_rate = self.__getAudio(idx)
+        combinedWaveform += waveform
 
-            if  self.beforeCochannelAugment:
-                waveform = self.beforeCochannelAugment(
-                    waveform.numpy(), sample_rate)
-                if not torch.is_tensor(waveform):
-                    waveform = torch.from_numpy(waveform)
+        for i in range(num_speakers - 1):
+            combinedWaveform += self.__getAudio(
+                random.randint(0, self.__len__()) - 1)[0]
 
-            waveform, sample_rate = self.Augmentor.pad_trunc(
-                [waveform, sample_rate])
-
-            combinedWaveform += waveform
+        # for testing audio only [REMOVE BEFORE TRAINING]
+        # if num_speakers == 2:
+        #     torchaudio.save(utils.uniquify('../testfile.wav'),
+        #                     combinedWaveform, sample_rate)
 
         if self.audioAugment:
             combinedWaveform = self.audioAugment(
@@ -113,10 +111,25 @@ class AudioDataset(Dataset):
             for transform in self.specTransformList:
                 spectrogram_tensor = transform(spectrogram_tensor)
 
-        if path == "ENV":
+        if img_source == "ENV":
             return [spectrogram_tensor, 0]
-        else:
-            return [spectrogram_tensor, generateCochannel]
 
+        else:
+            return [spectrogram_tensor, num_speakers]
+
+    def __getAudio(self, index):
+        waveform, sample_rate = self.Augmentor.audio_preprocessing(
+            torchaudio.load(self.audio_paths[index]))
+
+        if self.beforeCochannelAugment:
+            waveform = self.beforeCochannelAugment(
+                waveform.numpy(), sample_rate)
+            if not torch.is_tensor(waveform):
+                waveform = torch.from_numpy(waveform)
+
+        waveform, sample_rate = self.Augmentor.pad_trunc(
+            [waveform, sample_rate])
+
+        return waveform, sample_rate
 
 # TODO add __main__ as test function

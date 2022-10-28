@@ -16,6 +16,8 @@ class Augmentor():
     audio_duration = int(config['augmentations']['duration'])
     audio_channels = int(config['augmentations']['num_channels'])
     audio_sampling = int(config['augmentations']['sample_rate'])
+    noise_multiplier = float(config['augmentations']
+                             ['pad_trunc_noise_multiplier'])
 
     def audio_preprocessing(self, audioIn):
         return self.pad_trunc(self.resample(self.rechannel(audioIn)), True)
@@ -23,8 +25,8 @@ class Augmentor():
     def pad_trunc(self, aud, reduce_only=False):
         sig, sr = aud
         num_rows, sig_len = sig.shape
-        target_len = int(sr/1000) * \
-            ((self.audio_duration-1000) if reduce_only else self.audio_duration)
+        target_len = int(sr/1000) * ((self.audio_duration-1000)
+                                     if reduce_only else self.audio_duration)
 
         if (sig_len > target_len):
             start_len = random.randint(0, sig_len - target_len)
@@ -36,8 +38,9 @@ class Augmentor():
             pad_begin_len = random.randint(0, target_len - sig_len)
             pad_end_len = target_len - sig_len - pad_begin_len
 
-            pad_begin = torch.rand((num_rows, pad_begin_len))*0.05
-            pad_end = torch.rand((num_rows, pad_end_len))*0.05
+            pad_begin = torch.rand(
+                (num_rows, pad_begin_len))*self.noise_multiplier
+            pad_end = torch.rand((num_rows, pad_end_len))*self.noise_multiplier
             sig = torch.cat((pad_begin, sig, pad_end), 1)
         return (sig, sr)
 
@@ -52,6 +55,7 @@ class Augmentor():
         else:
             # Convert from mono to stereo by duplicating the first channel
             resig = torch.cat([sig, sig])
+        print('rechannel process triggered!')
         return ((resig, sr))
 
     def resample(self, aud):
@@ -73,12 +77,8 @@ class Augmentor():
         return ((resig, self.audio_sampling))
 
 
-def getAudioPaths(main_path):
-    return list(Path('./data').glob('**/*.wav'))
-
-
-def getAudio(path):
-    wav_paths = []
-    for wav_path in [str(p) for p in Path(path).glob(f'*.wav')]:
-        wav_paths.append(wav_path)
-    return wav_paths
+def getAudioPaths(main_path, repeatMul=1):
+    paths = list(Path(main_path).glob('**/*.wav'))
+    for i in range(repeatMul):
+        paths += paths
+    return paths

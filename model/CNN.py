@@ -23,7 +23,7 @@ class CNNNetwork(nn.Module):
         )
         self.flatten = nn.Flatten()
         self.linear1 = nn.Linear(in_features=28224, out_features=100)
-        self.linear2 = nn.Linear(in_features=100, out_features=2)
+        self.linear2 = nn.Linear(in_features=100, out_features=3)
         self.softmax = nn.Softmax(dim=1)
 
     def forward(self, input_data):

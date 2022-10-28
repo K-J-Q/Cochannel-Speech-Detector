@@ -6,6 +6,7 @@ from configparser import ConfigParser
 config = ConfigParser()
 config.read('config.ini')
 batch_size = int((config['model']['batch_size']))
+num_classes = 3
 
 
 def train(model, dataloader, cost, optimizer, device):
@@ -15,7 +16,7 @@ def train(model, dataloader, cost, optimizer, device):
     train_size = len(dataloader.dataset)
     model.train()
     print(f'Total train batch: {total_batch}')
-    for batch, (X, Y) in tqdm(enumerate(dataloader), unit='batch'):
+    for batch, (X, Y) in tqdm(enumerate(dataloader), unit='batch', ):
         X, Y = X.to(device), Y.to(device)
         optimizer.zero_grad()
         pred = model(X)
@@ -25,7 +26,7 @@ def train(model, dataloader, cost, optimizer, device):
         optimizer.step()
         train_loss += batch_loss.item()
         train_accuracy += batch_accuracy.item()
-        if batch % 50 == 0:
+        if batch % 1000 == 0:
             print(
                 f" Loss (per sample): {batch_loss.item()/batch_size}  Accuracy: {batch_accuracy*100}%")
     train_loss /= train_size
@@ -37,8 +38,8 @@ def train(model, dataloader, cost, optimizer, device):
 def eval(model, dataloader, cost, device):
     acc_metric = torchmetrics.Accuracy().to(device)
     confusion_matrix = torchmetrics.classification.MulticlassConfusionMatrix(
-        2).to(device)
-    matrix = torch.zeros([2, 2], device=device)
+        num_classes).to(device)
+    matrix = torch.zeros([num_classes, num_classes], device=device)
 
     val_size = len(dataloader.dataset)
     total_batch = len(dataloader)
@@ -54,7 +55,7 @@ def eval(model, dataloader, cost, device):
             batch_loss = cost(pred, Y)
             batch_accuracy = acc_metric(pred, Y)
             val_loss += batch_loss.item()
-            if batch % 100 == 0:
+            if batch % 500 == 0:
                 print(
                     f" Loss (per sample): {batch_loss.item()/batch_size}  Accuracy: {batch_accuracy*100}%"
                 )
