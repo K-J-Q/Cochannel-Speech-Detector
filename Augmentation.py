@@ -44,7 +44,7 @@ class Augmentor():
             sig = torch.cat((pad_begin, sig, pad_end), 1)
         return (sig, sr)
 
-    def rechannel(self, aud):
+    def rechannel(self, aud, showWarning=True):
         sig, sr = aud
         if (sig.shape[0] == self.audio_channels):
             # Nothing to do
@@ -55,15 +55,17 @@ class Augmentor():
         else:
             # Convert from mono to stereo by duplicating the first channel
             resig = torch.cat([sig, sig])
-        print('rechannel process triggered!')
+        if showWarning:
+            print('rechannel process triggered!')
         return ((resig, sr))
 
-    def resample(self, aud):
+    def resample(self, aud, showWarning=True):
         sig, sr = aud
         if (sr == self.audio_sampling):
             # Nothing to do
             return aud
-        print('resampling process triggered!')
+        if showWarning:
+            print('resampling process triggered!')
         num_channels = sig.shape[0]
         # Resample first channel
 

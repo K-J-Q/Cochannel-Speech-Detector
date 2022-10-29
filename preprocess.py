@@ -7,10 +7,11 @@ import torchaudio
 from Augmentation import Augmentor
 
 seconds = 4
-pathIN = 'C:/Users/Jian Quan/Desktop/'
-pathOUT = 'E:/Singapore Speech Corpus/WAVE'
+pathIN = 'E:/Singapore Speech Corpus/Part 1.2'
+pathOUT = 'E:/Processed Singapore Speech Corpus/Singapore Speech Corpus/SPEECH 1.2/'
 
-# NOTE: Saving of multiple channels not yet implemented. May result in data wastage
+# NOTE: Saving of multiple channels not yet implemented. May result in data wastage.
+# Will indicate if rechanneled
 
 if __name__ == "__main__":
     discarded = 0
@@ -22,7 +23,7 @@ if __name__ == "__main__":
     for audioIndex, audioPath in tqdm(enumerate(audioPaths), unit='files'):
         _, audioName = os.path.split(audioPath)
         aud = augmentor.resample(
-            augmentor.rechannel(torchaudio.load(audioPath)))
+            augmentor.rechannel(torchaudio.load(audioPath)), False)
 
         #  trim audio
         x = torch.squeeze(aud[0])
@@ -33,7 +34,7 @@ if __name__ == "__main__":
             # print(splitIndex, ' ', len(trimmed_audio))
             if len(trimmed_audio) > sampleLength/2:
                 torchaudio.save(
-                    f'{pathOUT}{audioIndex}_{splitIndex}.wav', torch.unsqueeze(trimmed_audio, 0), aud[1])
+                    f'{pathOUT}{audioName[0:-4]}_{splitIndex}.wav', torch.unsqueeze(trimmed_audio, 0), aud[1])
             else:
                 discarded += 1
 

@@ -21,7 +21,7 @@ if __name__ == '__main__':
 
     # Get Audio paths for dataset
     audio_paths = Augmentation.getAudioPaths(
-        'E:/Processed Singapore Speech Corpus/Singapore Speech Corpus/')[0:10000]
+        'E:/Processed Singapore Speech Corpus/Singapore Speech Corpus/')[0:10]
 
     print(len(audio_paths))
     # audio_paths += Augmentation.getAudioPaths(
@@ -146,20 +146,15 @@ if __name__ == '__main__':
     for epoch in range(epochs):
         print(f'Epoch {epoch+1}/{epochs}\n-------------------------------')
 
-        with profile(activities=[
-                ProfilerActivity.CPU, ProfilerActivity.CUDA] if config['logger'].getboolean('trace_model') else [], on_trace_ready=torch.profiler.tensorboard_trace_handler(f'./logs/traces/{title}'), record_shapes=True) as prof:
-            with record_function("model_inference"):
-                train_loss, train_accuracy = machineLearning.train(
-                    model, train_dataloader, lossFn, optimizer, device)
-                
-        prof.stop()
+        train_loss, train_accuracy = machineLearning.train(
+            model, train_dataloader, lossFn, optimizer, device)
         if config['model'].getboolean('save_model_checkpoint') and epoch % int(config['model']['checkpoint']) == 0:
             torch.save(model, utils.uniquify(
                 f'saved_model/{title}_epoch{epoch}.pt'))
 
         val_loss, val_accuracy, _ = machineLearning.eval(model, val_dataloader,
                                                          lossFn, device)
-        
+
         if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) == 0:
             writer.add_hparams(
                 {'Learning Rate': lr, 'Batch Size': bsize, 'Epochs': epoch}, {'Accuracy': val_accuracy, 'Loss': val_loss})
@@ -177,10 +172,6 @@ if __name__ == '__main__':
 
         print(f'Training    | Loss: {train_loss} Accuracy: {train_accuracy}%')
         print(f'Validating  | Loss: {val_loss} Accuracy: {val_accuracy}% \n')
-
-        print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
-
-    
 
     # Print out values for logging
     if not config['logger'].getboolean('master_logger'):
