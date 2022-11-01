@@ -10,7 +10,7 @@ def getTransforms(augment):
             {
                 "before_cochannel": [
                     audiomentations.Gain(
-                        min_gain_in_db=0, max_gain_in_db=3, p=0.5,),
+                        min_gain_in_db=-3, max_gain_in_db=3, p=0.5,),
                     audiomentations.TimeStretch(min_rate=0.8,
                                                 max_rate=1.2,
                                                 p=0.5,
@@ -21,10 +21,10 @@ def getTransforms(augment):
                                                      max_amplitude=0.025,
                                                      p=0.5),
                 ],
-                # "spectrogram": [
-                #     torchaudio.transforms.TimeMasking(80),
-                #     torchaudio.transforms.FrequencyMasking(80)
-                # ],
+                "spectrogram": [
+                    torchaudio.transforms.TimeMasking(80),
+                    torchaudio.transforms.FrequencyMasking(80)
+                ],
             },
         ]
     else:
@@ -40,6 +40,7 @@ def uniquify(path):
         counter += 1
 
     return path
+
 
 def getAudioPaths(main_path, repeatMul=1):
     paths = list(Path(main_path).glob('**/*.wav'))

@@ -17,10 +17,15 @@ def train(model, dataloader, cost, optimizer, device):
     train_size = len(dataloader.dataset)
     model.train()
     print(f'Total train batch: {total_batch}')
-    
-    for batch, (X, Y) in tqdm(enumerate(dataloader), unit='batch', ):
+    # with profile(schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=1),
+    # on_trace_ready=torch.profiler.tensorboard_trace_handler(
+    #             './logs/traces'), record_shapes=True,
+    #         profile_memory=True,
+    #         with_stack=True) as prof:
+    for batch, (X, Y) in tqdm(enumerate(dataloader), unit='batch'):
         X, Y = X.to(device), Y.to(device)
         optimizer.zero_grad()
+
         pred = model(X)
         batch_loss = cost(pred, Y)
         batch_accuracy = acc_metric(pred, Y)
@@ -31,6 +36,7 @@ def train(model, dataloader, cost, optimizer, device):
         if batch % 1000 == 0:
             print(
                 f" Loss (per sample): {batch_loss.item()/batch_size}  Accuracy: {batch_accuracy*100}%")
+            # prof.step()
 
     train_loss /= train_size
     train_accuracy = acc_metric.compute() * 100

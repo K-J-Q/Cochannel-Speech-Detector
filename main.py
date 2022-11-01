@@ -18,9 +18,11 @@ if __name__ == '__main__':
     config.read('config.ini')
 
     # Get Audio paths for dataset
-    audio_paths = utils.getAudioPaths('E:/Processed Audio/SPEECH/SPEECH 1.1')[0:10000]+utils.getAudioPaths(
-        'E:/Processed Audio/ENV')+utils.getAudioPaths('E:/Processed Audio/SPEECH/SPEECH 3 Same BoundaryMic')
 
+    testRun = config['data'].getboolean('is_test_run')
+
+    audio_paths = utils.getAudioPaths(
+        './test_data') if testRun else utils.getAudioPaths('E:/Processed Audio/')
     print(len(audio_paths))
     # audio_paths += Augmentation.getAudioPaths(
     #     'E:/Processed Singapore Speech Corpus/ENV', 2)
@@ -28,7 +30,7 @@ if __name__ == '__main__':
     # audio_paths = Augmentation.getAudioPaths('./data')
 
     audio_train_paths, audio_val_paths = torch.utils.data.random_split(audio_paths, [
-                                                                       0.1, 0.9])
+                                                                       0.9, 0.1])
 
     # create dataset with transforms (as required)
     audio_train_dataset = createDataset(
@@ -80,7 +82,7 @@ if __name__ == '__main__':
         'title'] else datetime.now().strftime("%Y-%m-%d,%H-%M-%S")
 
     # TensorBoard logging (as required)
-    if config['logger'].getboolean('master_logger'):
+    if config['logger'].getboolean('master_logger') and not testRun:
         writer = SummaryWriter(utils.uniquify(f'./logs/{title}'))
         if config['logger'].getboolean('log_graph'):
             spec, label = next(iter(val_dataloader))
@@ -93,10 +95,8 @@ if __name__ == '__main__':
     #  train model
     for epoch in range(epochs):
         print(f'Epoch {epoch+1}/{epochs}\n-------------------------------')
-        with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA]) as prof:
-            train_loss, train_accuracy = machineLearning.train(
-                model, train_dataloader, lossFn, optimizer, device)
-        prof.export_chrome_trace("./trace.json")
+        train_loss, train_accuracy = machineLearning.train(
+            model, train_dataloader, lossFn, optimizer, device)
         if config['model'].getboolean('save_model_checkpoint') and epoch % int(config['model']['checkpoint']) == 0:
             torch.save(model, utils.uniquify(
                 f'saved_model/{title}_epoch{epoch}.pt'))

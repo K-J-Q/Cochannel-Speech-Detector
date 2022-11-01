@@ -6,7 +6,7 @@ from torch.utils.data import Dataset, DataLoader
 from pathlib import Path
 import os
 
-from Augmentation import Augmentor
+from loader.Augmentation import Augmentor
 
 import numpy as np
 from audiomentations import Compose
@@ -58,7 +58,8 @@ class AudioDataset(Dataset):
     specTransformList: pyTorch spectrogram masking options
     """
 
-    envPath = Path('E:/Processed Audio/ENV')
+    envPath = Path(
+        'test_data/ENV') if __name__ == "__main__" else Path('E:/Processed Audio/ENV')
 
     def __init__(self,
                  audio_paths,
@@ -77,6 +78,12 @@ class AudioDataset(Dataset):
         self.Augmentor = Augmentor()
         self.generateCochannel = generateCochannel
         self.config = ConfigParser().read('config.ini')
+        # self.transform = nn.Sequential(
+        #     RandomApply([PolarityInversion()], p=0.5).to(self.device),
+        #     RandomApply([Gain()], p=0.2).to(self.device),
+        #     RandomApply([HighLowPass(sample_rate=22050)],
+        #                 p=0.5).to(self.device),
+        # )
 
     def __len__(self):
         return len(self.audio_paths)
@@ -91,7 +98,8 @@ class AudioDataset(Dataset):
         if aud_source == self.envPath:
             num_speakers = 0
 
-        combinedWaveform = torch.zeros([1, 5*8000])
+        combinedWaveform = torch.zeros(
+            [1, 5*8000])
         waveform, sample_rate = self.__getAudio(idx)
         combinedWaveform += waveform
 
@@ -111,8 +119,9 @@ class AudioDataset(Dataset):
                 combinedWaveform = torch.from_numpy(combinedWaveform)
 
         spectrogram = torchaudio.transforms.Spectrogram()
-        spectrogram_tensor = (spectrogram(combinedWaveform/2) + 1e-12).log2()
 
+        spectrogram_tensor = (spectrogram(combinedWaveform/2) + 1e-12).log2()
+        
         assert spectrogram_tensor.shape == torch.Size(
             [1, 201, 201]), f"Spectrogram size mismatch! {spectrogram_tensor.shape}"
 
@@ -145,7 +154,6 @@ class AudioDataset(Dataset):
 def main():
     import utils
     audio_paths = utils.getAudioPaths('./test_data')
-
     dataset = createDataset(audio_paths)
     dataloader = DataLoader(
         dataset,
