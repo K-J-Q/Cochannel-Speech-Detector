@@ -17,6 +17,8 @@ if __name__ == '__main__':
     config = ConfigParser()
     config.read('config.ini')
 
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     # Get Audio paths for dataset
 
     testRun = config['data'].getboolean('is_test_run')
@@ -53,6 +55,8 @@ if __name__ == '__main__':
         batch_size=bsize,
         num_workers=workers,
         persistent_workers=True,
+        prefetch_factor=4,
+        pin_memory_device='cuda',
         shuffle=True,
         pin_memory=True,
     )
@@ -64,9 +68,6 @@ if __name__ == '__main__':
         shuffle=False,
         pin_memory=True,
     )
-
-    # create model and parameters
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = CNNNetwork().to(device)
 
