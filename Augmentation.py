@@ -69,13 +69,7 @@ class Augmentor():
         num_channels = sig.shape[0]
         # Resample first channel
 
-        resig = torchaudio.transforms.Resample(sr,
-                                               self.audio_sampling)(sig[:1, :])
-        if (num_channels > 1):
-            # Resample the second channel and merge both channels
-            retwo = torchaudio.transforms.Resample(sr, self.audio_sampling)(
-                sig[1:, :])
-            resig = torch.cat([resig, retwo])
+        resig = torchaudio.transforms.Resample(sr, self.audio_sampling)(sig)
         return ((resig, self.audio_sampling))
 
 

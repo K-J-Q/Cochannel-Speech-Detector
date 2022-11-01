@@ -116,7 +116,7 @@ if __name__ == "__main__":
     # predictFile(
     #     '../untitled2.wav', model, device)
 
-    predictFolder(
-        'E:/Processed Singapore Speech Corpus/Singapore Speech Corpus/SPEECH (1)/', model, device)
+    # predictFolder(
+    #     'E:/Processed Singapore Speech Corpus/Singapore Speech Corpus/SPEECH (1)/', model, device)
 
-    # predictLive(model, device)
+    predictLive(model, device)

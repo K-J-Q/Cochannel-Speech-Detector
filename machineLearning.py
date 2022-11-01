@@ -2,6 +2,7 @@ import torch
 from tqdm import tqdm
 import torchmetrics
 from configparser import ConfigParser
+from torch.profiler import profile, record_function, ProfilerActivity
 
 config = ConfigParser()
 config.read('config.ini')
@@ -16,6 +17,7 @@ def train(model, dataloader, cost, optimizer, device):
     train_size = len(dataloader.dataset)
     model.train()
     print(f'Total train batch: {total_batch}')
+    
     for batch, (X, Y) in tqdm(enumerate(dataloader), unit='batch', ):
         X, Y = X.to(device), Y.to(device)
         optimizer.zero_grad()
@@ -29,6 +31,7 @@ def train(model, dataloader, cost, optimizer, device):
         if batch % 1000 == 0:
             print(
                 f" Loss (per sample): {batch_loss.item()/batch_size}  Accuracy: {batch_accuracy*100}%")
+
     train_loss /= train_size
     train_accuracy = acc_metric.compute() * 100
     acc_metric.reset()

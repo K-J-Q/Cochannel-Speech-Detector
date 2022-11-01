@@ -21,11 +21,19 @@ def transformData(audio_paths, generateCochannel=True, transformParams=None):
     audio_paths: List of .wav paths for dataset
     transformParams: List of dictionary with keys audio and spectrogram
     """
-    transformedDataset = AudioDataset(
-        audio_paths, generateCochannel=generateCochannel)
+    combinedDataset = AudioDataset(
+        audio_paths,
+        specTransformList=transformParams[0]['spectrogram'] if 'spectrogram' in transformParams[0] else [
+        ],
+        audioTransformList=transformParams[0]['audio'] if 'audio' in transformParams[0] else [
+        ],
+        beforeCochannelList=transformParams[0]['before_cochannel'] if 'before_cochannel' in transformParams[0] else [
+        ],
+        generateCochannel=generateCochannel
+    )
 
     if transformParams:
-        for transform in transformParams:
+        for transform in transformParams[1:]:
             audio_train_dataset = AudioDataset(
                 audio_paths,
                 specTransformList=transform['spectrogram']
@@ -37,10 +45,10 @@ def transformData(audio_paths, generateCochannel=True, transformParams=None):
                 generateCochannel=generateCochannel
             )
 
-            transformedDataset = torch.utils.data.ConcatDataset(
-                [transformedDataset, audio_train_dataset])
+            combinedDataset = torch.utils.data.ConcatDataset(
+                [combinedDataset, audio_train_dataset])
 
-    return transformedDataset
+    return combinedDataset
 
 
 class AudioDataset(Dataset):
@@ -50,6 +58,8 @@ class AudioDataset(Dataset):
     audioTransformList: audiomentations transforms
     specTransformList: pyTorch spectrogram masking options
     """
+
+    envPath = Path('E:/Processed Audio/ENV')
 
     def __init__(self,
                  audio_paths,
@@ -77,10 +87,10 @@ class AudioDataset(Dataset):
         num_speakers = random.randint(
             1, 2) if self.generateCochannel else 1
 
-        img_source = os.path.basename(os.path.split(self.audio_paths[idx])[0])
+        aud_source = self.audio_paths[idx].parents[1]
 
-        if img_source == "ENV":
-            num_speakers = 1
+        if aud_source == self.envPath:
+            num_speakers = 0
 
         combinedWaveform = torch.zeros([1, 5*8000])
         waveform, sample_rate = self.__getAudio(idx)
@@ -111,7 +121,7 @@ class AudioDataset(Dataset):
             for transform in self.specTransformList:
                 spectrogram_tensor = transform(spectrogram_tensor)
 
-        if img_source == "ENV":
+        if aud_source == "ENV":
             return [spectrogram_tensor, 0]
 
         else:

@@ -14,14 +14,15 @@ import utils
 import audiomentations
 from torch.profiler import profile, record_function, ProfilerActivity
 import torchaudio
+from transforms import getTransforms
 
 if __name__ == '__main__':
     config = ConfigParser()
     config.read('config.ini')
 
     # Get Audio paths for dataset
-    audio_paths = Augmentation.getAudioPaths(
-        'E:/Processed Singapore Speech Corpus/Singapore Speech Corpus/')[0:10]
+    audio_paths = Augmentation.getAudioPaths('E:/Processed Audio/SPEECH/SPEECH 1.1')[0:10000]+Augmentation.getAudioPaths(
+        'E:/Processed Audio/ENV')+Augmentation.getAudioPaths('E:/Processed Audio/SPEECH/SPEECH 3 Same BoundaryMic')
 
     print(len(audio_paths))
     # audio_paths += Augmentation.getAudioPaths(
@@ -29,60 +30,14 @@ if __name__ == '__main__':
     # print(len(audio_paths))
     # audio_paths = Augmentation.getAudioPaths('./data')
 
-    test_len = int(
-        int(config['data']['train_percent']) * len(audio_paths) / 100)
-
-    audio_train_paths, audio_val_paths = audio_paths[:test_len], audio_paths[
-        test_len:]
-
-    if getTransforms(config['data'].getboolean('do_augmentations')):
-        transformList = [
-            {
-                "before_cochannel": [
-                    audiomentations.Gain(
-                        min_gain_in_db=0, max_gain_in_db=3, p=0.5,),
-                    audiomentations.TimeStretch(min_rate=0.8,
-                                                max_rate=1.2,
-                                                p=0.5,
-                                                leave_length_unchanged=False,),
-                    audiomentations.Shift(min_fraction=-1,
-                                          max_fraction=1,
-                                          p=0.5,)
-                ],
-                "audio": [
-                    audiomentations.AddGaussianNoise(min_amplitude=0.001,
-                                                     max_amplitude=0.025,
-                                                     p=0.5),
-                    audiomentations.PitchShift(min_semitones=-4,
-                                               max_semitones=4,
-                                               p=0.5),
-                ],
-            },
-            {
-                "before_cochannel": [
-                    audiomentations.Gain(
-                        min_gain_in_db=0, max_gain_in_db=3, p=0.5),
-                    audiomentations.TimeStretch(min_rate=0.8,
-                                                max_rate=1.2,
-                                                p=0.5,
-                                                leave_length_unchanged=False,),
-                    audiomentations.Shift(min_fraction=-1,
-                                          max_fraction=1,
-                                          p=0.5,)
-                ],
-                "spectrogram": [
-                    torchaudio.transforms.TimeMasking(80),
-                    torchaudio.transforms.FrequencyMasking(80)
-                ],
-            },
-        ]
-    else:
-        transformList = []
+    audio_train_paths, audio_val_paths = torch.utils.data.random_split(audio_paths, [
+                                                                       0.1, 0.9])
 
     # create dataset with transforms (as required)
     audio_train_dataset = transformData(
-        audio_train_paths, transformList, transformParams=transformList)
-    audio_val_dataset = transformData(audio_val_paths)
+        audio_train_paths, transformParams=getTransforms(config['data'].getboolean('do_augmentations')))
+    audio_val_dataset = transformData(audio_val_paths, transformParams=getTransforms(
+        config['data'].getboolean('do_augmentations')))
 
     print(
         f'Train dataset Length: {len(audio_train_dataset)} ({len(audio_train_paths)} before augmentation)'
@@ -97,6 +52,7 @@ if __name__ == '__main__':
         audio_train_dataset,
         batch_size=bsize,
         num_workers=workers,
+        persistent_workers=True,
         shuffle=True,
         pin_memory=True,
     )
@@ -104,7 +60,8 @@ if __name__ == '__main__':
     val_dataloader = torch.utils.data.DataLoader(
         audio_val_dataset,
         batch_size=bsize,
-        num_workers=1,
+        num_workers=2,
+        persistent_workers=True,
         shuffle=False,
         pin_memory=True,
     )
@@ -135,19 +92,14 @@ if __name__ == '__main__':
     else:
         for i in config['logger']:
             config['logger'][i] = 'false'
-        train_loss_list = []
-        train_acc_list = []
-        val_loss_list = []
-        val_acc_list = []
-        confusion_matrix_list = []
 
     #  train model
-
     for epoch in range(epochs):
         print(f'Epoch {epoch+1}/{epochs}\n-------------------------------')
-
-        train_loss, train_accuracy = machineLearning.train(
-            model, train_dataloader, lossFn, optimizer, device)
+        with profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA]) as prof:
+            train_loss, train_accuracy = machineLearning.train(
+                model, train_dataloader, lossFn, optimizer, device)
+        prof.export_chrome_trace("./trace.json")
         if config['model'].getboolean('save_model_checkpoint') and epoch % int(config['model']['checkpoint']) == 0:
             torch.save(model, utils.uniquify(
                 f'saved_model/{title}_epoch{epoch}.pt'))
@@ -164,18 +116,5 @@ if __name__ == '__main__':
                                                train_accuracy, val_loss,
                                                val_accuracy, epoch)
 
-        else:
-            train_acc_list.append(train_accuracy)
-            train_loss_list.append(train_loss)
-            val_acc_list.append(val_accuracy)
-            val_loss_list.append(val_loss)
-
         print(f'Training    | Loss: {train_loss} Accuracy: {train_accuracy}%')
         print(f'Validating  | Loss: {val_loss} Accuracy: {val_accuracy}% \n')
-
-    # Print out values for logging
-    if not config['logger'].getboolean('master_logger'):
-        print("trainLoss = ", train_loss_list)
-        print("trainAcc = ", train_acc_list)
-        print("valLoss = ", val_loss_list)
-        print("valAcc = ", val_acc_list)
