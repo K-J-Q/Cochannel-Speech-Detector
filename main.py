@@ -1,20 +1,18 @@
 from pathlib import Path
-import Augmentation
-from AudioDataset import transformData
+import loader.Augmentation as Augmentation
+from loader.AudioDataset import transformData
 from torch.utils.data import Dataset, DataLoader
 import torch
 import torch.nn as nn
-import machineLearning
+import ml.machineLearning as machineLearning
 from model import ResNet18, M5, CNNNetwork
 from configparser import ConfigParser
-from transforms import getTransforms
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
-import utils
+import loader.utils as utils
 import audiomentations
 from torch.profiler import profile, record_function, ProfilerActivity
 import torchaudio
-from transforms import getTransforms
 
 if __name__ == '__main__':
     config = ConfigParser()
@@ -35,8 +33,8 @@ if __name__ == '__main__':
 
     # create dataset with transforms (as required)
     audio_train_dataset = transformData(
-        audio_train_paths, transformParams=getTransforms(config['data'].getboolean('do_augmentations')))
-    audio_val_dataset = transformData(audio_val_paths, transformParams=getTransforms(
+        audio_train_paths, transformParams=utils.getTransforms(config['data'].getboolean('do_augmentations')))
+    audio_val_dataset = transformData(audio_val_paths, transformParams=utils.getTransforms(
         config['data'].getboolean('do_augmentations')))
 
     print(

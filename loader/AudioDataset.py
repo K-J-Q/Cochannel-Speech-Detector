@@ -1,13 +1,13 @@
 import torch
 import torchaudio
 import random
-import utils
+import loader.utils
 from torch.utils.data import Dataset, DataLoader
 
 from pathlib import Path
 import os
 
-from Augmentation import Augmentor
+from loader.Augmentation import Augmentor
 
 import numpy as np
 from audiomentations import Compose

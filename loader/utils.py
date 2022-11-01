@@ -1,3 +1,5 @@
+import os
+
 import audiomentations
 import torchaudio
 
@@ -29,5 +31,14 @@ def getTransforms(augment):
         return [{}]
 
 
+def uniquify(path):
+    filename, extension = os.path.splitext(path)
+    counter = 1
+
+    while os.path.exists(path):
+        path = f"{filename} ({str(counter)}){extension}"
+        counter += 1
+
+    return path
 if __name__ == "__main__":
     print(getTransforms(True))
