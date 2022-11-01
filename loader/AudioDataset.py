@@ -118,10 +118,10 @@ class AudioDataset(Dataset):
             if not torch.is_tensor(combinedWaveform):
                 combinedWaveform = torch.from_numpy(combinedWaveform)
 
-        spectrogram = torchaudio.transforms.Spectrogram()
+        spectrogram = torchaudio.transforms.Spectrogram(normalized=True).to(device=)
 
         spectrogram_tensor = (spectrogram(combinedWaveform/2) + 1e-12).log2()
-        
+
         assert spectrogram_tensor.shape == torch.Size(
             [1, 201, 201]), f"Spectrogram size mismatch! {spectrogram_tensor.shape}"
 
