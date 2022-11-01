@@ -1,5 +1,5 @@
 import os
-
+from pathlib import Path
 import audiomentations
 import torchaudio
 
@@ -40,5 +40,13 @@ def uniquify(path):
         counter += 1
 
     return path
+
+def getAudioPaths(main_path, repeatMul=1):
+    paths = list(Path(main_path).glob('**/*.wav'))
+    for i in range(repeatMul):
+        paths += paths
+    return paths
+
+
 if __name__ == "__main__":
     print(getTransforms(True))

@@ -73,8 +73,4 @@ class Augmentor():
         return ((resig, self.audio_sampling))
 
 
-def getAudioPaths(main_path, repeatMul=1):
-    paths = list(Path(main_path).glob('**/*.wav'))
-    for i in range(repeatMul):
-        paths += paths
-    return paths
+

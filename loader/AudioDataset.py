@@ -1,22 +1,21 @@
 import torch
 import torchaudio
 import random
-import loader.utils
 from torch.utils.data import Dataset, DataLoader
 
 from pathlib import Path
 import os
 
-from loader.Augmentation import Augmentor
+from Augmentation import Augmentor
 
 import numpy as np
 from audiomentations import Compose
 from configparser import ConfigParser
 
 
-def transformData(audio_paths, generateCochannel=True, transformParams=None):
+def createDataset(audio_paths, generateCochannel=True, transformParams=[{}]):
     """
-    Outputs spectrogram in addition to any transforms indicated in transformParams (dictionary)
+    Returns combined dataset of transforms indicated in transformParams (dictionary)
 
     audio_paths: List of .wav paths for dataset
     transformParams: List of dictionary with keys audio and spectrogram
@@ -142,4 +141,21 @@ class AudioDataset(Dataset):
 
         return waveform, sample_rate
 
-# TODO add __main__ as test function
+
+def main():
+    import utils
+    audio_paths = utils.getAudioPaths('./test_data')
+
+    dataset = createDataset(audio_paths)
+    dataloader = DataLoader(
+        dataset,
+        batch_size=16,
+        num_workers=0,
+        shuffle=True,
+    )
+
+    print(next(iter(dataloader)))
+
+
+if __name__ == "__main__":
+    main()

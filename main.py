@@ -1,6 +1,5 @@
-from pathlib import Path
 import loader.Augmentation as Augmentation
-from loader.AudioDataset import transformData
+from loader.AudioDataset import createDataset
 from torch.utils.data import Dataset, DataLoader
 import torch
 import torch.nn as nn
@@ -19,8 +18,8 @@ if __name__ == '__main__':
     config.read('config.ini')
 
     # Get Audio paths for dataset
-    audio_paths = Augmentation.getAudioPaths('E:/Processed Audio/SPEECH/SPEECH 1.1')[0:10000]+Augmentation.getAudioPaths(
-        'E:/Processed Audio/ENV')+Augmentation.getAudioPaths('E:/Processed Audio/SPEECH/SPEECH 3 Same BoundaryMic')
+    audio_paths = utils.getAudioPaths('E:/Processed Audio/SPEECH/SPEECH 1.1')[0:10000]+utils.getAudioPaths(
+        'E:/Processed Audio/ENV')+utils.getAudioPaths('E:/Processed Audio/SPEECH/SPEECH 3 Same BoundaryMic')
 
     print(len(audio_paths))
     # audio_paths += Augmentation.getAudioPaths(
@@ -32,21 +31,22 @@ if __name__ == '__main__':
                                                                        0.1, 0.9])
 
     # create dataset with transforms (as required)
-    audio_train_dataset = transformData(
+    audio_train_dataset = createDataset(
         audio_train_paths, transformParams=utils.getTransforms(config['data'].getboolean('do_augmentations')))
-    audio_val_dataset = transformData(audio_val_paths, transformParams=utils.getTransforms(
-        config['data'].getboolean('do_augmentations')))
+    audio_val_dataset = createDataset(
+        audio_val_paths, transformParams=utils.getTransforms(False))
 
     print(
         f'Train dataset Length: {len(audio_train_dataset)} ({len(audio_train_paths)} before augmentation)'
     )
+
     print(f'Validation dataset Length: {len(audio_val_dataset)}')
 
     bsize = int(config['model']['batch_size'])
     workers = int(config['model']['num_workers'])
 
     # create dataloader for model
-    train_dataloader = torch.utils.data.DataLoader(
+    train_dataloader = DataLoader(
         audio_train_dataset,
         batch_size=bsize,
         num_workers=workers,
@@ -55,11 +55,10 @@ if __name__ == '__main__':
         pin_memory=True,
     )
 
-    val_dataloader = torch.utils.data.DataLoader(
+    val_dataloader = DataLoader(
         audio_val_dataset,
         batch_size=bsize,
         num_workers=2,
-        persistent_workers=True,
         shuffle=False,
         pin_memory=True,
     )
