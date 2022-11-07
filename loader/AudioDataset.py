@@ -81,10 +81,10 @@ class Augmentor():
         return ((resig, self.audio_sampling))
 
 
-def createDataset(env_paths, speech_paths, generateCochannel=True, transformParams=[{}]):
+def createDataset(audio_paths, generateCochannel=True, transformParams=[{}]):
 
     combinedDataset = AudioDataset(
-        env_paths, speech_paths,
+        audio_paths,
         specTransformList=transformParams[0]['spectrogram'] if 'spectrogram' in transformParams[0] else [
         ],
         audioTransformList=transformParams[0]['audio'] if 'audio' in transformParams[0] else [
@@ -97,7 +97,7 @@ def createDataset(env_paths, speech_paths, generateCochannel=True, transformPara
     if transformParams:
         for transform in transformParams[1:]:
             audio_train_dataset = AudioDataset(
-                env_paths, speech_paths,
+                audio_paths,
                 specTransformList=transform['spectrogram']
                 if 'spectrogram' in transform else [],
                 audioTransformList=transform['audio']
@@ -126,7 +126,7 @@ class AudioDataset(Dataset):
     class_size = int(config['data']['class_size'])
 
     def __init__(self,
-                 env_paths, speech_paths,
+                 audio_paths,
                  specTransformList=None,
                  audioTransformList=None,
                  beforeCochannelList=None,
@@ -137,34 +137,45 @@ class AudioDataset(Dataset):
             beforeCochannelList) if beforeCochannelList else None
         self.audioAugment = Compose(
             audioTransformList) if audioTransformList else None
-        self.env_paths = env_paths
-        self.speech_paths = speech_paths
+        self.env_paths, self.speech_paths = audio_paths
         self.Augmentor = Augmentor()
         self.generateCochannel = generateCochannel
+        if generateCochannel: 
+            self.specPerClass = 3
+        else:
+            self.specPerClass = 2
 
     def __len__(self):
-        return len(self.speech_paths)
+        return min(len(self.env_paths), len(self.speech_paths))
 
     def __getitem__(self, idx):
         env_aud = torchaudio.load(self.env_paths[idx])
         speech1_aud = torchaudio.load(self.speech_paths[idx])
-        speech2_aud = torchaudio.load(
-            self.speech_paths[random.randint(0, self.__len__()) - 1])
         assert env_aud[1] == speech1_aud[1]
-        assert speech1_aud[1] == speech2_aud[1]
-        X = torch.zeros([self.class_size*3, 1, 201, 161])
+        
+        if self.generateCochannel:
+            speech2_aud = torchaudio.load(
+                self.speech_paths[random.randint(0, self.__len__()) - 1])
+            assert speech1_aud[1] == speech2_aud[1]
+        
+        X = torch.zeros([self.class_size*self.specPerClass, 1, 201, 161])
+
         Y = []
         spectrogram = torchaudio.transforms.Spectrogram(normalized=True)
+
         for i in range(self.class_size):
-            X[3*i][0] = (spectrogram(self.__split(env_aud)) + 1e-12).log2()
-            X[3*i + 1][0] = (spectrogram(self.__split(speech1_aud)
+            X[self.specPerClass*i][0] = (spectrogram(self.__split(env_aud)) + 1e-12).log2()
+            X[self.specPerClass*i + 1][0] = (spectrogram(self.__split(speech1_aud)
                                          ) + 1e-12).log2()
-            aud1 = self.__split(speech1_aud)
-            aud2 = self.__split(speech2_aud)
-            merged_aud = (aud1 + aud2) / 2
-            X[3*i + 2][0] = (spectrogram(self.__split(speech2_aud)
-                                         ) + 1e-12).log2()
-            Y.extend([0, 1, 2])
+            if self.generateCochannel:
+                aud1 = self.__split(speech1_aud)
+                aud2 = self.__split(speech2_aud)
+                merged_aud = (aud1 + aud2) / 2
+                X[self.specPerClass*i + 2][0] = (spectrogram(self.__split(speech2_aud)
+                                             ) + 1e-12).log2()
+                Y.extend([0, 1, 2])
+            else:
+                Y.extend([0, 1])
 
         return [X, Y]
 

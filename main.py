@@ -16,29 +16,26 @@ if __name__ == '__main__':
     config = ConfigParser()
     config.read('config.ini')
     torch.backends.cudnn.benchmark = True
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    
 
     # Get Audio paths for dataset
 
     testRun = config['data'].getboolean('is_test_run')
 
-    env_paths = utils.getAudioPaths(
-        './test_data') if testRun else utils.getAudioPaths('E:/Processed Audio/ENV')
-
-    speech_paths = utils.getAudioPaths(
-        './test_data') if testRun else utils.getAudioPaths('E:/Processed Audio/SPEECH')
+    audio_train_paths, audio_val_paths = utils.getAudioPaths(
+        'E:/Processed Audio', percent=0.9)
 
     # create dataset with transforms (as required)
     audio_train_dataset = createDataset(
-        env_paths, speech_paths, transformParams=utils.getTransforms(config['data'].getboolean('do_augmentations')))
-    # audio_val_dataset = createDataset(
-    #     audio_val_paths, transformParams=utils.getTransforms(False))
+        audio_train_paths, transformParams=utils.getTransforms(config['data'].getboolean('do_augmentations')))
+    audio_val_dataset = createDataset(
+        audio_val_paths, transformParams=utils.getTransforms(False))
 
-    # print(
-    #     f'Train dataset Length: {len(audio_train_dataset)} ({len(audio_train_paths)} before augmentation)'
-    # )
+    print(
+        f'Train dataset Length: {len(audio_train_dataset)} ({len(audio_train_paths[0])} before augmentation)'
+    )
 
-    # print(f'Validation dataset Length: {len(audio_val_dataset)}')
+    print(f'Validation dataset Length: {len(audio_val_dataset)}')
 
     bsize = int(config['data']['batch_size'])
     workers = int(config['model']['num_workers'])
@@ -48,24 +45,29 @@ if __name__ == '__main__':
         audio_train_dataset,
         batch_size=bsize,
         num_workers=workers,
-        # persistent_workers=True,
+        persistent_workers=True,
         # prefetch_factor=12,
         shuffle=True,
         pin_memory=True,
         collate_fn=collate_batch,
     )
 
-    # val_dataloader = DataLoader(
-    #     audio_val_dataset,
-    #     batch_size=bsize,
-    #     num_workers=2,
-    #     shuffle=False,
-    #     pin_memory=True,
-    # )
+    val_dataloader = DataLoader(
+        audio_val_dataset,
+        batch_size=bsize,
+        num_workers=workers,
+        shuffle=False,
+        pin_memory=True,
+        collate_fn=collate_batch
+    )
+    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    model = CNNNetwork().to(device)
-
-    # model = torch.load('./saved_model/NoAugmentations8K.pt')
+    # TODO: reload checkpoint
+    if config['model'].getboolean('load_pretrained'):
+        model, _ = machineLearning.selectModel()
+    else:
+        model = CNNNetwork().to(device)
 
     lr = float(config['model']['learning_rate'])
     epochs = int(config['model']['num_epochs'])
@@ -77,36 +79,41 @@ if __name__ == '__main__':
         'title'] else datetime.now().strftime("%Y-%m-%d,%H-%M-%S")
 
     # TensorBoard logging (as required)
-    # if config['logger'].getboolean('master_logger') and not testRun:
-    #     writer = SummaryWriter(utils.uniquify(f'./logs/{title}'))
-    #     if config['logger'].getboolean('log_graph'):
-    #         spec, label = next(iter(val_dataloader))
-    #         writer.add_graph(model, spec.to(device))
-    #     writer.close()
-    # else:
-    #     for i in config['logger']:
-    #         config['logger'][i] = 'false'
+    if config['logger'].getboolean('master_logger') and not testRun:
+        writer = SummaryWriter(utils.uniquify(f'./logs/{title}'))
+        if config['logger'].getboolean('log_graph'):
+            spec, label = next(iter(val_dataloader))
+            writer.add_graph(model, spec.to(device))
+        writer.close()
+    else:
+        for i in config['logger']:
+            config['logger'][i] = 'false'
+
+    scheduler = torch.optim.lr_scheduler.StepLR(
+        optimizer, step_size=10, gamma=0.8)
 
     #  train model
     for epoch in range(epochs):
         print(f'Epoch {epoch+1}/{epochs}\n-------------------------------')
+        print(f'LR: {scheduler.get_lr()}')
         train_loss, train_accuracy = machineLearning.train(
             model, train_dataloader, lossFn, optimizer, device)
         if config['model'].getboolean('save_model_checkpoint') and epoch % int(config['model']['checkpoint']) == 0:
             torch.save(model, utils.uniquify(
                 f'saved_model/{title}_epoch{epoch}.pt'))
+        scheduler.step()
 
-        # val_loss, val_accuracy, _ = machineLearning.eval(model, val_dataloader,
-        #                                                  lossFn, device)
+        val_loss, val_accuracy, _ = machineLearning.eval(
+            model, val_dataloader, lossFn, device)
 
-        # if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) == 0:
-        #     writer.add_hparams(
-        #         {'Learning Rate': lr, 'Batch Size': bsize, 'Epochs': epoch}, {'Accuracy': val_accuracy, 'Loss': val_loss})
+        if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) == 0:
+            writer.add_hparams(
+                {'Learning Rate': lr, 'Batch Size': bsize, 'Epochs': epoch}, {'Accuracy': val_accuracy, 'Loss': val_loss})
 
-        # if config['logger'].getboolean('log_iter_params'):
-        #     machineLearning.tensorBoardLogging(writer, train_loss,
-        #                                        train_accuracy, val_loss,
-        #                                        val_accuracy, epoch)
+        if config['logger'].getboolean('log_iter_params'):
+            machineLearning.tensorBoardLogging(writer, train_loss,
+                                               train_accuracy, val_loss,
+                                               val_accuracy, epoch)
 
         print(f'Training    | Loss: {train_loss} Accuracy: {train_accuracy}%')
-        # print(f'Validating  | Loss: {val_loss} Accuracy: {val_accuracy}% \n')
+        print(f'Validating  | Loss: {val_loss} Accuracy: {val_accuracy}% \n')

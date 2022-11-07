@@ -5,10 +5,11 @@ from torch.utils.data import Dataset, DataLoader
 import torch
 import torch.nn as nn
 import ml.machineLearning
-from loader.AudioDataset import AudioDataset, Augmentor
+from loader.AudioDataset import AudioDataset, Augmentor, createDataset, collate_batch
 import random
 import seaborn as sn
 import matplotlib.pyplot as plt
+import loader.utils as utils
 
 # To ensure reproducibility
 random.seed(0)
@@ -17,18 +18,23 @@ torch.manual_seed(0)
 class_map = ['0', '1', '2']
 
 
-def predictFolder(folderPath, model, device):
-    audio_paths = Augmentation.getAudioPaths(folderPath)
-    audio_test_dataset = AudioDataset(audio_paths, generateCochannel=True)
+def predictFolder(model, device, folderPath):
+    audio_paths = [[], []]
+    audio_paths[0] = utils.getAudioPaths(folderPath[0])[0:10]
+    audio_paths[1] = utils.getAudioPaths(
+        folderPath[1])[0:100]
+
+    audio_test_dataset = AudioDataset(audio_paths, generateCochannel=False)
 
     test_dataloader = torch.utils.data.DataLoader(
         audio_test_dataset,
-        batch_size=64,
+        batch_size=1,
         num_workers=0,
         shuffle=True,
+        collate_fn=collate_batch
     )
 
-    test_loss, test_acc, confusion_matrix = machineLearning.eval(
+    test_loss, test_acc, confusion_matrix = ml.machineLearning.eval(
         model, test_dataloader, torch.nn.CrossEntropyLoss(), device)
     print(f'Validating  | Loss: {test_loss} Accuracy: {test_acc}% \n')
     sn.heatmap(confusion_matrix.cpu(), annot=True,
@@ -93,16 +99,7 @@ def predictLive(model, device):
             plt.show()
 
 
-def selectModel():
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model_paths = [str(p) for p in Path('./saved_model/').glob(f'*.pt')]
-    for i, model_path in enumerate(model_paths):
-        print(f'[{i}] {model_path}')
 
-    path = model_paths[int(input('Select saved model > '))]
-    model = torch.load(path, map_location=device)
-    model.eval()
-    return model, device
 
 
 if __name__ == "__main__":
@@ -111,7 +108,7 @@ if __name__ == "__main__":
     # predictFile(
     #     'E:/Processed Audio/SPEECH/4 Diff Room/sur_0007_1014_phnd_cs-chn.wav.wav', model, device)
 
-    predictFolder(
-        'E:/Processed Singapore Speech Corpus/', model, device)
+    predictFolder(model, device, [
+                  'E:\Processed Audio\SPEECH', 'E:\Processed Audio\ENV'])
 
     # predictLive(model, device)

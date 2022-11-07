@@ -11,6 +11,17 @@ batch_size = int((config['data']['batch_size']))
 num_classes = 3
 
 
+def selectModel():
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model_paths = [str(p) for p in Path('./saved_model/').glob(f'*.pt')]
+    for i, model_path in enumerate(model_paths):
+        print(f'[{i}] {model_path}')
+
+    path = model_paths[int(input('Select saved model > '))]
+    model = torch.load(path, map_location=device)
+    model.eval()
+    return model, device
+
 def train(model, dataloader, cost, optimizer, device):
     acc_metric = torchmetrics.Accuracy().to(device)
     total_batch = len(dataloader)
@@ -57,13 +68,13 @@ def eval(model, dataloader, cost, device):
     model.eval()
     print(f'Total eval batch: {total_batch}')
     with torch.no_grad():
-        for batch, (X, Y) in tqdm(enumerate(dataloader), unit='batch'):
+        for batch, (X, Y) in tqdm(enumerate(dataloader), unit='batch', total=total_batch):
             X, Y = X.to(device), Y.to(device)
             pred = model(X)
             batch_loss = cost(pred, Y)
             batch_accuracy = acc_metric(pred, Y)
             val_loss += batch_loss.item()
-            if batch % 500 == 0:
+            if batch % int(total_batch/10) == 0:
                 print(
                     f" Loss (per sample): {batch_loss.item()/batch_size}  Accuracy: {batch_accuracy*100}%"
                 )

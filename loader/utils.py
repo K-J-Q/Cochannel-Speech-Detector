@@ -43,11 +43,19 @@ def uniquify(path):
 
 
 # TODO: output train and val set instead of random split
-def getAudioPaths(main_path, repeatMul=1):
-    paths = list(Path(main_path).glob('**/*.wav'))
-    for i in range(repeatMul):
-        paths += paths
-    return paths
+def getAudioPaths(main_path, percent = 0.9, repeatENVMul=0, repeatSPEECHMul = 0):
+    env_paths = list(Path(main_path+'/ENV').glob('**/*.wav'))
+    speech_paths = list(Path(main_path+'/SPEECH').glob('**/*.wav'))
+
+    train_env_size = int(len(env_paths)* percent)
+    train_speech_size = int(len(speech_paths)* percent)
+
+    for i in range(repeatENVMul):
+        env_paths += env_paths
+    for i in range(repeatSPEECHMul):
+        speech_paths += speech_paths
+
+    return ((env_paths[:train_env_size], speech_paths[:train_speech_size]), (env_paths[train_env_size:], speech_paths[train_speech_size:]))
 
 
 if __name__ == "__main__":
