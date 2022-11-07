@@ -2,26 +2,89 @@ import torch
 import torchaudio
 import random
 from torch.utils.data import Dataset, DataLoader
-
+import loader.utils
 from pathlib import Path
 import os
-
-from loader.Augmentation import Augmentor
-
-import numpy as np
+from torch.profiler import profile, record_function, ProfilerActivity
 from audiomentations import Compose
 from configparser import ConfigParser
 
 
-def createDataset(audio_paths, generateCochannel=True, transformParams=[{}]):
-    """
-    Returns combined dataset of transforms indicated in transformParams (dictionary)
+config = ConfigParser()
+config.read('config.ini')
 
-    audio_paths: List of .wav paths for dataset
-    transformParams: List of dictionary with keys audio and spectrogram
+start = torch.cuda.Event(enable_timing=True)
+end = torch.cuda.Event(enable_timing=True)
+
+
+class Augmentor():
     """
+    Basic augmentation to ensure uniformaty among the different audio files.
+    """
+    audio_duration = int(config['augmentations']['duration'])
+    audio_channels = int(config['augmentations']['num_channels'])
+    audio_sampling = int(config['augmentations']['sample_rate'])
+    noise_multiplier = float(config['augmentations']
+                             ['pad_trunc_noise_multiplier'])
+
+    def audio_preprocessing(self, audioIn):
+        return self.pad_trunc(self.resample(self.rechannel(audioIn)), True)
+
+    def pad_trunc(self, aud, reduce_only=False):
+        sig, sr = aud
+        num_rows, sig_len = sig.shape
+        target_len = int(sr/1000) * (self.audio_duration)
+
+        # ((self.audio_duration-1000) if reduce_only else self.audio_duration)
+
+        if (sig_len > target_len):
+            start_len = random.randint(0, sig_len - target_len)
+            sig = sig[:, start_len:start_len+target_len]
+            assert (sig.shape[1] == target_len)
+
+        elif (sig_len < target_len and not reduce_only):
+            # Length of padding to add at the beginning and end of the signal
+            pad_begin_len = random.randint(0, target_len - sig_len)
+            pad_end_len = target_len - sig_len - pad_begin_len
+
+            pad_begin = torch.rand(
+                (num_rows, pad_begin_len))*self.noise_multiplier
+            pad_end = torch.rand((num_rows, pad_end_len))*self.noise_multiplier
+            sig = torch.cat((pad_begin, sig, pad_end), 1)
+        return (sig, sr)
+
+    def rechannel(self, aud, showWarning=True):
+        sig, sr = aud
+        if (sig.shape[0] == self.audio_channels):
+            # Nothing to do
+            return aud
+        elif (self.audio_channels == 1):
+            # Convert from stereo to mono by selecting only the first channel
+            resig = sig[:1, :]
+        else:
+            # Convert from mono to stereo by duplicating the first channel
+            resig = torch.cat([sig, sig])
+        if showWarning:
+            print('rechannel process triggered!')
+        return ((resig, sr))
+
+    def resample(self, aud, showWarning=True):
+        sig, sr = aud
+        if (sr == self.audio_sampling):
+            # Nothing to do
+            return aud
+        if showWarning:
+            print('resampling process triggered!')
+        num_channels = sig.shape[0]
+
+        resig = torchaudio.transforms.Resample(sr, self.audio_sampling)(sig)
+        return ((resig, self.audio_sampling))
+
+
+def createDataset(env_paths, speech_paths, generateCochannel=True, transformParams=[{}]):
+
     combinedDataset = AudioDataset(
-        audio_paths,
+        env_paths, speech_paths,
         specTransformList=transformParams[0]['spectrogram'] if 'spectrogram' in transformParams[0] else [
         ],
         audioTransformList=transformParams[0]['audio'] if 'audio' in transformParams[0] else [
@@ -34,7 +97,7 @@ def createDataset(audio_paths, generateCochannel=True, transformParams=[{}]):
     if transformParams:
         for transform in transformParams[1:]:
             audio_train_dataset = AudioDataset(
-                audio_paths,
+                env_paths, speech_paths,
                 specTransformList=transform['spectrogram']
                 if 'spectrogram' in transform else [],
                 audioTransformList=transform['audio']
@@ -60,9 +123,10 @@ class AudioDataset(Dataset):
 
     envPath = Path(
         'test_data/ENV') if __name__ == "__main__" else Path('E:/Processed Audio/ENV')
+    class_size = int(config['data']['class_size'])
 
     def __init__(self,
-                 audio_paths,
+                 env_paths, speech_paths,
                  specTransformList=None,
                  audioTransformList=None,
                  beforeCochannelList=None,
@@ -73,96 +137,85 @@ class AudioDataset(Dataset):
             beforeCochannelList) if beforeCochannelList else None
         self.audioAugment = Compose(
             audioTransformList) if audioTransformList else None
-        self.audio_paths = audio_paths
-
+        self.env_paths = env_paths
+        self.speech_paths = speech_paths
         self.Augmentor = Augmentor()
         self.generateCochannel = generateCochannel
-        self.config = ConfigParser().read('config.ini')
-        # self.transform = nn.Sequential(
-        #     RandomApply([PolarityInversion()], p=0.5).to(self.device),
-        #     RandomApply([Gain()], p=0.2).to(self.device),
-        #     RandomApply([HighLowPass(sample_rate=22050)],
-        #                 p=0.5).to(self.device),
-        # )
 
     def __len__(self):
-        return len(self.audio_paths)
+        return len(self.speech_paths)
 
     def __getitem__(self, idx):
+        env_aud = torchaudio.load(self.env_paths[idx])
+        speech1_aud = torchaudio.load(self.speech_paths[idx])
+        speech2_aud = torchaudio.load(
+            self.speech_paths[random.randint(0, self.__len__()) - 1])
+        assert env_aud[1] == speech1_aud[1]
+        assert speech1_aud[1] == speech2_aud[1]
+        X = torch.zeros([self.class_size*3, 1, 201, 161])
+        Y = []
+        spectrogram = torchaudio.transforms.Spectrogram(normalized=True)
+        for i in range(self.class_size):
+            X[3*i][0] = (spectrogram(self.__split(env_aud)) + 1e-12).log2()
+            X[3*i + 1][0] = (spectrogram(self.__split(speech1_aud)
+                                         ) + 1e-12).log2()
+            aud1 = self.__split(speech1_aud)
+            aud2 = self.__split(speech2_aud)
+            merged_aud = (aud1 + aud2) / 2
+            X[3*i + 2][0] = (spectrogram(self.__split(speech2_aud)
+                                         ) + 1e-12).log2()
+            Y.extend([0, 1, 2])
 
-        num_speakers = random.randint(
-            1, 2) if self.generateCochannel else 1
+        return [X, Y]
 
-        aud_source = self.audio_paths[idx].parents[1]
+    def __split(self, audio, duration=4):
+        cut_length = duration*audio[1]
+        start_idx = random.randint(0, len(audio[0][0])-cut_length)
+        return audio[0][0][start_idx:start_idx+cut_length]
 
-        if aud_source == self.envPath:
-            num_speakers = 0
-
-        combinedWaveform = torch.zeros(
-            [1, 5*8000])
-        waveform, sample_rate = self.__getAudio(idx)
-        combinedWaveform += waveform
-
-        for i in range(num_speakers - 1):
-            combinedWaveform += self.__getAudio(
-                random.randint(0, self.__len__()) - 1)[0]
-
-        # for testing audio only [REMOVE BEFORE TRAINING]
-        # if num_speakers == 2:
-        #     torchaudio.save(utils.uniquify('../testfile.wav'),
-        #                     combinedWaveform, sample_rate)
-
-        if self.audioAugment:
-            combinedWaveform = self.audioAugment(
-                combinedWaveform.numpy(), sample_rate)
-            if not torch.is_tensor(combinedWaveform):
-                combinedWaveform = torch.from_numpy(combinedWaveform)
-
-        spectrogram = torchaudio.transforms.Spectrogram(normalized=True).to(device=)
-
-        spectrogram_tensor = (spectrogram(combinedWaveform/2) + 1e-12).log2()
-
-        assert spectrogram_tensor.shape == torch.Size(
-            [1, 201, 201]), f"Spectrogram size mismatch! {spectrogram_tensor.shape}"
-
-        if self.specTransformList:
-            for transform in self.specTransformList:
-                spectrogram_tensor = transform(spectrogram_tensor)
-
-        if aud_source == "ENV":
-            return [spectrogram_tensor, 0]
-
-        else:
-            return [spectrogram_tensor, num_speakers]
-
-    def __getAudio(self, index):
+    def __getAudio(self, audioPath):
         waveform, sample_rate = self.Augmentor.audio_preprocessing(
-            torchaudio.load(self.audio_paths[index]))
+            torchaudio.load(audioPath))
 
         if self.beforeCochannelAugment:
             waveform = self.beforeCochannelAugment(
                 waveform.numpy(), sample_rate)
             if not torch.is_tensor(waveform):
                 waveform = torch.from_numpy(waveform)
-
-        waveform, sample_rate = self.Augmentor.pad_trunc(
-            [waveform, sample_rate])
-
         return waveform, sample_rate
+
+
+def collate_batch(batches):
+    if (len(batches) == 1):
+        return batches[0][0], torch.Tensor(batches[0][1]).type(torch.LongTensor)
+    X = torch.empty(0)
+    Y = []
+
+    for x, y in batches:
+        X = torch.cat((X, x))
+        Y.extend(y)
+    Y = torch.Tensor(Y).type(torch.LongTensor)
+    return X, Y
 
 
 def main():
     import utils
-    audio_paths = utils.getAudioPaths('./test_data')
-    dataset = createDataset(audio_paths)
+    env_paths = utils.getAudioPaths('E:/Processed Audio/ENV/4 Diff Room')
+    speech_paths = utils.getAudioPaths(
+        'E:/Processed Audio/SPEECH/4 Diff Room')
+
+    dataset = createDataset(env_paths, speech_paths,
+                            utils.getTransforms(False))
+
     dataloader = DataLoader(
         dataset,
-        batch_size=16,
-        num_workers=0,
+        batch_size=10,
+        num_workers=2,
         shuffle=True,
+        collate_fn=collate_batch
     )
-
-    print(next(iter(dataloader)))
+    for batch in iter(dataloader):
+        pass
 
 
 if __name__ == "__main__":

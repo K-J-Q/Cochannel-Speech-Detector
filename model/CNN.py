@@ -29,7 +29,7 @@ class CNNNetwork(nn.Module):
             nn.ReLU(),
         )
         self.flatten = nn.Flatten()
-        self.linear1 = nn.Linear(in_features=512, out_features=100)
+        self.linear1 = nn.Linear(in_features=256, out_features=100)
         self.linear2 = nn.Linear(in_features=100, out_features=3)
         self.softmax = nn.Softmax(dim=1)
 

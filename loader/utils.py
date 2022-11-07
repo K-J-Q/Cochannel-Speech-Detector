@@ -8,14 +8,14 @@ def getTransforms(augment):
     if augment:
         return [
             {
-                "before_cochannel": [
-                    # audiomentations.Gain(
-                    #     min_gain_in_db=-3, max_gain_in_db=3, p=0.5,),
-                    # audiomentations.TimeStretch(min_rate=0.8,
-                    #                             max_rate=1.2,
-                    #                             p=0.5,
-                    #                             leave_length_unchanged=False,),
-                ],
+                # "before_cochannel": [
+                # audiomentations.Gain(
+                #     min_gain_in_db=-3, max_gain_in_db=3, p=0.5,),
+                # audiomentations.TimeStretch(min_rate=0.8,
+                #                             max_rate=1.2,
+                #                             p=0.5,
+                #                             leave_length_unchanged=False,),
+                # ],
                 # "audio": [
                 #     audiomentations.AddGaussianNoise(min_amplitude=0.001,
                 #                                      max_amplitude=0.025,
@@ -42,6 +42,7 @@ def uniquify(path):
     return path
 
 
+# TODO: output train and val set instead of random split
 def getAudioPaths(main_path, repeatMul=1):
     paths = list(Path(main_path).glob('**/*.wav'))
     for i in range(repeatMul):
