@@ -16,15 +16,12 @@ if __name__ == '__main__':
     config = ConfigParser()
     config.read('config.ini')
     torch.backends.cudnn.benchmark = True
-    
 
     # Get Audio paths for dataset
-
     testRun = config['data'].getboolean('is_test_run')
 
     audio_train_paths, audio_val_paths = utils.getAudioPaths(
-        'E:/Processed Audio', percent=0.9)
-
+        '/media/jianquan/Data/Processed Audio', percent=0.1)
     # create dataset with transforms (as required)
     audio_train_dataset = createDataset(
         audio_train_paths, transformParams=utils.getTransforms(config['data'].getboolean('do_augmentations')))
@@ -45,7 +42,7 @@ if __name__ == '__main__':
         audio_train_dataset,
         batch_size=bsize,
         num_workers=workers,
-        persistent_workers=True,
+        # persistent_workers=True,
         # prefetch_factor=12,
         shuffle=True,
         pin_memory=True,
@@ -103,17 +100,17 @@ if __name__ == '__main__':
                 f'saved_model/{title}_epoch{epoch}.pt'))
         scheduler.step()
 
-        val_loss, val_accuracy, _ = machineLearning.eval(
-            model, val_dataloader, lossFn, device)
+        # val_loss, val_accuracy, _ = machineLearning.eval(
+        #     model, val_dataloader, lossFn, device)
 
-        if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) == 0:
-            writer.add_hparams(
-                {'Learning Rate': lr, 'Batch Size': bsize, 'Epochs': epoch}, {'Accuracy': val_accuracy, 'Loss': val_loss})
+        # if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) == 0:
+        #     writer.add_hparams(
+        #         {'Learning Rate': lr, 'Batch Size': bsize, 'Epochs': epoch}, {'Accuracy': val_accuracy, 'Loss': val_loss})
 
-        if config['logger'].getboolean('log_iter_params'):
-            machineLearning.tensorBoardLogging(writer, train_loss,
-                                               train_accuracy, val_loss,
-                                               val_accuracy, epoch)
+        # if config['logger'].getboolean('log_iter_params'):
+        #     machineLearning.tensorBoardLogging(writer, train_loss,
+        #                                        train_accuracy, val_loss,
+        #                                        val_accuracy, epoch)
 
         print(f'Training    | Loss: {train_loss} Accuracy: {train_accuracy}%')
-        print(f'Validating  | Loss: {val_loss} Accuracy: {val_accuracy}% \n')
+        # print(f'Validating  | Loss: {val_loss} Accuracy: {val_accuracy}% \n')
