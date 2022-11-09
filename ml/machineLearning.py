@@ -3,6 +3,7 @@ from tqdm import tqdm
 import torchmetrics
 from configparser import ConfigParser
 from torch.profiler import profile, record_function, ProfilerActivity
+from pathlib import Path
 
 config = ConfigParser()
 config.read('config.ini')
@@ -19,8 +20,9 @@ def selectModel():
 
     path = model_paths[int(input('Select saved model > '))]
     model = torch.load(path, map_location=device)
+    epoch = path.split('epoch',1)[1][:-3]
     model.eval()
-    return model, device
+    return model, device, epoch
 
 def train(model, dataloader, cost, optimizer, device):
     acc_metric = torchmetrics.Accuracy().to(device)
@@ -29,24 +31,24 @@ def train(model, dataloader, cost, optimizer, device):
     train_size = len(dataloader.dataset)
     model.train()
     print(f'Total train batch: {total_batch}')
-    with profile(on_trace_ready=torch.profiler.tensorboard_trace_handler(
-        './logs/traces'), record_shapes=True,
-            profile_memory=True,
-            with_stack=True) as prof:
-        for batch, (X, Y) in tqdm(enumerate(dataloader), unit='batch', total=total_batch):
-            X, Y = X.to(device), Y.to(device)
-            optimizer.zero_grad()
-            pred = model(X)
-            batch_loss = cost(pred, Y)
-            batch_accuracy = acc_metric(pred, Y)
-            batch_loss.backward()
-            optimizer.step()
-            train_loss += batch_loss.item()
-            train_accuracy += batch_accuracy.item()
-            if batch % int(total_batch/10) == 0:
-                print(
-                    f" Loss (per sample): {batch_loss.item()/batch_size}  Accuracy: {batch_accuracy*100}%")
-            prof.step()
+    # with profile(on_trace_ready=torch.profiler.tensorboard_trace_handler(
+    #     './logs/traces'), record_shapes=True,
+    #         profile_memory=True,
+    #         with_stack=True) as prof:
+    for batch, (X, Y) in tqdm(enumerate(dataloader), unit='batch', total=total_batch):
+        X, Y = X.to(device), Y.to(device)
+        optimizer.zero_grad()
+        pred = model(X)
+        batch_loss = cost(pred, Y)
+        batch_accuracy = acc_metric(pred, Y)
+        batch_loss.backward()
+        optimizer.step()
+        train_loss += batch_loss.item()
+        train_accuracy += batch_accuracy.item()
+        if batch % int(total_batch/10) == 0:
+            print(
+                f" Loss (per sample): {batch_loss.item()/batch_size}  Accuracy: {batch_accuracy*100}%")
+        # prof.step()
 
     train_loss /= train_size
     train_accuracy = acc_metric.compute() * 100

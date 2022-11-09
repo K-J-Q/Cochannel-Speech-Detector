@@ -8,9 +8,6 @@ from configparser import ConfigParser
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 import loader.utils as utils
-import audiomentations
-from torch.profiler import profile, record_function, ProfilerActivity
-import torchaudio
 
 if __name__ == '__main__':
     config = ConfigParser()
@@ -21,7 +18,7 @@ if __name__ == '__main__':
     testRun = config['data'].getboolean('is_test_run')
 
     audio_train_paths, audio_val_paths = utils.getAudioPaths(
-        '/media/jianquan/Data/Processed Audio', percent=0.1)
+        '/media/jianquan/Data/Processed Audio', percent=float(config['data']['train_percent']))
     # create dataset with transforms (as required)
     audio_train_dataset = createDataset(
         audio_train_paths, transformParams=utils.getTransforms(config['data'].getboolean('do_augmentations')))
@@ -60,9 +57,10 @@ if __name__ == '__main__':
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+    startEpoch = 0
     # TODO: reload checkpoint
     if config['model'].getboolean('load_pretrained'):
-        model, _ = machineLearning.selectModel()
+        model, _, startEpoch = machineLearning.selectModel()
     else:
         model = CNNNetwork().to(device)
 
@@ -87,10 +85,14 @@ if __name__ == '__main__':
             config['logger'][i] = 'false'
 
     scheduler = torch.optim.lr_scheduler.StepLR(
-        optimizer, step_size=10, gamma=0.8)
+        optimizer, step_size=10, gamma=0.8, )
+
+    for ep in range(startEpoch):
+        scheduler.step()
+
 
     #  train model
-    for epoch in range(epochs):
+    for epoch in range(startEpoch, epochs):
         print(f'Epoch {epoch+1}/{epochs}\n-------------------------------')
         print(f'LR: {scheduler.get_lr()}')
         train_loss, train_accuracy = machineLearning.train(
@@ -100,17 +102,17 @@ if __name__ == '__main__':
                 f'saved_model/{title}_epoch{epoch}.pt'))
         scheduler.step()
 
-        # val_loss, val_accuracy, _ = machineLearning.eval(
-        #     model, val_dataloader, lossFn, device)
+        val_loss, val_accuracy, _ = machineLearning.eval(
+            model, val_dataloader, lossFn, device)
 
-        # if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) == 0:
-        #     writer.add_hparams(
-        #         {'Learning Rate': lr, 'Batch Size': bsize, 'Epochs': epoch}, {'Accuracy': val_accuracy, 'Loss': val_loss})
+        if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) == 0:
+            writer.add_hparams(
+                {'Learning Rate': lr, 'Batch Size': bsize, 'Epochs': epoch}, {'Accuracy': val_accuracy, 'Loss': val_loss})
 
-        # if config['logger'].getboolean('log_iter_params'):
-        #     machineLearning.tensorBoardLogging(writer, train_loss,
-        #                                        train_accuracy, val_loss,
-        #                                        val_accuracy, epoch)
+        if config['logger'].getboolean('log_iter_params'):
+            machineLearning.tensorBoardLogging(writer, train_loss,
+                                               train_accuracy, val_loss,
+                                               val_accuracy, epoch)
 
         print(f'Training    | Loss: {train_loss} Accuracy: {train_accuracy}%')
-        # print(f'Validating  | Loss: {val_loss} Accuracy: {val_accuracy}% \n')
+        print(f'Validating  | Loss: {val_loss} Accuracy: {val_accuracy}% \n')
