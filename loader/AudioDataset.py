@@ -161,8 +161,8 @@ class AudioDataset(Dataset):
             assert speech1_aud[1] == speech2_aud[1]
         
         X = torch.zeros([self.class_size*self.specPerClass, 1,  129, 251])
-
         Y = []
+
         spectrogram = torchaudio.transforms.Spectrogram(normalized=True, n_fft=256)
 
         for i in range(self.class_size):
