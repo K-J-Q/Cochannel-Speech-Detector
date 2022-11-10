@@ -145,6 +145,8 @@ class AudioDataset(Dataset):
         else:
             self.specPerClass = 2
 
+        # self.specPerClass = 2
+
     def __len__(self):
         return min(len(self.env_paths), len(self.speech_paths))
 
@@ -158,21 +160,20 @@ class AudioDataset(Dataset):
                 self.speech_paths[random.randint(0, self.__len__()) - 1])
             assert speech1_aud[1] == speech2_aud[1]
         
-        X = torch.zeros([self.class_size*self.specPerClass, 1, 201, 161])
+        X = torch.zeros([self.class_size*self.specPerClass, 1,  129, 251])
 
         Y = []
-        spectrogram = torchaudio.transforms.Spectrogram(normalized=True)
+        spectrogram = torchaudio.transforms.Spectrogram(normalized=True, n_fft=256)
 
         for i in range(self.class_size):
             X[self.specPerClass*i][0] = (spectrogram(self.__split(env_aud)) + 1e-12).log2()
-            X[self.specPerClass*i + 1][0] = (spectrogram(self.__split(speech1_aud)
+            X[self.specPerClass*i+1][0] = (spectrogram(self.__split(speech1_aud)
                                          ) + 1e-12).log2()
             if self.generateCochannel:
                 aud1 = self.__split(speech1_aud)
                 aud2 = self.__split(speech2_aud)
                 merged_aud = (aud1 + aud2) / 2
-                X[self.specPerClass*i + 2][0] = (spectrogram(self.__split(speech2_aud)
-                                             ) + 1e-12).log2()
+                X[self.specPerClass*i + 2][0] = (spectrogram(merged_aud) + 1e-12).log2()
                 Y.extend([0, 1, 2])
             else:
                 Y.extend([0, 1])

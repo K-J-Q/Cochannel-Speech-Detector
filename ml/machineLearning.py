@@ -20,7 +20,7 @@ def selectModel():
 
     path = model_paths[int(input('Select saved model > '))]
     model = torch.load(path, map_location=device)
-    epoch = path.split('epoch',1)[1][:-3]
+    epoch = int(path.split('epoch',1)[1][:-3])
     model.eval()
     return model, device, epoch
 
@@ -30,7 +30,6 @@ def train(model, dataloader, cost, optimizer, device):
     train_loss, train_accuracy = 0, 0
     train_size = len(dataloader.dataset)
     model.train()
-    print(f'Total train batch: {total_batch}')
     # with profile(on_trace_ready=torch.profiler.tensorboard_trace_handler(
     #     './logs/traces'), record_shapes=True,
     #         profile_memory=True,
@@ -68,7 +67,6 @@ def eval(model, dataloader, cost, device):
     val_loss, val_accuracy = 0, 0
 
     model.eval()
-    print(f'Total eval batch: {total_batch}')
     with torch.no_grad():
         for batch, (X, Y) in tqdm(enumerate(dataloader), unit='batch', total=total_batch):
             X, Y = X.to(device), Y.to(device)
@@ -76,10 +74,6 @@ def eval(model, dataloader, cost, device):
             batch_loss = cost(pred, Y)
             batch_accuracy = acc_metric(pred, Y)
             val_loss += batch_loss.item()
-            if batch % int(total_batch/10) == 0:
-                print(
-                    f" Loss (per sample): {batch_loss.item()/batch_size}  Accuracy: {batch_accuracy*100}%"
-                )
             matrix += confusion_matrix(pred, Y)
     val_loss /= val_size
     val_accuracy = acc_metric.compute() * 100
