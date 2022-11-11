@@ -28,7 +28,7 @@ class Augmentor():
                              ['pad_trunc_noise_multiplier'])
 
     def audio_preprocessing(self, audioIn):
-        return self.pad_trunc(self.resample(self.rechannel(audioIn)), True)
+        return self.resample(self.rechannel(audioIn))
 
     def pad_trunc(self, aud, reduce_only=False):
         sig, sr = aud
@@ -151,12 +151,12 @@ class AudioDataset(Dataset):
         return min(len(self.env_paths), len(self.speech_paths))
 
     def __getitem__(self, idx):
-        env_aud = torchaudio.load(self.env_paths[idx])
-        speech1_aud = torchaudio.load(self.speech_paths[idx])
+        env_aud = self.__getAudio(self.env_paths[idx])
+        speech1_aud = self.__getAudio(self.speech_paths[idx])
         assert env_aud[1] == speech1_aud[1]
 
         if self.generateCochannel:
-            speech2_aud = torchaudio.load(
+            speech2_aud = self.__getAudio(
                 self.speech_paths[random.randint(0, self.__len__()) - 1])
             assert speech1_aud[1] == speech2_aud[1]
 
@@ -164,21 +164,20 @@ class AudioDataset(Dataset):
         Y = []
 
         spectrogram = torchaudio.transforms.Spectrogram(
-            normalized=True, n_fft=512)
-
+            normalized=True, n_fft=256)
+        
         for i in range(self.class_size):
             X[self.specPerClass *
-                i][0] = (spectrogram(self.__split(env_aud)) + 1e-12).log2()
-            X[self.specPerClass*i+1][0] = (spectrogram(self.__split(speech1_aud)
-                                                       ) + 1e-12).log2()
+                i][0] = (spectrogram(self.__split(env_aud)) + 1e-12)
+            X[self.specPerClass*i+1][0] = spectrogram(self.__split(speech1_aud))
             if self.generateCochannel:
                 aud1 = self.__split(speech1_aud)
                 aud2 = self.__split(speech2_aud)
                 merged_aud = (aud1 + aud2) / 2
                 # torchaudio.save(loader.utils.uniquify(
-                #     '../merged.wav'), torch.unsqueeze(merged_aud, 0), 8000)
+                #     './merged.wav'), aud1, 8000)
                 X[self.specPerClass*i +
-                    2][0] = (spectrogram(merged_aud) + 1e-12).log2()
+                    2][0] = spectrogram(merged_aud)
                 Y.extend([0, 1, 2])
             else:
                 Y.extend([0, 1])
@@ -189,31 +188,31 @@ class AudioDataset(Dataset):
         cut_length = duration*audio[1]
         start_idx = random.randint(0, len(audio[0][0])-cut_length)
         audio = audio[0][0][start_idx: start_idx+cut_length]
-        audio, _ = self.augment(audio, 8000)
+        audio, _ = torchaudio.sox_effects.apply_effects_tensor(torch.unsqueeze(audio,0), 8000, [["reverb", "50"], ['channels' , '1']])
         return audio
 
     def __getAudio(self, audioPath):
         waveform, sample_rate = self.Augmentor.audio_preprocessing(
             torchaudio.load(audioPath))
 
-        if self.beforeCochannelAugment:
-            waveform = self.beforeCochannelAugment(
-                waveform.numpy(), sample_rate)
-            if not torch.is_tensor(waveform):
-                waveform = torch.from_numpy(waveform)
+        # if self.beforeCochannelAugment:
+        #     waveform = self.beforeCochannelAugment(
+        #         waveform.numpy(), sample_rate)
+        #     if not torch.is_tensor(waveform):
+        #         waveform = torch.from_numpy(waveform)
         return waveform, sample_rate
 
 
 def specMask(spectrogram):
-    fMasking = T.FrequencyMasking(freq_mask_param=80)
-    tMasking = T.TimeMasking(time_mask_param=80)
+    fMasking = T.FrequencyMasking(freq_mask_param=30)
+    tMasking = T.TimeMasking(time_mask_param=30)
     return(tMasking(fMasking(spectrogram)))
 
 
 def collate_batch(batches):
 
     if (len(batches) == 1):
-        return specMask(batches[0][0]), torch.Tensor(batches[0][1]).type(torch.LongTensor)
+        return batches[0][0], torch.Tensor(batches[0][1]).type(torch.LongTensor)
     X = torch.empty(0)
     Y = []
 
@@ -221,7 +220,7 @@ def collate_batch(batches):
         X = torch.cat((X, x))
         Y.extend(y)
     Y = torch.Tensor(Y).type(torch.LongTensor)
-    return specMask(X), Y
+    return X, Y
 
 
 def main():

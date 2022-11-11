@@ -18,7 +18,8 @@ if __name__ == '__main__':
     testRun = config['data'].getboolean('is_test_run')
 
     audio_train_paths, audio_val_paths = utils.getAudioPaths(
-        'E:/Processed Audio', percent=float(config['data']['train_percent']))
+        '/media/jianquan/Data/Processed Audio', percent=float(config['data']['train_percent']))
+        
     # create dataset with transforms (as required)
     audio_train_dataset = createDataset(
         audio_train_paths, transformParams=utils.getTransforms(config['data'].getboolean('do_augmentations')))
@@ -92,7 +93,7 @@ if __name__ == '__main__':
 
     #  train model
     for epoch in range(startEpoch, epochs):
-        lr = scheduler.get_lr()
+        lr = scheduler.get_lr()[0]
         print(f'Epoch {epoch+1}/{epochs}\n-------------------------------')
         print(f'LR: {lr}')
         train_loss, train_accuracy = machineLearning.train(
