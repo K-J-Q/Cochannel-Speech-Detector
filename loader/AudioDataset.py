@@ -4,11 +4,11 @@ import random
 from torch.utils.data import Dataset, DataLoader
 import loader.utils
 from pathlib import Path
+import torchaudio.transforms as T
 import os
 from torch.profiler import profile, record_function, ProfilerActivity
-from audiomentations import Compose
+from audiomentations import Compose, RoomSimulator
 from configparser import ConfigParser
-
 
 config = ConfigParser()
 config.read('config.ini')
@@ -77,7 +77,7 @@ class Augmentor():
             print('resampling process triggered!')
         num_channels = sig.shape[0]
 
-        resig = torchaudio.transforms.Resample(sr, self.audio_sampling)(sig)
+        resig = T.Resample(sr, self.audio_sampling)(sig)
         return ((resig, self.audio_sampling))
 
 
@@ -125,6 +125,8 @@ class AudioDataset(Dataset):
         'test_data/ENV') if __name__ == "__main__" else Path('E:/Processed Audio/ENV')
     class_size = int(config['data']['class_size'])
 
+    augment = Compose([RoomSimulator()])
+
     def __init__(self,
                  audio_paths,
                  specTransformList=None,
@@ -140,12 +142,10 @@ class AudioDataset(Dataset):
         self.env_paths, self.speech_paths = audio_paths
         self.Augmentor = Augmentor()
         self.generateCochannel = generateCochannel
-        if generateCochannel: 
+        if generateCochannel:
             self.specPerClass = 3
         else:
             self.specPerClass = 2
-
-        # self.specPerClass = 2
 
     def __len__(self):
         return min(len(self.env_paths), len(self.speech_paths))
@@ -154,26 +154,31 @@ class AudioDataset(Dataset):
         env_aud = torchaudio.load(self.env_paths[idx])
         speech1_aud = torchaudio.load(self.speech_paths[idx])
         assert env_aud[1] == speech1_aud[1]
-        
+
         if self.generateCochannel:
             speech2_aud = torchaudio.load(
                 self.speech_paths[random.randint(0, self.__len__()) - 1])
             assert speech1_aud[1] == speech2_aud[1]
-        
+
         X = torch.zeros([self.class_size*self.specPerClass, 1,  129, 251])
         Y = []
 
-        spectrogram = torchaudio.transforms.Spectrogram(normalized=True, n_fft=256)
+        spectrogram = torchaudio.transforms.Spectrogram(
+            normalized=True, n_fft=512)
 
         for i in range(self.class_size):
-            X[self.specPerClass*i][0] = (spectrogram(self.__split(env_aud)) + 1e-12).log2()
+            X[self.specPerClass *
+                i][0] = (spectrogram(self.__split(env_aud)) + 1e-12).log2()
             X[self.specPerClass*i+1][0] = (spectrogram(self.__split(speech1_aud)
-                                         ) + 1e-12).log2()
+                                                       ) + 1e-12).log2()
             if self.generateCochannel:
                 aud1 = self.__split(speech1_aud)
                 aud2 = self.__split(speech2_aud)
                 merged_aud = (aud1 + aud2) / 2
-                X[self.specPerClass*i + 2][0] = (spectrogram(merged_aud) + 1e-12).log2()
+                # torchaudio.save(loader.utils.uniquify(
+                #     '../merged.wav'), torch.unsqueeze(merged_aud, 0), 8000)
+                X[self.specPerClass*i +
+                    2][0] = (spectrogram(merged_aud) + 1e-12).log2()
                 Y.extend([0, 1, 2])
             else:
                 Y.extend([0, 1])
@@ -183,7 +188,9 @@ class AudioDataset(Dataset):
     def __split(self, audio, duration=4):
         cut_length = duration*audio[1]
         start_idx = random.randint(0, len(audio[0][0])-cut_length)
-        return audio[0][0][start_idx:start_idx+cut_length]
+        audio = audio[0][0][start_idx: start_idx+cut_length]
+        audio, _ = self.augment(audio, 8000)
+        return audio
 
     def __getAudio(self, audioPath):
         waveform, sample_rate = self.Augmentor.audio_preprocessing(
@@ -197,9 +204,16 @@ class AudioDataset(Dataset):
         return waveform, sample_rate
 
 
+def specMask(spectrogram):
+    fMasking = T.FrequencyMasking(freq_mask_param=80)
+    tMasking = T.TimeMasking(time_mask_param=80)
+    return(tMasking(fMasking(spectrogram)))
+
+
 def collate_batch(batches):
+
     if (len(batches) == 1):
-        return batches[0][0], torch.Tensor(batches[0][1]).type(torch.LongTensor)
+        return specMask(batches[0][0]), torch.Tensor(batches[0][1]).type(torch.LongTensor)
     X = torch.empty(0)
     Y = []
 
@@ -207,7 +221,7 @@ def collate_batch(batches):
         X = torch.cat((X, x))
         Y.extend(y)
     Y = torch.Tensor(Y).type(torch.LongTensor)
-    return X, Y
+    return specMask(X), Y
 
 
 def main():

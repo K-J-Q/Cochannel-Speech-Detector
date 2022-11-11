@@ -18,7 +18,7 @@ if __name__ == '__main__':
     testRun = config['data'].getboolean('is_test_run')
 
     audio_train_paths, audio_val_paths = utils.getAudioPaths(
-        '/media/jianquan/Data/Processed Audio', percent=float(config['data']['train_percent']))
+        'E:/Processed Audio', percent=float(config['data']['train_percent']))
     # create dataset with transforms (as required)
     audio_train_dataset = createDataset(
         audio_train_paths, transformParams=utils.getTransforms(config['data'].getboolean('do_augmentations')))
@@ -55,15 +55,14 @@ if __name__ == '__main__':
         collate_fn=collate_batch
     )
 
-    
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     startEpoch = 0
-    # TODO: reload checkpoint
+
     if config['model'].getboolean('load_pretrained'):
         model, _, startEpoch = machineLearning.selectModel()
     else:
-        model = ResNet18.to(device)
+        model = CNNNetwork().to(device)
 
     lr = float(config['model']['learning_rate'])
     epochs = int(config['model']['num_epochs'])
@@ -86,16 +85,16 @@ if __name__ == '__main__':
             config['logger'][i] = 'false'
 
     scheduler = torch.optim.lr_scheduler.StepLR(
-        optimizer, step_size=10, gamma=0.8, )
+        optimizer, step_size=2, gamma=0.8)
 
     for ep in range(startEpoch):
         scheduler.step()
 
-
     #  train model
     for epoch in range(startEpoch, epochs):
+        lr = scheduler.get_lr()
         print(f'Epoch {epoch+1}/{epochs}\n-------------------------------')
-        print(f'LR: {scheduler.get_lr()}')
+        print(f'LR: {lr}')
         train_loss, train_accuracy = machineLearning.train(
             model, train_dataloader, lossFn, optimizer, device)
         if config['model'].getboolean('save_model_checkpoint') and epoch % int(config['model']['checkpoint']) == 0:
@@ -118,4 +117,4 @@ if __name__ == '__main__':
         print(f'Training    | Loss: {train_loss} Accuracy: {train_accuracy}%')
         print(f'Validating  | Loss: {val_loss} Accuracy: {val_accuracy}% \n')
 
-torch.save(model, utils.uniquify(f'saved_model/{title}_epoch{epoch}.pt'))
+    torch.save(model, utils.uniquify(f'saved_model/{title}_epoch{epoch}.pt'))

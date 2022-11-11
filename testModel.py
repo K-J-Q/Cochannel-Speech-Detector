@@ -44,7 +44,7 @@ def predictFolder(model, device, folderPath):
 
 def predictFile(filePath, model, device):
     augmentor = Augmentor()
-    spectrogram = torchaudio.transforms.Spectrogram()
+    spectrogram = torchaudio.transforms.Spectrogram(normalized=True, n_fft=256)
     sm = torch.nn.Softmax()
 
     with torch.no_grad():
@@ -88,27 +88,24 @@ def predictLive(model, device):
         while True:
             (chunk,) = next(stream_iterator)
             # wav = torch.cat((wav, chunk[:, 0]))
-            spectrogram = torchaudio.transforms.Spectrogram()
+            spectrogram = torchaudio.transforms.Spectrogram(
+                normalized=True, n_fft=256)
             wav, sr = augmentor.audio_preprocessing([chunk.T, 8000])
 
             spectrogram_tensor = (spectrogram(wav) + 1e-12).log2()
             pred = model(torch.unsqueeze(spectrogram_tensor, 0).to(device))
             pred = sm(pred)
-            print(class_map[pred.argmax()])
-            sn.barplot(y=class_map, x=pred[0].cpu().numpy())
-            plt.show()
-
-
-
+            print(pred)
+            # sn.barplot(y=class_map, x=pred[0].cpu().numpy())
+            # plt.show()
 
 
 if __name__ == "__main__":
-    model, device = selectModel()
+    model, device, _ = ml.machineLearning.selectModel()
 
-    # predictFile(
-    #     'E:/Processed Audio/SPEECH/4 Diff Room/sur_0007_1014_phnd_cs-chn.wav.wav', model, device)
+    # predictFile('./double.wav', model, device)
 
-    predictFolder(model, device, [
-                  'E:\Processed Audio\SPEECH', 'E:\Processed Audio\ENV'])
+    # predictFolder(model, device, [
+    #               'E:\Processed Audio\SPEECH', 'E:\Processed Audio\ENV'])
 
-    # predictLive(model, device)
+    predictLive(model, device)
