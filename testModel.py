@@ -1,7 +1,6 @@
 import torchaudio
-from torchaudio.io import StreamReader
+# from torchaudio.io import StreamReader
 from pathlib import Path
-from torch.utils.data import Dataset, DataLoader
 import torch
 import torch.nn as nn
 import ml.machineLearning
@@ -10,6 +9,7 @@ import random
 import seaborn as sn
 import matplotlib.pyplot as plt
 import loader.utils as utils
+from torchsummary import summary
 
 # To ensure reproducibility
 random.seed(0)
@@ -44,8 +44,9 @@ def predictFolder(model, device, folderPath):
 
 def predictFile(filePath, model, device):
     augmentor = Augmentor()
-    spectrogram = torchaudio.transforms.Spectrogram(normalized=True, n_fft=256)
+    spectrogram = torchaudio.transforms.Spectrogram(normalized=True)
     sm = torch.nn.Softmax()
+    pred_graph = [0]
 
     with torch.no_grad():
         wav, sr = augmentor.rechannel(
@@ -61,12 +62,14 @@ def predictFile(filePath, model, device):
                 pred = model(torch.unsqueeze(torch.unsqueeze(
                     spectrogram_tensor, 0), 0).to(device))
                 pred = sm(pred)
-                print(pred)
-                print(class_map[pred.argmax()])
-
-            if not splitIndex:
-                sn.barplot(y=pred[0].cpu().numpy(), x=class_map)
-                plt.show()
+                # print(pred)
+                pred_graph.append(class_map[pred.argmax()])
+    plt.step(torch.arange(len(pred_graph))*4,pred_graph)
+    plt.ylim(0,2)
+    plt.ylabel('Number of speakers')
+    plt.xlabel('Time (seconds)')
+    plt.xticks(torch.arange(0, len(pred_graph)*4, 30))
+    plt.show()
 
 
 def predictLive(model, device):
@@ -102,10 +105,11 @@ def predictLive(model, device):
 
 if __name__ == "__main__":
     model, device, _ = ml.machineLearning.selectModel()
-
-    # predictFile('./double.wav', model, device)
+    summary(model.cuda(), (1, 201, 161))
+    predictFile('/media/jianquan/Data/Original Audio/Singapore Speech Corpus/[P] Part 3 Same BoundaryMic/3003.wav', model, device)
 
     # predictFolder(model, device, [
     #               'E:\Processed Audio\SPEECH', 'E:\Processed Audio\ENV'])
 
-    predictLive(model, device)
+    # predictLive(model, device)
+

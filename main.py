@@ -3,7 +3,7 @@ from torch.utils.data import Dataset, DataLoader
 import torch
 import torch.nn as nn
 import ml.machineLearning as machineLearning
-from model import ResNet18, M5, CNNNetwork
+from model import *
 from configparser import ConfigParser
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
@@ -22,9 +22,9 @@ if __name__ == '__main__':
         
     # create dataset with transforms (as required)
     audio_train_dataset = createDataset(
-        audio_train_paths, transformParams=utils.getTransforms(config['data'].getboolean('do_augmentations')))
+        audio_train_paths, generateCochannel=True,transformParams=utils.getTransforms(config['data'].getboolean('do_augmentations')))
     audio_val_dataset = createDataset(
-        audio_val_paths, transformParams=utils.getTransforms(False))
+        audio_val_paths,generateCochannel=True, transformParams=utils.getTransforms(False))
 
     print(
         f'Train dataset Length: {len(audio_train_dataset)} ({len(audio_train_paths[0])} before augmentation)'

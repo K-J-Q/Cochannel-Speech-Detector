@@ -41,7 +41,7 @@ class CNNNetwork(nn.Module):
             nn.ReLU(),
         )
         self.flatten = nn.Flatten()
-        self.linear1 = nn.Linear(in_features=2560, out_features=100)
+        self.linear1 = nn.Linear(in_features=3072, out_features=100)
         self.linear2 = nn.Linear(in_features=100, out_features=3, bias=False)
 
     def forward(self, input_data):

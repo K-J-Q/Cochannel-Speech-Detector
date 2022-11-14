@@ -121,8 +121,6 @@ class AudioDataset(Dataset):
     specTransformList: pyTorch spectrogram masking options
     """
 
-    envPath = Path(
-        'test_data/ENV') if __name__ == "__main__" else Path('E:/Processed Audio/ENV')
     class_size = int(config['data']['class_size'])
 
     augment = Compose([RoomSimulator()])
@@ -160,24 +158,26 @@ class AudioDataset(Dataset):
                 self.speech_paths[random.randint(0, self.__len__()) - 1])
             assert speech1_aud[1] == speech2_aud[1]
 
-        X = torch.zeros([self.class_size*self.specPerClass, 1,  129, 251])
+        X = torch.zeros([self.class_size*self.specPerClass, 1,  201, 161])
         Y = []
 
         spectrogram = torchaudio.transforms.Spectrogram(
-            normalized=True, n_fft=256)
+            normalized=True)
         
         for i in range(self.class_size):
             X[self.specPerClass *
-                i][0] = (spectrogram(self.__split(env_aud)) + 1e-12)
-            X[self.specPerClass*i+1][0] = spectrogram(self.__split(speech1_aud))
+                i][0] = (spectrogram(self.__split(env_aud)) + 1e-12).log2()
+            X[self.specPerClass*i+1][0] = (spectrogram(self.__split(speech1_aud)) + 1e-12).log2()
             if self.generateCochannel:
                 aud1 = self.__split(speech1_aud)
                 aud2 = self.__split(speech2_aud)
-                merged_aud = (aud1 + aud2) / 2
+                merged_aud = self.__merge_audio(aud1, aud2)
                 # torchaudio.save(loader.utils.uniquify(
-                #     './merged.wav'), aud1, 8000)
+                #     './merged.wav'), merged_audio, 8000)
+                # torchaudio.save(loader.utils.uniquify(
+                #     './oldmerged.wav'), (aud1 + aud2) / 2, 8000)
                 X[self.specPerClass*i +
-                    2][0] = spectrogram(merged_aud)
+                    2][0] = (spectrogram(merged_aud) + 1e-12).log2()
                 Y.extend([0, 1, 2])
             else:
                 Y.extend([0, 1])
@@ -190,6 +190,17 @@ class AudioDataset(Dataset):
         audio = audio[0][0][start_idx: start_idx+cut_length]
         audio, _ = torchaudio.sox_effects.apply_effects_tensor(torch.unsqueeze(audio,0), 8000, [["reverb", "50"], ['channels' , '1']])
         return audio
+
+    def __merge_audio(self, aud1, aud2):
+        a_pos = aud1*(aud1>=0)
+        b_pos = aud2*(aud2>=0)
+        pos = a_pos*(a_pos > b_pos) + b_pos*(b_pos>a_pos)
+
+        a_neg = aud1*(aud1<0)
+        b_neg = aud2*(aud2<0)
+        neg = a_neg*(a_neg < b_neg) + b_neg*(b_neg<a_neg)
+
+        return pos+neg
 
     def __getAudio(self, audioPath):
         waveform, sample_rate = self.Augmentor.audio_preprocessing(
