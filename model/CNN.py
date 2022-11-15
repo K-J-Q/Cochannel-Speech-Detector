@@ -45,9 +45,7 @@ class CNNNetwork(nn.Module):
         x = self.conv3(x)
         x = self.conv4(x)
         x = self.flatten(x)
-        logits = self.dropout(x)
-        logits = self.linear1(logits)
-        logits = self.dropout(logits)
+        logits = nn.functional.relu(self.linear1(x))
         logits = self.linear2(logits)
         return logits
 
