@@ -1,1 +1,0 @@
-.yt-dlp.exe -x --audio-format wav --audio-quality 10 -P downlaods  -a batch_links.txt -o 1_%(title)s.%(ext)s

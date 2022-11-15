@@ -8,11 +8,7 @@ def getTransforms(augment):
     if augment:
         return [
             {
-                "before_cochannel_sox": [["reverb", "50"], ['channels' , '1']],
-                "spectrogram": [
-                    torchaudio.transforms.TimeMasking(80),
-                    torchaudio.transforms.FrequencyMasking(80)
-                ],
+                "before_cochannel_sox": [["reverb", "70"], ['channels' , '1']],
             },
         ]
     else:

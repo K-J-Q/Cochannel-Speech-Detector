@@ -1,7 +1,6 @@
 from loader.AudioDataset import createDataset, collate_batch
 from torch.utils.data import Dataset, DataLoader
 import torch
-import torch.nn as nn
 import ml.machineLearning as machineLearning
 from model import *
 from configparser import ConfigParser
@@ -67,12 +66,13 @@ if __name__ == '__main__':
 
     lr = float(config['model']['learning_rate'])
     epochs = int(config['model']['num_epochs'])
+    decay = float(config['model']['weight_decay'])
 
     lossFn = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr)
+    optimizer = torch.optim.AdamW(model.parameters(),lr,weight_decay=decay)
 
     title = config['model']['title'] if config['model'][
-        'title'] else datetime.now().strftime("%Y-%m-%d,%H-%M-%S")
+        'title'] else datetime.now().strftime("%Y-%m-%d,%H-%M-%S")  
 
     # TensorBoard logging (as required)
     if config['logger'].getboolean('master_logger') and not testRun:
@@ -86,10 +86,12 @@ if __name__ == '__main__':
             config['logger'][i] = 'false'
 
     scheduler = torch.optim.lr_scheduler.StepLR(
-        optimizer, step_size=2, gamma=0.8)
+        optimizer, step_size=5, gamma=0.8)
 
     for ep in range(startEpoch):
         scheduler.step()
+
+    print(next(iter(train_dataloader))[0].shape)
 
     #  train model
     for epoch in range(startEpoch, epochs):

@@ -4,7 +4,7 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 import ml.machineLearning
-from loader.AudioDataset import AudioDataset, Augmentor, createDataset, collate_batch
+from loader.AudioDataset import Augmentor, createDataset, collate_batch
 import random
 import seaborn as sn
 import matplotlib.pyplot as plt
@@ -24,7 +24,7 @@ def predictFolder(model, device, folderPath):
     audio_paths[1] = utils.getAudioPaths(
         folderPath[1])[0:100]
 
-    audio_test_dataset = AudioDataset(audio_paths, generateCochannel=False)
+    audio_test_dataset = createDataset(audio_paths, generateCochannel=False)
 
     test_dataloader = torch.utils.data.DataLoader(
         audio_test_dataset,
@@ -42,27 +42,31 @@ def predictFolder(model, device, folderPath):
     plt.show()
 
 
-def predictFile(filePath, model, device):
+def predictFile(filePath, model, device,labelPath = None):
     augmentor = Augmentor()
     spectrogram = torchaudio.transforms.Spectrogram(normalized=True)
     sm = torch.nn.Softmax()
+
+    if labelPath:
+        gt_x, gt_y = getGroundTruth(labelPath)
+        plt.step(gt_x, gt_y)
+
     pred_graph = [0]
 
     with torch.no_grad():
-        wav, sr = augmentor.rechannel(
-            augmentor.resample(torchaudio.load(filePath)))
+        wav, sr = augmentor.resample(augmentor.rechannel(torchaudio.load(filePath)))
         sampleLength = 4 * sr
         wav = wav[0]
         for splitIndex, j in enumerate(range(0, len(wav), sampleLength)):
             trimmed_audio = wav[j:j+sampleLength]
             # print(splitIndex, ' ', len(trimmed_audio))
-            if len(trimmed_audio) > sampleLength/2:
+            if len(trimmed_audio) == sampleLength:
                 spectrogram_tensor = (spectrogram(
                     trimmed_audio) + 1e-12).log2()
-                pred = model(torch.unsqueeze(torch.unsqueeze(
-                    spectrogram_tensor, 0), 0).to(device))
+                spectrogram_tensor = torch.unsqueeze(torch.unsqueeze(
+                    spectrogram_tensor, 0), 0).to(device)
+                pred = model(spectrogram_tensor)
                 pred = sm(pred)
-                # print(pred)
                 pred_graph.append(class_map[pred.argmax()])
     plt.step(torch.arange(len(pred_graph))*4,pred_graph)
     plt.ylim(0,2)
@@ -92,21 +96,41 @@ def predictLive(model, device):
             (chunk,) = next(stream_iterator)
             # wav = torch.cat((wav, chunk[:, 0]))
             spectrogram = torchaudio.transforms.Spectrogram(
-                normalized=True, n_fft=256)
-            wav, sr = augmentor.audio_preprocessing([chunk.T, 8000])
+                normalized=True)
+            wav, sr = augmentor.audio_preprocessing([chunk.T, 44100])
 
             spectrogram_tensor = (spectrogram(wav) + 1e-12).log2()
-            pred = model(torch.unsqueeze(spectrogram_tensor, 0).to(device))
+            spectrogram_tensor = torch.unsqueeze(spectrogram_tensor, 0).to(device)
+            pred = model(spectrogram_tensor)
             pred = sm(pred)
             print(pred)
             # sn.barplot(y=class_map, x=pred[0].cpu().numpy())
             # plt.show()
 
+def getGroundTruth(file):
+    label_list = [0]
+    time_list = [0]
+
+    with open(file) as f:
+        for lbl in f.read().splitlines():
+            lbl = lbl.split('\t')
+
+            startTime = int(float(lbl[0]))
+            endTime = int(float(lbl[1]))
+            num_speakers = int(lbl[2])
+
+            if startTime != time_list[-1]:
+                time_list.append(startTime)
+                label_list.append(1)
+            time_list.append(endTime)
+            label_list.append(int(num_speakers))
+    return time_list, label_list
 
 if __name__ == "__main__":
     model, device, _ = ml.machineLearning.selectModel()
     summary(model.cuda(), (1, 201, 161))
-    predictFile('/media/jianquan/Data/Original Audio/Singapore Speech Corpus/[P] Part 3 Same BoundaryMic/3003.wav', model, device)
+    a = '/media/jianquan/Data/Original Audio/Singapore Speech Corpus/[P] Part 3 Same BoundaryMic/3003.wav'
+    predictFile(a, model, device)
 
     # predictFolder(model, device, [
     #               'E:\Processed Audio\SPEECH', 'E:\Processed Audio\ENV'])
