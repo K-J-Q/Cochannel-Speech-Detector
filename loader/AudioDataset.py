@@ -83,26 +83,26 @@ class Augmentor():
 
 def createDataset(audio_paths, generateCochannel=True, transformParams=[{}]):
 
-    combinedDataset = AudioDataset(
+    combinedDataset = __AudioDataset(
         audio_paths,
         specTransformList=transformParams[0]['spectrogram'] if 'spectrogram' in transformParams[0] else [
         ],
         audioTransformList=transformParams[0]['audio'] if 'audio' in transformParams[0] else [
         ],
-        beforeCochannelList=transformParams[0]['before_cochannel'] if 'before_cochannel' in transformParams[0] else [
+        beforeCochannelListSox=transformParams[0]['before_cochannel_sox'] if 'before_cochannel_sox' in transformParams[0] else [
         ],
         generateCochannel=generateCochannel
     )
 
     if transformParams:
         for transform in transformParams[1:]:
-            audio_train_dataset = AudioDataset(
+            audio_train_dataset = __AudioDataset(
                 audio_paths,
                 specTransformList=transform['spectrogram']
                 if 'spectrogram' in transform else [],
                 audioTransformList=transform['audio']
                 if 'audio' in transform else [],
-                beforeCochannelList=transform['before_cochannel']
+                beforeCochannelListSox=transform['before_cochannel_sox']
                 if 'before_cochannel' in transform else [],
                 generateCochannel=generateCochannel
             )
@@ -113,7 +113,7 @@ def createDataset(audio_paths, generateCochannel=True, transformParams=[{}]):
     return combinedDataset
 
 
-class AudioDataset(Dataset):
+class __AudioDataset(Dataset):
     """
     A custom dataset that fetches the audio path, load as waveform, perform augmentation audioTransformList and specTransformList and outputs the spectrogram
     audio_paths: List of .wav paths for dataset
@@ -129,17 +129,17 @@ class AudioDataset(Dataset):
                  audio_paths,
                  specTransformList=None,
                  audioTransformList=None,
-                 beforeCochannelList=None,
+                 beforeCochannelListSox=None,
                  generateCochannel=True):
 
         self.specTransformList = specTransformList
-        self.beforeCochannelAugment = Compose(
-            beforeCochannelList) if beforeCochannelList else None
+        self.beforeCochannelAugmentSox = beforeCochannelListSox
         self.audioAugment = Compose(
             audioTransformList) if audioTransformList else None
         self.env_paths, self.speech_paths = audio_paths
         self.Augmentor = Augmentor()
         self.generateCochannel = generateCochannel
+        
         if generateCochannel:
             self.specPerClass = 3
         else:
@@ -188,7 +188,8 @@ class AudioDataset(Dataset):
         cut_length = duration*audio[1]
         start_idx = random.randint(0, len(audio[0][0])-cut_length)
         audio = audio[0][0][start_idx: start_idx+cut_length]
-        audio, _ = torchaudio.sox_effects.apply_effects_tensor(torch.unsqueeze(audio,0), 8000, [["reverb", "50"], ['channels' , '1']])
+        if self.beforeCochannelAugmentSox:
+            audio, _ = torchaudio.sox_effects.apply_effects_tensor(torch.unsqueeze(audio,0), 8000, self.beforeCochannelAugmentSox)
         return audio
 
     def __merge_audio(self, aud1, aud2):
@@ -205,7 +206,6 @@ class AudioDataset(Dataset):
     def __getAudio(self, audioPath):
         waveform, sample_rate = self.Augmentor.audio_preprocessing(
             torchaudio.load(audioPath))
-
         # if self.beforeCochannelAugment:
         #     waveform = self.beforeCochannelAugment(
         #         waveform.numpy(), sample_rate)
