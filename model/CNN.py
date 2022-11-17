@@ -34,8 +34,8 @@ class CNNNetwork(nn.Module):
             nn.ReLU(),
         )
 
+        
         self.flatten = nn.Flatten()
-        self.dropout = nn.Dropout(0.5)
         self.linear1 = nn.Linear(in_features=16128, out_features=1000)
         self.linear2 = nn.Linear(in_features=1000, out_features=3, bias=False)
 

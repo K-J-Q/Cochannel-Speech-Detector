@@ -1,4 +1,4 @@
-from loader.AudioDataset import createDataset, collate_batch
+*-/from loader.AudioDataset import createDataset, collate_batch
 from torch.utils.data import Dataset, DataLoader
 import torch
 import ml.machineLearning as machineLearning
@@ -19,11 +19,9 @@ if __name__ == '__main__':
     audio_train_paths, audio_val_paths = utils.getAudioPaths(
         '/media/jianquan/Data/Processed Audio', percent=float(config['data']['train_percent']))
         
-    # create dataset with transforms (as required)
-    audio_train_dataset = createDataset(
-        audio_train_paths, generateCochannel=True,transformParams=utils.getTransforms(config['data'].getboolean('do_augmentations')))
-    audio_val_dataset = createDataset(
-        audio_val_paths,generateCochannel=True, transformParams=utils.getTransforms(False))
+    # create dataset with transforms (as required)+
+    audio_train_dataset = createDataset(audio_train_paths, generateCochannel=1,transformParams=utils.getTransforms(config['data'].getboolean('do_augmentations')))
+    audio_val_dataset = createDataset(audio_val_paths,generateCochannel=1, transformParams=utils.getTransforms(False))
 
     print(
         f'Train dataset Length: {len(audio_train_dataset)} ({len(audio_train_paths[0])} before augmentation)'
@@ -62,11 +60,12 @@ if __name__ == '__main__':
     if config['model'].getboolean('load_pretrained'):
         model, _, startEpoch = machineLearning.selectModel()
     else:
-        model = CNNNetwork().to(device)
-
+        model = ResNet18.to(device)
+        
     lr = float(config['model']['learning_rate'])
     epochs = int(config['model']['num_epochs'])
     decay = float(config['model']['weight_decay'])
+    print(decay)
 
     lossFn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(model.parameters(),lr,weight_decay=decay)
@@ -91,8 +90,6 @@ if __name__ == '__main__':
     for ep in range(startEpoch):
         scheduler.step()
 
-    print(next(iter(train_dataloader))[0].shape)
-
     #  train model
     for epoch in range(startEpoch, epochs):
         lr = scheduler.get_lr()[0]
@@ -110,7 +107,7 @@ if __name__ == '__main__':
 
         if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) == 0:
             writer.add_hparams(
-                {'Learning Rate': lr, 'Batch Size': bsize, 'Epochs': epoch}, {'Accuracy': val_accuracy, 'Loss': val_loss})
+                {'Learning Rate': lr, 'Batch Size': bsize, 'Epochs': epoch, 'Weight Decay': decay}, {'Accuracy': val_accuracy, 'Loss': val_loss})
 
         if config['logger'].getboolean('log_iter_params'):
             machineLearning.tensorBoardLogging(writer, train_loss,

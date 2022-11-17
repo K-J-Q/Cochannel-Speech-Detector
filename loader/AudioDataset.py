@@ -138,12 +138,8 @@ class __AudioDataset(Dataset):
             audioTransformList) if audioTransformList else None
         self.env_paths, self.speech_paths = audio_paths
         self.Augmentor = Augmentor()
-        self.generateCochannel = generateCochannel
-        
-        if generateCochannel:
-            self.specPerClass = 3
-        else:
-            self.specPerClass = 2
+        self.generateCochannelMode = generateCochannel
+        self.specPerClass = 3
 
     def __len__(self):
         return min(len(self.env_paths), len(self.speech_paths))
@@ -152,37 +148,34 @@ class __AudioDataset(Dataset):
         env_aud = self.__getAudio(self.env_paths[idx])
         speech1_aud = self.__getAudio(self.speech_paths[idx])
         assert env_aud[1] == speech1_aud[1]
-
-        if self.generateCochannel:
-            speech2_aud = self.__getAudio(
+        speech2_aud = self.__getAudio(
                 self.speech_paths[random.randint(0, self.__len__()) - 1])
-            assert speech1_aud[1] == speech2_aud[1]
+        assert speech1_aud[1] == speech2_aud[1]
 
         X = torch.zeros([self.class_size*self.specPerClass, 1,  201, 161])
         Y = []
 
-        spectrogram = torchaudio.transforms.Spectrogram(
-            normalized=True)
-        
+        spectrogram = torchaudio.transforms.Spectrogram(normalized=True)
+        # print(spectrogram(self.__split(env_aud)))
         for i in range(self.class_size):
+            noise_spec = spectrogram(self.__split(env_aud))
             X[self.specPerClass *
-                i][0] = (spectrogram(self.__split(env_aud)) + 1e-12).log2()
-            X[self.specPerClass*i+1][0] = (spectrogram(self.__split(speech1_aud)) + 1e-12).log2()
-            if self.generateCochannel:
-                aud1 = self.__split(speech1_aud)
-                aud2 = self.__split(speech2_aud)
-                merged_aud = self.__merge_audio(aud1, aud2)
-                # torchaudio.save(loader.utils.uniquify(
-                #     './merged.wav'), merged_audio, 8000)
-                # torchaudio.save(loader.utils.uniquify(
-                #     './oldmerged.wav'), (aud1 + aud2) / 2, 8000)
-                X[self.specPerClass*i +
-                    2][0] = (spectrogram(merged_aud) + 1e-12).log2()
-                Y.extend([0, 1, 2])
-            else:
-                Y.extend([0, 1])
+                i][0] = noise_spec/(noise_spec + 10*noise_spec.median())
+            aud1 = self.__split(speech1_aud)
+            aud1_spec = spectrogram(aud1)
+            X[self.specPerClass*i+1][0] = aud1_spec/(aud1_spec + 10*aud1_spec.median())
+            aud2 = self.__split(speech2_aud)
+            merged_aud = self.__merge_audio(aud1, aud2)
+            # torchaudio.save(loader.utils.uniquify(
+            #     './merged.wav'), merged_aud, 8000)
+            # torchaudio.save(loader.utils.uniquify(
+            #     './oldmerged.wav'), (aud1 + aud2) / 2, 8000)
+            merged_spec = spectrogram(merged_aud)
+            X[self.specPerClass*i +
+                2][0] = merged_spec/(merged_spec + 10*merged_spec.median())
+            Y.extend([0, 1, 2])
 
-        return [X, Y]
+        return [X, Y]   
 
     def __split(self, audio, duration=4):
         cut_length = duration*audio[1]
@@ -193,13 +186,25 @@ class __AudioDataset(Dataset):
         return audio
 
     def __merge_audio(self, aud1, aud2):
-        a_pos = aud1*(aud1>=0)
-        b_pos = aud2*(aud2>=0)
-        pos = a_pos*(a_pos > b_pos) + b_pos*(b_pos>a_pos)
+        # if self.generateCochannelMode:
+        pos = aud1/2
+        neg = aud2/2
+        # else:
+        #     a_pos = aud1*(aud1>=0)
+        #     b_pos = aud2*(aud2>=0)
+        #     pos = a_pos*(a_pos > b_pos) + b_pos*(b_pos>=a_pos)
 
-        a_neg = aud1*(aud1<0)
-        b_neg = aud2*(aud2<0)
-        neg = a_neg*(a_neg < b_neg) + b_neg*(b_neg<a_neg)
+        #     a_neg = aud1*(aud1<0)
+        #     b_neg = aud2*(aud2<0)
+        #     neg = a_neg*(a_neg < b_neg) + b_neg*(b_neg<a_neg)
+
+            # np.maximum(aud1,aud2) + np.minimum(aud1, aud2)
+            # TPL
+            # p = random float between 0.2 and 0.8
+            # return 
+            # option 1 : normalise by energy = np.linalg.norm(aud1) L2 norm
+            # option 2: normalise by amplitude
+            # option 3: normalise by noisefloor (estimate noisefloor by median of spectrogram)
 
         return pos+neg
 
@@ -211,12 +216,15 @@ class __AudioDataset(Dataset):
         #         waveform.numpy(), sample_rate)
         #     if not torch.is_tensor(waveform):
         #         waveform = torch.from_numpy(waveform)
+
+        waveform *= 0.1/waveform.median()
+        # print(waveform.median())
         return waveform, sample_rate
 
 
 def specMask(spectrogram):
     fMasking = T.FrequencyMasking(freq_mask_param=30)
-    tMasking = T.TimeMasking(time_mask_param=30)
+    tMasking = T.TimeMasking(time_maskram=30)
     return(tMasking(fMasking(spectrogram)))
 
 

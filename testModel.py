@@ -44,7 +44,7 @@ def predictFolder(model, device, folderPath):
 
 def predictFile(filePath, model, device,labelPath = None):
     augmentor = Augmentor()
-    spectrogram = torchaudio.transforms.Spectrogram(normalized=True)
+    spectrogram = torchaudio.transforms.MelSpectrogram(normalized=True, sample_rate=8000, n_fft=256, n_mels=64)
     sm = torch.nn.Softmax()
 
     if labelPath:
@@ -67,11 +67,13 @@ def predictFile(filePath, model, device,labelPath = None):
                     spectrogram_tensor, 0), 0).to(device)
                 pred = model(spectrogram_tensor)
                 pred = sm(pred)
-                pred_graph.append(class_map[pred.argmax()])
+
+                pred_graph.append(int(class_map[pred.argmax()]))
     plt.step(torch.arange(len(pred_graph))*4,pred_graph)
     plt.ylim(0,2)
     plt.ylabel('Number of speakers')
     plt.xlabel('Time (seconds)')
+    plt.yticks(torch.arange(0,2))
     plt.xticks(torch.arange(0, len(pred_graph)*4, 30))
     plt.show()
 
@@ -95,8 +97,7 @@ def predictLive(model, device):
         while True:
             (chunk,) = next(stream_iterator)
             # wav = torch.cat((wav, chunk[:, 0]))
-            spectrogram = torchaudio.transforms.Spectrogram(
-                normalized=True)
+            spectrogram = torchaudio.transforms.MelSpectrogram(normalized=True, sample_rate=8000, n_fft=256, n_mels=64)
             wav, sr = augmentor.audio_preprocessing([chunk.T, 44100])
 
             spectrogram_tensor = (spectrogram(wav) + 1e-12).log2()
