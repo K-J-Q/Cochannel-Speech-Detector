@@ -60,9 +60,9 @@ def train(model, dataloader, cost, optimizer, device):
 
 def eval(model, dataloader, cost, device):
     acc_metric = torchmetrics.Accuracy().to(device)
-    # confusion_matrix = torchmetrics.classification.MulticlassConfusionMatrix(
-    #     num_classes).to(device)
-    # matrix = torch.zeros([num_classes, num_classes], device=device)
+    confusion_matrix = torchmetrics.classification.MulticlassConfusionMatrix(
+        num_classes).to(device)
+    matrix = torch.zeros([num_classes, num_classes], device=device)
 
     val_size = len(dataloader.dataset)
     total_batch = len(dataloader)
@@ -77,11 +77,11 @@ def eval(model, dataloader, cost, device):
             batch_loss = cost(pred, Y)
             batch_accuracy = acc_metric(pred, Y)
             val_loss += batch_loss.item()
-            # matrix += confusion_matrix(pred, Y)
+            matrix += confusion_matrix(pred, Y)
     val_loss /= val_size
     val_accuracy = acc_metric.compute() * 100
     acc_metric.reset()
-    return (val_loss, val_accuracy, 'nope')
+    return (val_loss, val_accuracy, matrix)
 
 
 def tensorBoardLogging(writer, train_loss, train_accuracy, val_loss,

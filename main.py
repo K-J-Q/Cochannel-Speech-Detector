@@ -104,7 +104,7 @@ if __name__ == '__main__':
                 f'saved_model/{title}_epoch{epoch}.pt'))
         scheduler.step()
 
-        val_loss, val_accuracy, _ = machineLearning.eval(
+        val_loss, val_accuracy, _= machineLearning.eval(
             model, val_dataloader, lossFn, device)
 
         if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) == 0:
