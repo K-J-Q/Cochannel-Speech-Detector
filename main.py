@@ -1,4 +1,4 @@
-*-/from loader.AudioDataset import createDataset, collate_batch
+from loader.AudioDataset import createDataset, collate_batch
 from torch.utils.data import Dataset, DataLoader
 import torch
 import ml.machineLearning as machineLearning
@@ -13,6 +13,8 @@ if __name__ == '__main__':
     config.read('config.ini')
     torch.backends.cudnn.benchmark = True
 
+    utils.clearUselesslogs(minFiles= 3)
+
     # Get Audio paths for dataset
     testRun = config['data'].getboolean('is_test_run')
 
@@ -20,8 +22,8 @@ if __name__ == '__main__':
         '/media/jianquan/Data/Processed Audio', percent=float(config['data']['train_percent']))
         
     # create dataset with transforms (as required)+
-    audio_train_dataset = createDataset(audio_train_paths, generateCochannel=1,transformParams=utils.getTransforms(config['data'].getboolean('do_augmentations')))
-    audio_val_dataset = createDataset(audio_val_paths,generateCochannel=1, transformParams=utils.getTransforms(False))
+    audio_train_dataset = createDataset(audio_train_paths,transformParams=utils.getTransforms(config['data'].getboolean('do_augmentations')))
+    audio_val_dataset = createDataset(audio_val_paths, transformParams=utils.getTransforms(False))
 
     print(
         f'Train dataset Length: {len(audio_train_dataset)} ({len(audio_train_paths[0])} before augmentation)'
@@ -65,10 +67,10 @@ if __name__ == '__main__':
     lr = float(config['model']['learning_rate'])
     epochs = int(config['model']['num_epochs'])
     decay = float(config['model']['weight_decay'])
-    print(decay)
 
     lossFn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(model.parameters(),lr,weight_decay=decay)
+    # optimizer = torch.optim.SGD(model.parameters(), lr, 1, weight_decay=decay)
 
     title = config['model']['title'] if config['model'][
         'title'] else datetime.now().strftime("%Y-%m-%d,%H-%M-%S")  
@@ -85,7 +87,7 @@ if __name__ == '__main__':
             config['logger'][i] = 'false'
 
     scheduler = torch.optim.lr_scheduler.StepLR(
-        optimizer, step_size=5, gamma=0.8)
+        optimizer, step_size=5, gamma=1)
 
     for ep in range(startEpoch):
         scheduler.step()
@@ -116,5 +118,8 @@ if __name__ == '__main__':
 
         print(f'Training    | Loss: {train_loss} Accuracy: {train_accuracy}%')
         print(f'Validating  | Loss: {val_loss} Accuracy: {val_accuracy}% \n')
+
+    if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) != 0:
+        writer.add_hparams({'Learning Rate': lr, 'Batch Size': bsize, 'Epochs': epoch, 'Weight Decay': decay}, {'Accuracy': val_accuracy, 'Loss': val_loss})
 
     torch.save(model, utils.uniquify(f'saved_model/{title}_epoch{epoch}.pt'))

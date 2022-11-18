@@ -81,30 +81,28 @@ class Augmentor():
         return ((resig, self.audio_sampling))
 
 
-def createDataset(audio_paths, generateCochannel=True, transformParams=[{}]):
+def createDataset(audio_paths, transformParams=[{}]):
 
-    combinedDataset = __AudioDataset(
+    combinedDataset = AudioDataset(
         audio_paths,
         specTransformList=transformParams[0]['spectrogram'] if 'spectrogram' in transformParams[0] else [
         ],
         audioTransformList=transformParams[0]['audio'] if 'audio' in transformParams[0] else [
         ],
         beforeCochannelListSox=transformParams[0]['before_cochannel_sox'] if 'before_cochannel_sox' in transformParams[0] else [
-        ],
-        generateCochannel=generateCochannel
+        ]
     )
 
     if transformParams:
         for transform in transformParams[1:]:
-            audio_train_dataset = __AudioDataset(
+            audio_train_dataset = AudioDataset(
                 audio_paths,
                 specTransformList=transform['spectrogram']
                 if 'spectrogram' in transform else [],
                 audioTransformList=transform['audio']
                 if 'audio' in transform else [],
                 beforeCochannelListSox=transform['before_cochannel_sox']
-                if 'before_cochannel' in transform else [],
-                generateCochannel=generateCochannel
+                if 'before_cochannel' in transform else []
             )
 
             combinedDataset = torch.utils.data.ConcatDataset(
@@ -112,8 +110,8 @@ def createDataset(audio_paths, generateCochannel=True, transformParams=[{}]):
 
     return combinedDataset
 
-
-class __AudioDataset(Dataset):
+n_fft = 512
+class AudioDataset(Dataset):
     """
     A custom dataset that fetches the audio path, load as waveform, perform augmentation audioTransformList and specTransformList and outputs the spectrogram
     audio_paths: List of .wav paths for dataset
@@ -122,15 +120,14 @@ class __AudioDataset(Dataset):
     """
 
     class_size = int(config['data']['class_size'])
-
+    
     augment = Compose([RoomSimulator()])
 
     def __init__(self,
                  audio_paths,
                  specTransformList=None,
                  audioTransformList=None,
-                 beforeCochannelListSox=None,
-                 generateCochannel=True):
+                 beforeCochannelListSox=None):
 
         self.specTransformList = specTransformList
         self.beforeCochannelAugmentSox = beforeCochannelListSox
@@ -138,7 +135,6 @@ class __AudioDataset(Dataset):
             audioTransformList) if audioTransformList else None
         self.env_paths, self.speech_paths = audio_paths
         self.Augmentor = Augmentor()
-        self.generateCochannelMode = generateCochannel
         self.specPerClass = 3
 
     def __len__(self):
@@ -147,48 +143,51 @@ class __AudioDataset(Dataset):
     def __getitem__(self, idx):
         env_aud = self.__getAudio(self.env_paths[idx])
         speech1_aud = self.__getAudio(self.speech_paths[idx])
-        assert env_aud[1] == speech1_aud[1]
+        # assert env_aud[1] == speech1_aud[1]
         speech2_aud = self.__getAudio(
                 self.speech_paths[random.randint(0, self.__len__()) - 1])
-        assert speech1_aud[1] == speech2_aud[1]
+        # assert speech1_aud[1] == speech2_aud[1]
 
-        X = torch.zeros([self.class_size*self.specPerClass, 1,  201, 161])
+        specShape = generateSpec(torch.zeros([1,4*8000])).shape
+
+        X = torch.zeros([self.class_size*self.specPerClass] + list(specShape))
         Y = []
 
-        spectrogram = torchaudio.transforms.Spectrogram(normalized=True)
+        
         # print(spectrogram(self.__split(env_aud)))
         for i in range(self.class_size):
-            noise_spec = spectrogram(self.__split(env_aud))
-            X[self.specPerClass *
-                i][0] = noise_spec/(noise_spec + 10*noise_spec.median())
+            env = self.__split(env_aud)
             aud1 = self.__split(speech1_aud)
-            aud1_spec = spectrogram(aud1)
-            X[self.specPerClass*i+1][0] = aud1_spec/(aud1_spec + 10*aud1_spec.median())
             aud2 = self.__split(speech2_aud)
             merged_aud = self.__merge_audio(aud1, aud2)
+
+            X[self.specPerClass *i][0] = generateSpec(env)
+            X[self.specPerClass*i+1][0] = generateSpec(aud1)
+            X[self.specPerClass*i+2][0] = generateSpec(merged_aud)
+
             # torchaudio.save(loader.utils.uniquify(
             #     './merged.wav'), merged_aud, 8000)
-            # torchaudio.save(loader.utils.uniquify(
-            #     './oldmerged.wav'), (aud1 + aud2) / 2, 8000)
-            merged_spec = spectrogram(merged_aud)
-            X[self.specPerClass*i +
-                2][0] = merged_spec/(merged_spec + 10*merged_spec.median())
+
             Y.extend([0, 1, 2])
 
         return [X, Y]   
 
     def __split(self, audio, duration=4):
-        cut_length = duration*audio[1]
-        start_idx = random.randint(0, len(audio[0][0])-cut_length)
-        audio = audio[0][0][start_idx: start_idx+cut_length]
+        wav, sr = audio
+        cut_length = duration*sr
+        start_idx = random.randint(0, len(wav[0])-cut_length)
+        audio = wav[0][start_idx: start_idx+cut_length]
         if self.beforeCochannelAugmentSox:
             audio, _ = torchaudio.sox_effects.apply_effects_tensor(torch.unsqueeze(audio,0), 8000, self.beforeCochannelAugmentSox)
+        # assert torch.sum(wav == float('inf'))==0, print(wav)
         return audio
 
     def __merge_audio(self, aud1, aud2):
         # if self.generateCochannelMode:
-        pos = aud1/2
-        neg = aud2/2
+        # gain = random.uniform(0.4, 0.6)
+        gain = 0.5
+        pos = aud1*gain
+        neg = aud2*(1-gain)
         # else:
         #     a_pos = aud1*(aud1>=0)
         #     b_pos = aud2*(aud2>=0)
@@ -207,7 +206,7 @@ class __AudioDataset(Dataset):
             # option 3: normalise by noisefloor (estimate noisefloor by median of spectrogram)
 
         return pos+neg
-
+    
     def __getAudio(self, audioPath):
         waveform, sample_rate = self.Augmentor.audio_preprocessing(
             torchaudio.load(audioPath))
@@ -216,15 +215,23 @@ class __AudioDataset(Dataset):
         #         waveform.numpy(), sample_rate)
         #     if not torch.is_tensor(waveform):
         #         waveform = torch.from_numpy(waveform)
-
-        waveform *= 0.1/waveform.median()
+        # assert torch.sum(waveform == float('inf'))==0, print(waveform)
+        # waveform /= 10*(waveform + waveform.median()+1e-8)
+        # torchaudio.save(loader.utils.uniquify('./merged.wav'), waveform, 8000)
         # print(waveform.median())
         return waveform, sample_rate
 
+def generateSpec(wav):
+    import librosa
+    import numpy as np
+    spec = torch.tensor(np.abs(librosa.stft(wav.numpy(), n_fft = n_fft)))
+    spec = spec/(spec + spec.median()+1e-12)
+    # spec = spectrogram(wav)
+    return spec
 
 def specMask(spectrogram):
     fMasking = T.FrequencyMasking(freq_mask_param=30)
-    tMasking = T.TimeMasking(time_maskram=30)
+    tMasking = T.TimeMasking(time_mask_param=30)
     return(tMasking(fMasking(spectrogram)))
 
 
@@ -240,6 +247,7 @@ def collate_batch(batches):
         Y.extend(y)
     Y = torch.Tensor(Y).type(torch.LongTensor)
     return X, Y
+
 
 
 def main():

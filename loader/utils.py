@@ -25,8 +25,6 @@ def uniquify(path):
 
     return path
 
-
-# TODO: output train and val set instead of random split
 def getAudioPaths(main_path, percent = 0.9, repeatENVMul=0, repeatSPEECHMul = 0):
     env_paths = list(Path(main_path+'/ENV').glob('**/*.wav'))
     speech_paths = list(Path(main_path+'/SPEECH').glob('**/*.wav'))
@@ -41,6 +39,15 @@ def getAudioPaths(main_path, percent = 0.9, repeatENVMul=0, repeatSPEECHMul = 0)
 
     return ((env_paths[:train_env_size], speech_paths[:train_speech_size]), (env_paths[train_env_size:], speech_paths[train_speech_size:]))
 
+def clearUselesslogs(minFiles):
+    import shutil
+    logs = list(Path('./logs').glob('*'))
+    for i, log in enumerate(logs):
+        print(log)
+        if len(list(log.glob('**/*.*'))) <= minFiles:
+            shutil.rmtree(log)
+    print(f'{i} folders deleted')
 
 if __name__ == "__main__":
-    print(getTransforms(True))
+    clearUselesslogs()
+

@@ -2,9 +2,8 @@ import torchaudio
 # from torchaudio.io import StreamReader
 from pathlib import Path
 import torch
-import torch.nn as nn
 import ml.machineLearning
-from loader.AudioDataset import Augmentor, createDataset, collate_batch
+from loader.AudioDataset import *
 import random
 import seaborn as sn
 import matplotlib.pyplot as plt
@@ -20,11 +19,11 @@ class_map = ['0', '1', '2']
 
 def predictFolder(model, device, folderPath):
     audio_paths = [[], []]
-    audio_paths[0] = utils.getAudioPaths(folderPath[0])[0:10]
+    audio_paths[0] = utils.getAudioPaths(folderPath[0])[0:100]
     audio_paths[1] = utils.getAudioPaths(
         folderPath[1])[0:100]
 
-    audio_test_dataset = createDataset(audio_paths, generateCochannel=False)
+    audio_test_dataset = createDataset(audio_paths)
 
     test_dataloader = torch.utils.data.DataLoader(
         audio_test_dataset,
@@ -42,33 +41,39 @@ def predictFolder(model, device, folderPath):
     plt.show()
 
 
-def predictFile(filePath, model, device,labelPath = None):
+def predictFile(filePath, model, device, hasLabel = False):
     augmentor = Augmentor()
-    spectrogram = torchaudio.transforms.MelSpectrogram(normalized=True, sample_rate=8000, n_fft=256, n_mels=64)
     sm = torch.nn.Softmax()
 
-    if labelPath:
-        gt_x, gt_y = getGroundTruth(labelPath)
+    if hasLabel:
+        gt_x, gt_y = getGroundTruth(filePath[0:-3]+'txt')
         plt.step(gt_x, gt_y)
+        plt.legend(['Ground Truth', 'Predicted'])
 
+    pred = []
     pred_graph = [0]
+
+    batch_size = 20
+    
 
     with torch.no_grad():
         wav, sr = augmentor.resample(augmentor.rechannel(torchaudio.load(filePath)))
         sampleLength = 4 * sr
         wav = wav[0]
-        for splitIndex, j in enumerate(range(0, len(wav), sampleLength)):
-            trimmed_audio = wav[j:j+sampleLength]
-            # print(splitIndex, ' ', len(trimmed_audio))
-            if len(trimmed_audio) == sampleLength:
-                spectrogram_tensor = (spectrogram(
-                    trimmed_audio) + 1e-12).log2()
-                spectrogram_tensor = torch.unsqueeze(torch.unsqueeze(
-                    spectrogram_tensor, 0), 0).to(device)
-                pred = model(spectrogram_tensor)
-                pred = sm(pred)
+        batch_length = batch_size*sampleLength
+        for batch in range(0, len(wav)-sampleLength, batch_length):
+            spectrogram_tensor = torch.zeros([batch_size, 1,  257, 251])
+            for splitIndex, j in enumerate(range(batch, batch + batch_length, sampleLength)):
+                trimmed_audio = wav[j:j+sampleLength]
+                # print(splitIndex, ' ', len(trimmed_audio))
+                if len(trimmed_audio) == 32000:
+                    spectrogram_tensor[splitIndex][0] = generateSpec(trimmed_audio)
+            # print(spectrogram_tensor)
+            pred = model(spectrogram_tensor.to(device))
+            pred = sm(pred)
+            pred = pred.argmax(dim=1)
+            pred_graph += list(pred.cpu().numpy())
 
-                pred_graph.append(int(class_map[pred.argmax()]))
     plt.step(torch.arange(len(pred_graph))*4,pred_graph)
     plt.ylim(0,2)
     plt.ylabel('Number of speakers')
@@ -128,10 +133,11 @@ def getGroundTruth(file):
     return time_list, label_list
 
 if __name__ == "__main__":
-    model, device, _ = ml.machineLearning.selectModel()
-    summary(model.cuda(), (1, 201, 161))
+    model, device, _ = ml.machineLearning.selectModel(setCPU=False, modelIndex=0)
+    # summary(model, (1, 201, 161))
     a = '/media/jianquan/Data/Original Audio/Singapore Speech Corpus/[P] Part 3 Same BoundaryMic/3003.wav'
-    predictFile(a, model, device)
+    b = './data/JQ_rec.wav'
+    predictFile('./data/JQ_rec(2).wav', model, device,hasLabel=False)
 
     # predictFolder(model, device, [
     #               'E:\Processed Audio\SPEECH', 'E:\Processed Audio\ENV'])

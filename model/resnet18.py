@@ -15,4 +15,5 @@ ResNet18.conv1 = torch.nn.Conv2d(
 ResNet18.fc = torch.nn.Linear(in_features=512, out_features=3, bias=False)
 
 if __name__ == "__main__":
-    summary(ResNet18.cuda(), (1, 201, 201))
+    print(ResNet18)
+    # summary(ResNet18.cuda(), (1, 201, 201))
