@@ -2,8 +2,6 @@ import torch
 import torchaudio
 import random
 from torch.utils.data import Dataset, DataLoader
-import loader.utils
-from pathlib import Path
 import torchaudio.transforms as T
 import os
 from torch.profiler import profile, record_function, ProfilerActivity
@@ -120,7 +118,7 @@ class AudioDataset(Dataset):
     """
 
     class_size = int(config['data']['class_size'])
-    
+    windowLength = int(int(config['augmentations']['duration'])/1000)
     augment = Compose([RoomSimulator()])
 
     def __init__(self,
@@ -143,12 +141,13 @@ class AudioDataset(Dataset):
     def __getitem__(self, idx):
         env_aud = self.__getAudio(self.env_paths[idx])
         speech1_aud = self.__getAudio(self.speech_paths[idx])
-        # assert env_aud[1] == speech1_aud[1]
+        assert env_aud[1] == speech1_aud[1]
         speech2_aud = self.__getAudio(
                 self.speech_paths[random.randint(0, self.__len__()) - 1])
-        # assert speech1_aud[1] == speech2_aud[1]
+        assert speech1_aud[1] == speech2_aud[1]
+        
 
-        specShape = generateSpec(torch.zeros([1,4*8000])).shape
+        specShape = generateSpec(torch.zeros([1,self.windowLength*8000])).shape
 
         X = torch.zeros([self.class_size*self.specPerClass] + list(specShape))
         Y = []
@@ -172,9 +171,9 @@ class AudioDataset(Dataset):
 
         return [X, Y]   
 
-    def __split(self, audio, duration=4):
+    def __split(self, audio):
         wav, sr = audio
-        cut_length = duration*sr
+        cut_length = self.windowLength*sr
         start_idx = random.randint(0, len(wav[0])-cut_length)
         audio = wav[0][start_idx: start_idx+cut_length]
         if self.beforeCochannelAugmentSox:

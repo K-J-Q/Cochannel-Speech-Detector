@@ -15,14 +15,15 @@ def getTransforms(augment):
         return [{}]
 
 
-def uniquify(path):
+def uniquify(path, returnIndex =False):
     filename, extension = os.path.splitext(path)
     counter = 1
 
     while os.path.exists(path):
         path = f"{filename} ({str(counter)}){extension}"
         counter += 1
-
+    if returnIndex:
+        return path, counter - 1
     return path
 
 def getAudioPaths(main_path, percent = 0.9, repeatENVMul=0, repeatSPEECHMul = 0):
@@ -42,11 +43,13 @@ def getAudioPaths(main_path, percent = 0.9, repeatENVMul=0, repeatSPEECHMul = 0)
 def clearUselesslogs(minFiles):
     import shutil
     logs = list(Path('./logs').glob('*'))
+    i = -1
     for i, log in enumerate(logs):
-        print(log)
         if len(list(log.glob('**/*.*'))) <= minFiles:
             shutil.rmtree(log)
-    print(f'{i} folders deleted')
+    i+=1
+    if i:
+        print(f'{i} folders deleted')
 
 if __name__ == "__main__":
     clearUselesslogs()

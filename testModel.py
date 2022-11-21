@@ -18,13 +18,10 @@ class_map = ['0', '1', '2']
 
 
 def predictFolder(model, device, folderPath):
-    audio_paths = [[], []]
-    audio_paths[0] = utils.getAudioPaths(folderPath[0])[0:100]
-    audio_paths[1] = utils.getAudioPaths(
-        folderPath[1])[0:100]
+    audio_paths, _ = utils.getAudioPaths(folderPath, percent=0.01)
 
     audio_test_dataset = createDataset(audio_paths)
-
+    
     test_dataloader = torch.utils.data.DataLoader(
         audio_test_dataset,
         batch_size=1,
@@ -38,15 +35,24 @@ def predictFolder(model, device, folderPath):
     print(f'Validating  | Loss: {test_loss} Accuracy: {test_acc}% \n')
     sn.heatmap(confusion_matrix.cpu(), annot=True,
                xticklabels=class_map, yticklabels=class_map)
+    plt.ylabel('Actual')
+    plt.xlabel('Predicted')
     plt.show()
 
 
-def predictFile(filePath, model, device, hasLabel = False):
+def predictFile(filePath, model, device):
     augmentor = Augmentor()
     sm = torch.nn.Softmax()
 
-    if hasLabel:
-        gt_x, gt_y = getGroundTruth(filePath[0:-3]+'txt')
+    def IoU(predicted, ground_truth):
+        print(ground_truth)
+        print(predicted)
+
+
+    labelPath = filePath[0:-3]+'txt'
+
+    if os.path.exists(labelPath):
+        gt_x, gt_y = getGroundTruth(labelPath)
         plt.step(gt_x, gt_y)
         plt.legend(['Ground Truth', 'Predicted'])
 
@@ -54,33 +60,38 @@ def predictFile(filePath, model, device, hasLabel = False):
     pred_graph = [0]
 
     batch_size = 20
+    windowLength = 1
     
 
     with torch.no_grad():
         wav, sr = augmentor.resample(augmentor.rechannel(torchaudio.load(filePath)))
-        sampleLength = 4 * sr
+        sampleLength = windowLength * sr
         wav = wav[0]
         batch_length = batch_size*sampleLength
         for batch in range(0, len(wav)-sampleLength, batch_length):
-            spectrogram_tensor = torch.zeros([batch_size, 1,  257, 251])
+            spectrogram_tensor = torch.zeros([batch_size, 1,  257, 63])
             for splitIndex, j in enumerate(range(batch, batch + batch_length, sampleLength)):
                 trimmed_audio = wav[j:j+sampleLength]
                 # print(splitIndex, ' ', len(trimmed_audio))
-                if len(trimmed_audio) == 32000:
+                if len(trimmed_audio) == sampleLength:
                     spectrogram_tensor[splitIndex][0] = generateSpec(trimmed_audio)
+                    # plt.imshow(spectrogram_tensor[splitIndex][0])
+                    # plt.show()
+
             # print(spectrogram_tensor)
             pred = model(spectrogram_tensor.to(device))
             pred = sm(pred)
             pred = pred.argmax(dim=1)
             pred_graph += list(pred.cpu().numpy())
 
-    plt.step(torch.arange(len(pred_graph))*4,pred_graph)
+    plt.step(torch.arange(len(pred_graph))*windowLength,pred_graph)
     plt.ylim(0,2)
     plt.ylabel('Number of speakers')
     plt.xlabel('Time (seconds)')
     plt.yticks(torch.arange(0,2))
-    plt.xticks(torch.arange(0, len(pred_graph)*4, 30))
+    plt.xticks(torch.arange(0, len(pred_graph)*windowLength, 30))
     plt.show()
+    IoU(pred, (gt_x, gt_y))
 
 
 def predictLive(model, device):
@@ -92,7 +103,7 @@ def predictLive(model, device):
     )
 
     streamer.add_basic_audio_stream(
-        frames_per_chunk=44100*4, sample_rate=44100)
+        frames_per_chunk=44100*1, sample_rate=44100)
 
     stream_iterator = streamer.stream()
     wav = torch.Tensor([])
@@ -105,7 +116,7 @@ def predictLive(model, device):
             spectrogram = torchaudio.transforms.MelSpectrogram(normalized=True, sample_rate=8000, n_fft=256, n_mels=64)
             wav, sr = augmentor.audio_preprocessing([chunk.T, 44100])
 
-            spectrogram_tensor = (spectrogram(wav) + 1e-12).log2()
+            spectrogram_tensor = generateSpec(wav)
             spectrogram_tensor = torch.unsqueeze(spectrogram_tensor, 0).to(device)
             pred = model(spectrogram_tensor)
             pred = sm(pred)
@@ -133,14 +144,13 @@ def getGroundTruth(file):
     return time_list, label_list
 
 if __name__ == "__main__":
-    model, device, _ = ml.machineLearning.selectModel(setCPU=False, modelIndex=0)
+    model, device, _ = ml.machineLearning.selectModel(setCPU=False, modelIndex=4)
     # summary(model, (1, 201, 161))
     a = '/media/jianquan/Data/Original Audio/Singapore Speech Corpus/[P] Part 3 Same BoundaryMic/3003.wav'
     b = './data/JQ_rec.wav'
-    predictFile('./data/JQ_rec(2).wav', model, device,hasLabel=False)
+    predictFile(a, model, device)
 
-    # predictFolder(model, device, [
-    #               'E:\Processed Audio\SPEECH', 'E:\Processed Audio\ENV'])
+    # predictFolder(model, device, '/media/jianquan/Data/Processed Audio/')
 
     # predictLive(model, device)
 

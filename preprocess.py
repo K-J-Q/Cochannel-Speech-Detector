@@ -81,7 +81,7 @@ def main():
 
     augmentor = Augmentor()
     for audioIndex, audioPath in tqdm(enumerate(audioPaths), unit='files', total=len(audioPaths)):
-        if audioIndex >= 630:
+        if audioIndex >= 0:
             _, audioName = os.path.split(audioPath)
 
             aud = torchaudio.load(audioPath)
@@ -93,15 +93,16 @@ def main():
             silence_time = detect_silence(audioPath, silence_cutoff)
             speech_time = detect_silence(
                 audioPath, speech_cutoff if speech_cutoff > 0.03 else 0.05)
+            print(silence_time)
 
-            aud = augmentor.resample(augmentor.rechannel(aud), False)
-            aud_noise, _ = split_silences(aud, silence_time)
-            _, aud_speech = split_silences(aud, speech_time)
+            # aud = augmentor.resample(augmentor.rechannel(aud), False)
+            # aud_noise, _ = split_silences(aud, silence_time)
+            # _, aud_speech = split_silences(aud, speech_time)
 
-            torchaudio.save(f'E:/Processed Audio/ENV/4 Diff Room/{audioName}',
-                            aud_noise[0], aud_noise[1])
-            torchaudio.save(f'E:/Processed Audio/SPEECH/4 Diff Room/{audioName}',
-                            aud_speech[0], aud_speech[1])
+            # torchaudio.save(f'E:/Processed Audio/ENV/4 Diff Room/{audioName}',
+            #                 aud_noise[0], aud_noise[1])
+            # torchaudio.save(f'E:/Processed Audio/SPEECH/4 Diff Room/{audioName}',
+            #                 aud_speech[0], aud_speech[1])
 
     print(f'Total discarded length: {discarded}')
 

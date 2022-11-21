@@ -62,7 +62,7 @@ if __name__ == '__main__':
     if config['model'].getboolean('load_pretrained'):
         model, _, startEpoch = machineLearning.selectModel()
     else:
-        model = ResNet18.to(device)
+        model = CNNNetwork().to(device)
         
     lr = float(config['model']['learning_rate'])
     epochs = int(config['model']['num_epochs'])
@@ -77,7 +77,8 @@ if __name__ == '__main__':
 
     # TensorBoard logging (as required)
     if config['logger'].getboolean('master_logger') and not testRun:
-        writer = SummaryWriter(utils.uniquify(f'./logs/{title}'))
+        logTitle, modelIndex= utils.uniquify(f'./logs/{title}', True)
+        writer = SummaryWriter(logTitle)
         if config['logger'].getboolean('log_graph'):
             spec, label = next(iter(val_dataloader))
             writer.add_graph(model, spec.to(device))
@@ -101,7 +102,7 @@ if __name__ == '__main__':
             model, train_dataloader, lossFn, optimizer, device)
         if config['model'].getboolean('save_model_checkpoint') and epoch % int(config['model']['checkpoint']) == 0:
             torch.save(model, utils.uniquify(
-                f'saved_model/{title}_epoch{epoch}.pt'))
+                f'saved_model/{title}({modelIndex})_epoch{epoch}.pt'))
         scheduler.step()
 
         val_loss, val_accuracy, _= machineLearning.eval(
@@ -120,6 +121,6 @@ if __name__ == '__main__':
         print(f'Validating  | Loss: {val_loss} Accuracy: {val_accuracy}% \n')
 
     if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) != 0:
-        writer.add_hparams({'Learning Rate': lr, 'Batch Size': bsize, 'Epochs': epoch, 'Weight Decay': decay}, {'Accuracy': val_accuracy, 'Loss': val_loss})
+        writer.add_hparams({'Learning Rate': lr, 'Batch Size': bsize, 'Epochs': epoch, 'Weight Decay': decay, 'Dropout': float(config['model']['dropout'])}, {'Accuracy': val_accuracy, 'Loss': val_loss})
 
-    torch.save(model, utils.uniquify(f'saved_model/{title}_epoch{epoch}.pt'))
+    torch.save(model, utils.uniquify(f'saved_model/{title}({modelIndex})_epoch{epoch}.pt'))
