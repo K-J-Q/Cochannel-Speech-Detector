@@ -76,10 +76,11 @@ class Augmentor():
         return ((resig, self.audio_sampling))
 
 
-def createDataset(audio_paths, transformParams=[{}]):
+def createDataset(audio_paths, transformParams=[{}], outputAudio=False):
 
     combinedDataset = AudioDataset(
         audio_paths,
+        outputAudio,
         specTransformList=transformParams[0]['spectrogram'] if 'spectrogram' in transformParams[0] else [
         ],
         audioTransformList=transformParams[0]['audio'] if 'audio' in transformParams[0] else [
@@ -92,6 +93,7 @@ def createDataset(audio_paths, transformParams=[{}]):
         for transform in transformParams[1:]:
             audio_train_dataset = AudioDataset(
                 audio_paths,
+                outputAudio,
                 specTransformList=transform['spectrogram']
                 if 'spectrogram' in transform else [],
                 audioTransformList=transform['audio']
@@ -105,7 +107,7 @@ def createDataset(audio_paths, transformParams=[{}]):
 
     return combinedDataset
 
-n_fft = 512
+n_fft = int(config['data']['n_fft'])
 class AudioDataset(Dataset):
     """
     A custom dataset that fetches the audio path, load as waveform, perform augmentation audioTransformList and specTransformList and outputs the spectrogram
@@ -116,10 +118,12 @@ class AudioDataset(Dataset):
 
     class_size = int(config['data']['class_size'])
     windowLength = int(int(config['augmentations']['duration'])/1000)
+
     augment = Compose([RoomSimulator()])
 
     def __init__(self,
                  audio_paths,
+                 outputAudio,
                  specTransformList=None,
                  audioTransformList=None,
                  beforeCochannelListSox=None):
@@ -130,7 +134,8 @@ class AudioDataset(Dataset):
             audioTransformList) if audioTransformList else None
         self.env_paths, self.speech_paths = audio_paths
         self.Augmentor = Augmentor()
-        self.specPerClass = 3
+        self.samplesPerClass = 3
+        self.outputAudio = outputAudio
 
     def __len__(self):
         return min(len(self.env_paths), len(self.speech_paths))
@@ -138,18 +143,17 @@ class AudioDataset(Dataset):
     def __getitem__(self, idx):
         env_aud = self.__getAudio(self.env_paths[idx])
         speech1_aud = self.__getAudio(self.speech_paths[idx])
-        assert env_aud[1] == speech1_aud[1]
         speech2_aud = self.__getAudio(
                 self.speech_paths[random.randint(0, self.__len__()) - 1])
-        assert speech1_aud[1] == speech2_aud[1]
         
+        if self.outputAudio:
+            dataShape = self.__split(env_aud).shape
+        else:
+            dataShape = generateSpec(torch.zeros([1,self.windowLength*8000])).shape
 
-        specShape = generateSpec(torch.zeros([1,self.windowLength*8000])).shape
+        X = torch.zeros([self.class_size*self.samplesPerClass] + list(dataShape))
+        Y = torch.tensor([0,1,2]).repeat(self.class_size)
 
-        X = torch.zeros([self.class_size*self.specPerClass] + list(specShape))
-        Y = []
-
-        
         # print(spectrogram(self.__split(env_aud)))
         for i in range(self.class_size):
             env = self.__split(env_aud)
@@ -157,14 +161,17 @@ class AudioDataset(Dataset):
             aud2 = self.__split(speech2_aud)
             merged_aud = self.__merge_audio(aud1, aud2)
 
-            X[self.specPerClass *i][0] = generateSpec(env)
-            X[self.specPerClass*i+1][0] = generateSpec(aud1)
-            X[self.specPerClass*i+2][0] = generateSpec(merged_aud)
+            if self.outputAudio:
+                X[self.samplesPerClass * i][0] = env
+                X[self.samplesPerClass*i+1][0] = aud1
+                X[self.samplesPerClass*i+2][0] = merged_aud
+            else:
+                X[self.samplesPerClass * i][0] = generateSpec(env)
+                X[self.samplesPerClass*i+1][0] = generateSpec(aud1)
+                X[self.samplesPerClass*i+2][0] = generateSpec(merged_aud)
 
             # torchaudio.save(loader.utils.uniquify(
             #     './merged.wav'), merged_aud, 8000)
-
-            Y.extend([0, 1, 2])
 
         return [X, Y]   
 
@@ -172,7 +179,7 @@ class AudioDataset(Dataset):
         wav, sr = audio
         cut_length = self.windowLength*sr
         start_idx = random.randint(0, len(wav[0])-cut_length)
-        audio = wav[0][start_idx: start_idx+cut_length]
+        audio = wav[:, start_idx: start_idx+cut_length]
         if self.beforeCochannelAugmentSox:
             audio, _ = torchaudio.sox_effects.apply_effects_tensor(torch.unsqueeze(audio,0), 8000, self.beforeCochannelAugmentSox)
         # assert torch.sum(wav == float('inf'))==0, print(wav)
@@ -184,15 +191,6 @@ class AudioDataset(Dataset):
         gain = 0.5
         pos = aud1*gain
         neg = aud2*(1-gain)
-        # else:
-        #     a_pos = aud1*(aud1>=0)
-        #     b_pos = aud2*(aud2>=0)
-        #     pos = a_pos*(a_pos > b_pos) + b_pos*(b_pos>=a_pos)
-
-        #     a_neg = aud1*(aud1<0)
-        #     b_neg = aud2*(aud2<0)
-        #     neg = a_neg*(a_neg < b_neg) + b_neg*(b_neg<a_neg)
-
             # np.maximum(aud1,aud2) + np.minimum(aud1, aud2)
             # TPL
             # p = random float between 0.2 and 0.8

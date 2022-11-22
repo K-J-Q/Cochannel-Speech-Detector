@@ -21,9 +21,9 @@ if __name__ == '__main__':
     audio_train_paths, audio_val_paths = utils.getAudioPaths(
         '/media/jianquan/Data/Processed Audio', percent=float(config['data']['train_percent']))
         
-    # create dataset with transforms (as required)+
-    audio_train_dataset = createDataset(audio_train_paths,transformParams=utils.getTransforms(config['data'].getboolean('do_augmentations')))
-    audio_val_dataset = createDataset(audio_val_paths, transformParams=utils.getTransforms(False))
+    # create dataset with transforms (as required)
+    audio_train_dataset = createDataset(audio_train_paths,transformParams=utils.getTransforms(config['data'].getboolean('do_augmentations')), outputAudio=True)
+    audio_val_dataset = createDataset(audio_val_paths, transformParams=utils.getTransforms(False), outputAudio=True)
 
     print(
         f'Train dataset Length: {len(audio_train_dataset)} ({len(audio_train_paths[0])} before augmentation)'
@@ -87,8 +87,7 @@ if __name__ == '__main__':
         for i in config['logger']:
             config['logger'][i] = 'false'
 
-    scheduler = torch.optim.lr_scheduler.StepLR(
-        optimizer, step_size=5, gamma=1)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer)
 
     for ep in range(startEpoch):
         scheduler.step()

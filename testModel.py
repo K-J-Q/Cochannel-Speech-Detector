@@ -147,6 +147,7 @@ def getGroundTruth(file):
 
 if __name__ == "__main__":
     model, device, _ = ml.machineLearning.selectModel(setCPU=False, modelIndex=3)
+    model.eval()
     # summary(model, (1, 201, 161))
     a = '/media/jianquan/Data/Original Audio/Singapore Speech Corpus/[P] Part 3 Same BoundaryMic/3003.wav'
     b = '../OneDrive/Desktop/untitled.wav'

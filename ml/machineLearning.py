@@ -24,7 +24,6 @@ def selectModel(setCPU = False, modelIndex = None):
         epoch=int(epoch)
     except:
         epoch = int(epoch.split('(')[0])
-    model.eval()
     return model, device, epoch
 
 def train(model, dataloader, cost, optimizer, device):
