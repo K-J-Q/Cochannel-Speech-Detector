@@ -75,14 +75,15 @@ def predictFile(filePath, model, device):
                 # print(splitIndex, ' ', len(trimmed_audio))
                 if len(trimmed_audio) == sampleLength:
                     spectrogram_tensor[splitIndex][0] = generateSpec(trimmed_audio)
-                    # plt.imshow(spectrogram_tensor[splitIndex][0])
-                    # plt.show()
+                    plt.imshow(spectrogram_tensor[splitIndex][0])
+                    plt.show()
 
             # print(spectrogram_tensor)
             pred = model(spectrogram_tensor.to(device))
             pred = sm(pred)
             pred = pred.argmax(dim=1)
             pred_graph += list(pred.cpu().numpy())
+            print(pred)
 
     plt.step(torch.arange(len(pred_graph))*windowLength,pred_graph)
     plt.ylim(0,2)
@@ -91,7 +92,8 @@ def predictFile(filePath, model, device):
     plt.yticks(torch.arange(0,2))
     plt.xticks(torch.arange(0, len(pred_graph)*windowLength, 30))
     plt.show()
-    IoU(pred, (gt_x, gt_y))
+
+    # IoU(pred, (gt_x, gt_y))
 
 
 def predictLive(model, device):
@@ -144,11 +146,11 @@ def getGroundTruth(file):
     return time_list, label_list
 
 if __name__ == "__main__":
-    model, device, _ = ml.machineLearning.selectModel(setCPU=False, modelIndex=4)
+    model, device, _ = ml.machineLearning.selectModel(setCPU=False, modelIndex=3)
     # summary(model, (1, 201, 161))
     a = '/media/jianquan/Data/Original Audio/Singapore Speech Corpus/[P] Part 3 Same BoundaryMic/3003.wav'
-    b = './data/JQ_rec.wav'
-    predictFile(a, model, device)
+    b = '../OneDrive/Desktop/untitled.wav'
+    predictFile(b, model, device)
 
     # predictFolder(model, device, '/media/jianquan/Data/Processed Audio/')
 

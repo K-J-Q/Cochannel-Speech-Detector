@@ -11,9 +11,6 @@ from configparser import ConfigParser
 config = ConfigParser()
 config.read('config.ini')
 
-start = torch.cuda.Event(enable_timing=True)
-end = torch.cuda.Event(enable_timing=True)
-
 
 class Augmentor():
     """
