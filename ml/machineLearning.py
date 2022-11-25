@@ -33,9 +33,9 @@ def train(model, dataloader, cost, optimizer, device):
     train_size = len(dataloader.dataset)
     model.train()
     # with profile(on_trace_ready=torch.profiler.tensorboard_trace_handler(
-    #     './logs/traces'), record_shapes=True,
-    #         profile_memory=True,
-    #         with_stack=True) as prof:
+    #     './logs/traces'), 
+    #     record_shapes=True,
+    #     profile_memory=True) as prof:
     for batch, (X, Y) in tqdm(enumerate(dataloader), unit='batch', total=total_batch):
         X, Y = X.to(device), Y.to(device)
         optimizer.zero_grad()
@@ -67,8 +67,8 @@ def eval(model, dataloader, cost, device):
     total_batch = len(dataloader)
 
     val_loss, val_accuracy = 0, 0
-
     model.eval()
+
     with torch.no_grad():
         for batch, (X, Y) in tqdm(enumerate(dataloader), unit='batch', total=total_batch):
             X, Y = X.to(device), Y.to(device)
@@ -77,6 +77,7 @@ def eval(model, dataloader, cost, device):
             batch_accuracy = acc_metric(pred, Y)
             val_loss += batch_loss.item()
             matrix += confusion_matrix(pred, Y)
+
     val_loss /= val_size
     val_accuracy = acc_metric.compute() * 100
     acc_metric.reset()

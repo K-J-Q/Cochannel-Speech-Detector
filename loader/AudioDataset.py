@@ -136,6 +136,7 @@ class AudioDataset(Dataset):
         self.Augmentor = Augmentor()
         self.samplesPerClass = 3
         self.outputAudio = outputAudio
+        self.dataShape = torch.Size([1, self.windowLength * 8000]) if outputAudio else generateSpec(torch.zeros([1,self.windowLength*8000])).shape
 
     def __len__(self):
         return min(len(self.env_paths), len(self.speech_paths))
@@ -143,18 +144,11 @@ class AudioDataset(Dataset):
     def __getitem__(self, idx):
         env_aud = self.__getAudio(self.env_paths[idx])
         speech1_aud = self.__getAudio(self.speech_paths[idx])
-        speech2_aud = self.__getAudio(
-                self.speech_paths[random.randint(0, self.__len__()) - 1])
+        speech2_aud = self.__getAudio(self.speech_paths[random.randint(0, self.__len__()) - 1])
         
-        if self.outputAudio:
-            dataShape = self.__split(env_aud).shape
-        else:
-            dataShape = generateSpec(torch.zeros([1,self.windowLength*8000])).shape
-
-        X = torch.zeros([self.class_size*self.samplesPerClass] + list(dataShape))
+        X = torch.empty([self.class_size*self.samplesPerClass] + list(self.dataShape))
         Y = torch.tensor([0,1,2]).repeat(self.class_size)
-
-        # print(spectrogram(self.__split(env_aud)))
+        
         for i in range(self.class_size):
             env = self.__split(env_aud)
             aud1 = self.__split(speech1_aud)
@@ -180,8 +174,6 @@ class AudioDataset(Dataset):
         cut_length = self.windowLength*sr
         start_idx = random.randint(0, len(wav[0])-cut_length)
         audio = wav[:, start_idx: start_idx+cut_length]
-        if self.beforeCochannelAugmentSox:
-            audio, _ = torchaudio.sox_effects.apply_effects_tensor(torch.unsqueeze(audio,0), 8000, self.beforeCochannelAugmentSox)
         # assert torch.sum(wav == float('inf'))==0, print(wav)
         return audio
 
@@ -189,30 +181,16 @@ class AudioDataset(Dataset):
         # if self.generateCochannelMode:
         # gain = random.uniform(0.4, 0.6)
         gain = 0.5
-        pos = aud1*gain
-        neg = aud2*(1-gain)
-            # np.maximum(aud1,aud2) + np.minimum(aud1, aud2)
-            # TPL
-            # p = random float between 0.2 and 0.8
-            # return 
             # option 1 : normalise by energy = np.linalg.norm(aud1) L2 norm
             # option 2: normalise by amplitude
             # option 3: normalise by noisefloor (estimate noisefloor by median of spectrogram)
 
-        return pos+neg
+        return aud1*gain + aud2*(1-gain)
     
     def __getAudio(self, audioPath):
-        waveform, sample_rate = self.Augmentor.audio_preprocessing(
-            torchaudio.load(audioPath))
-        # if self.beforeCochannelAugment:
-        #     waveform = self.beforeCochannelAugment(
-        #         waveform.numpy(), sample_rate)
-        #     if not torch.is_tensor(waveform):
-        #         waveform = torch.from_numpy(waveform)
-        # assert torch.sum(waveform == float('inf'))==0, print(waveform)
-        # waveform /= 10*(waveform + waveform.median()+1e-8)
-        # torchaudio.save(loader.utils.uniquify('./merged.wav'), waveform, 8000)
-        # print(waveform.median())
+        waveform, sample_rate = torchaudio.load(audioPath)
+        if self.beforeCochannelAugmentSox:
+            audio, _ = torchaudio.sox_effects.apply_effects_tensor(torch.unsqueeze(audio,0), 8000, self.beforeCochannelAugmentSox)
         return waveform, sample_rate
 
 def generateSpec(wav):
@@ -230,15 +208,19 @@ def specMask(spectrogram):
 
 
 def collate_batch(batches):
-
-    if (len(batches) == 1):
+    numBatch = len(batches)
+    if (numBatch == 1):
         return batches[0][0], torch.Tensor(batches[0][1]).type(torch.LongTensor)
-    X = torch.empty(0)
-    Y = []
 
-    for x, y in batches:
-        X = torch.cat((X, x))
-        Y.extend(y)
+    samplesPerBatch = len(batches[0][0])
+
+    X = torch.empty([samplesPerBatch * numBatch, 1, 16000])
+    Y = torch.empty([samplesPerBatch * numBatch])
+
+    for i, (x, y) in enumerate(batches):
+        X[i*samplesPerBatch:(i+1)*samplesPerBatch] = x
+        Y[i*samplesPerBatch:(i+1)*samplesPerBatch] = y
+    
     Y = torch.Tensor(Y).type(torch.LongTensor)
     return X, Y
 

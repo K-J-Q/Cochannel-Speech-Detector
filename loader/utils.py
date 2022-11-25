@@ -12,7 +12,7 @@ def getTransforms(augment):
         return [{}]
 
 
-def uniquify(path, returnIndex =False):
+def uniquify(path, returnIndex = False):
     filename, extension = os.path.splitext(path)
     counter = 1
 
@@ -23,7 +23,7 @@ def uniquify(path, returnIndex =False):
         return path, counter - 1
     return path
 
-def getAudioPaths(main_path, percent = 0.9, repeatENVMul=0, repeatSPEECHMul = 0):
+def getAudioPaths(main_path, percent = 0.9, repeatENVMul=0, repeatSPEECHMul=0):
     env_paths = list(Path(main_path+'/ENV').glob('**/*.wav'))
     speech_paths = list(Path(main_path+'/SPEECH').glob('**/*.wav'))
 
@@ -37,16 +37,17 @@ def getAudioPaths(main_path, percent = 0.9, repeatENVMul=0, repeatSPEECHMul = 0)
 
     return ((env_paths[:train_env_size], speech_paths[:train_speech_size]), (env_paths[train_env_size:], speech_paths[train_speech_size:]))
 
-def clearUselesslogs(minFiles):
+def clearUselesslogs(minFiles = 1):
     import shutil
     logs = list(Path('./logs').glob('*'))
-    i = -1
-    for i, log in enumerate(logs):
-        if len(list(log.glob('**/*.*'))) <= minFiles:
+    deletedCount = 0
+    for log in logs:
+        if log != Path('logs/traces') and len(list(log.glob('**/*.*'))) <= minFiles:  
             shutil.rmtree(log)
-    i+=1
-    if i:
-        print(f'{i} folders deleted')
+            deletedCount+=1
+
+    if deletedCount:
+        print(f'{deletedCount} folders deleted')
 
 if __name__ == "__main__":
     clearUselesslogs()

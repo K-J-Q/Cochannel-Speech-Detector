@@ -13,17 +13,19 @@ if __name__ == '__main__':
     config.read('config.ini')
     torch.backends.cudnn.benchmark = True
 
-    utils.clearUselesslogs(minFiles= 3)
+    utils.clearUselesslogs(minFiles=3)
 
     # Get Audio paths for dataset
     testRun = config['data'].getboolean('is_test_run')
 
     audio_train_paths, audio_val_paths = utils.getAudioPaths(
-        '/media/jianquan/Data/Processed Audio', percent=float(config['data']['train_percent']))
-        
+        'E:/Processed Audio', percent=float(config['data']['train_percent']))
+
     # create dataset with transforms (as required)
-    audio_train_dataset = createDataset(audio_train_paths,transformParams=utils.getTransforms(config['data'].getboolean('do_augmentations')), outputAudio=True)
-    audio_val_dataset = createDataset(audio_val_paths, transformParams=utils.getTransforms(False), outputAudio=True)
+    audio_train_dataset = createDataset(audio_train_paths, transformParams=utils.getTransforms(
+        config['data'].getboolean('do_augmentations')), outputAudio=True)
+    audio_val_dataset = createDataset(
+        audio_val_paths, transformParams=utils.getTransforms(False), outputAudio=True)
 
     print(
         f'Train dataset Length: {len(audio_train_dataset)} ({len(audio_train_paths[0])} before augmentation)'
@@ -62,22 +64,21 @@ if __name__ == '__main__':
     if config['model'].getboolean('load_pretrained'):
         model, _, startEpoch = machineLearning.selectModel()
     else:
-        model = CNNNetwork().to(device)
-        
+        model = CNNNetwork(nfft=int(config['data']['n_fft'])).to(device)
+
     lr = float(config['model']['learning_rate'])
     epochs = int(config['model']['num_epochs'])
     decay = float(config['model']['weight_decay'])
 
     lossFn = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.AdamW(model.parameters(),lr,weight_decay=decay)
+    optimizer = torch.optim.AdamW(model.parameters(), lr, weight_decay=decay)
     # optimizer = torch.optim.SGD(model.parameters(), lr, 1, weight_decay=decay)
 
     title = config['model']['title'] if config['model'][
-        'title'] else datetime.now().strftime("%Y-%m-%d,%H-%M-%S")  
-
+        'title'] else datetime.now().strftime("%Y-%m-%d,%H-%M-%S")
+    logTitle, modelIndex = utils.uniquify(f'./logs/{title}', True)
     # TensorBoard logging (as required)
     if config['logger'].getboolean('master_logger') and not testRun:
-        logTitle, modelIndex= utils.uniquify(f'./logs/{title}', True)
         writer = SummaryWriter(logTitle)
         if config['logger'].getboolean('log_graph'):
             spec, label = next(iter(val_dataloader))
@@ -87,14 +88,12 @@ if __name__ == '__main__':
         for i in config['logger']:
             config['logger'][i] = 'false'
 
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer)
-
-    for ep in range(startEpoch):
-        scheduler.step()
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, patience=2, verbose=True)
 
     #  train model
     for epoch in range(startEpoch, epochs):
-        lr = scheduler.get_lr()[0]
+        lr = optimizer.param_groups[0]['lr']
         print(f'Epoch {epoch+1}/{epochs}\n-------------------------------')
         print(f'LR: {lr}')
         train_loss, train_accuracy = machineLearning.train(
@@ -102,9 +101,8 @@ if __name__ == '__main__':
         if config['model'].getboolean('save_model_checkpoint') and epoch % int(config['model']['checkpoint']) == 0:
             torch.save(model, utils.uniquify(
                 f'saved_model/{title}({modelIndex})_epoch{epoch}.pt'))
-        scheduler.step()
 
-        val_loss, val_accuracy, _= machineLearning.eval(
+        val_loss, val_accuracy, _ = machineLearning.eval(
             model, val_dataloader, lossFn, device)
 
         if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) == 0:
@@ -118,8 +116,11 @@ if __name__ == '__main__':
 
         print(f'Training    | Loss: {train_loss} Accuracy: {train_accuracy}%')
         print(f'Validating  | Loss: {val_loss} Accuracy: {val_accuracy}% \n')
+        scheduler.step(val_loss)
 
     if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) != 0:
-        writer.add_hparams({'Learning Rate': lr, 'Batch Size': bsize, 'Epochs': epoch, 'Weight Decay': decay, 'Dropout': float(config['model']['dropout'])}, {'Accuracy': val_accuracy, 'Loss': val_loss})
+        writer.add_hparams({'Learning Rate': lr, 'Batch Size': bsize, 'Epochs': epoch, 'Weight Decay': decay, 'Dropout': float(
+            config['model']['dropout'])}, {'Accuracy': val_accuracy, 'Loss': val_loss})
 
-    torch.save(model, utils.uniquify(f'saved_model/{title}({modelIndex})_epoch{epoch}.pt'))
+    torch.save(model, utils.uniquify(
+        f'saved_model/{title}({modelIndex})_epoch{epoch}.pt'))

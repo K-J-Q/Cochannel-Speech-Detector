@@ -1,0 +1,21 @@
+nfft64_class0: c:\Anaconda\lib\site-packages\torchaudio\functional\functional.py:539: UserWarning: At least one mel filterbank has all zero values. The value for `n_mels` (128) may be set too high. Or, the value for `n_freqs` (33) may be set too low.
+  warnings.warn(
+(1.0, 0.0, 0.484375, 0.0)
+nfft64_class1: (1.0, 0.0, 0.484375, 0.0)
+nfft64_class2: (1.0, 0.0, 0.484375, 0.0)
+nfft128_class0: c:\Anaconda\lib\site-packages\torchaudio\functional\functional.py:539: UserWarning: At least one mel filterbank has all zero values. The value for `n_mels` (128) may be set too high. Or, the value for `n_freqs` (65) may be set too low.
+  warnings.warn(
+(0.999971330165863, 0.09090908616781235, 0.264955997467041, 0.0)
+nfft128_class1: (0.999971330165863, 0.09090908616781235, 0.264955997467041, 0.0)
+nfft128_class2: (0.999971330165863, 0.09090908616781235, 0.264955997467041, 0.0)
+nfft256_class0: (0.9999070763587952, 0.09090909361839294, 0.2474888414144516, 0.0)
+c:\Anaconda\lib\site-packages\torchaudio\functional\functional.py:539: UserWarning: At least one mel filterbank has all zero values. The value for `n_mels` (128) may be set too high. Or, the value for `n_freqs` (129) may be set too low.
+  warnings.warn(
+nfft256_class1: (0.9999070763587952, 0.09090909361839294, 0.2474888414144516, 0.0)
+nfft256_class2: (0.9999070763587952, 0.09090909361839294, 0.2474888414144516, 0.0)
+nfft512_class0: (0.9998537302017212, 0.09090909361839294, 0.2379673570394516, 1.1289440635664505e-06)
+nfft512_class1: (0.9998537302017212, 0.09090909361839294, 0.2379673570394516, 1.1289440635664505e-06)
+nfft512_class2: (0.9998537302017212, 0.09090909361839294, 0.2379673570394516, 1.1289440635664505e-06)
+nfft1024_class0: (0.9998119473457336, 0.09090909361839294, 0.23672424256801605, 6.471337837865576e-05)
+nfft1024_class1: (0.9998119473457336, 0.09090909361839294, 0.23672424256801605, 6.471337837865576e-05)
+nfft1024_class2: (0.9998119473457336, 0.09090909361839294, 0.23672424256801605, 6.471337837865576e-05)
