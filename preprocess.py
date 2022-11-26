@@ -7,21 +7,16 @@ import glob
 import pathlib
 import torchaudio
 from loader.AudioDataset import Augmentor
-import tkinter as tk
-from tkinter import filedialog
-import cProfile
 
-pathIN = 'E:/VocalSound'
-pathOUT = 'E:/Processed Audio/VocalSound'
+pathIN = './data/'
+pathOUT = ''
+if pathOUT == '':
+    pathOUT = pathIN
+mode = 'process'
+# process/split
 
 # NOTE: Saving of multiple channels not yet implemented. May result in data wastage.
 # Will indicate if rechanneled
-
-root = tk.Tk()
-root.withdraw()
-
-pathIN = filedialog.askdirectory(title='Select folder to process')
-
 
 def detect_silence(path, threshold, duration=0.5):
     '''
@@ -68,6 +63,7 @@ def split_silences(audio, silence_list):
 
     for silence in silence_list:
         mask[int(silence[0]*sr):int(silence[1]*sr)] = True
+
     noise_aud = torch.unsqueeze(aud[mask], 0)
     speech_aud = torch.unsqueeze(aud[np.bitwise_not(mask)], 0)
     return (noise_aud, sr), (speech_aud, sr)
@@ -75,34 +71,36 @@ def split_silences(audio, silence_list):
 
 def main():
     discarded = 0
-    device = torch.device(
-        "cuda" if torch.cuda.is_available() else "cpu")
-    audioPaths = list(pathlib.Path(pathIN).glob('**/*.wav'))[0:2]
+    audioPaths = list(pathlib.Path(pathIN).glob('**/*.wav'))
 
     augmentor = Augmentor()
     for audioIndex, audioPath in tqdm(enumerate(audioPaths), unit='files', total=len(audioPaths)):
+        # only used if cut-off halfway
         if audioIndex >= 0:
             _, audioName = os.path.split(audioPath)
-
             aud = torchaudio.load(audioPath)
-            threshold = torch.median(aud[0][aud[0] > 0])
+            aud = augmentor.resample(augmentor.rechannel(aud), False)
 
-            silence_cutoff = threshold*5
-            speech_cutoff = threshold*10
+            if mode == 'split':
+                threshold = torch.median(aud[0][aud[0] > 0])
 
-            silence_time = detect_silence(audioPath, silence_cutoff)
-            speech_time = detect_silence(
-                audioPath, speech_cutoff if speech_cutoff > 0.03 else 0.05)
-            print(silence_time)
+                silence_cutoff = threshold*5
+                speech_cutoff = threshold*10
 
-            # aud = augmentor.resample(augmentor.rechannel(aud), False)
-            # aud_noise, _ = split_silences(aud, silence_time)
-            # _, aud_speech = split_silences(aud, speech_time)
+                silence_time = detect_silence(audioPath, silence_cutoff)
+                speech_time = detect_silence(
+                    audioPath, speech_cutoff if speech_cutoff > 0.03 else 0.05)
 
-            # torchaudio.save(f'E:/Processed Audio/ENV/4 Diff Room/{audioName}',
-            #                 aud_noise[0], aud_noise[1])
-            # torchaudio.save(f'E:/Processed Audio/SPEECH/4 Diff Room/{audioName}',
-            #                 aud_speech[0], aud_speech[1])
+                
+                aud_noise, _ = split_silences(aud, silence_time)
+                _, aud_speech = split_silences(aud, speech_time)
+
+                torchaudio.save(f'E:/Processed Audio/ENV/4 Diff Room/{audioName}',
+                                aud_noise[0], aud_noise[1])
+                torchaudio.save(f'E:/Processed Audio/SPEECH/4 Diff Room/{audioName}',
+                                aud_speech[0], aud_speech[1])
+            else:
+                torchaudio.save(f'{pathOUT}/{audioName}', src=aud[0], sample_rate=aud[1])
 
     print(f'Total discarded length: {discarded}')
 

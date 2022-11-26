@@ -172,8 +172,8 @@ if __name__ == "__main__":
     a = 'E:/Original Audio/Singapore Speech Corpus/[P] Part 3 Same BoundaryMic/3003.wav'
     b = './data/JQ_rec.wav'
 
-    # predictFile(b, model, device)
+    predictFile(b, model, device)
 
-    predictFolder(model, device, 'E:/Processed Audio/')
+    # predictFolder(model, device, 'E:/Original Audio/')
 
     # predictLive(model, device)
