@@ -1,0 +1,1 @@
+pyan3 **/*.py *.py --uses --no-defines --colored --grouped --nested-groups --annotated --dot-rankdir "LR" --html >codegraph.htmlups --annotated --dot-rankdir "LR" --html >codegraph.html

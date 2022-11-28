@@ -3,7 +3,7 @@ import torchaudio
 # from torchaudio.io import StreamReader
 from pathlib import Path
 import torch
-import ml.machineLearning
+import machineLearning
 from loader.AudioDataset import *
 import random
 import seaborn as sn
@@ -222,7 +222,7 @@ def getGroundTruth(file):
 
 
 if __name__ == "__main__":
-    model, device, _ = ml.machineLearning.selectModel(
+    model, device, _ = machineLearning.selectModel(
         setCPU=False, modelIndex=22)
 
     train_nodes, eval_nodes = get_graph_node_names(model)

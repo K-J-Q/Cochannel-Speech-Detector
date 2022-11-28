@@ -1,7 +1,7 @@
 from loader.AudioDataset import createDataset, collate_batch
 from torch.utils.data import Dataset, DataLoader
 import torch
-import ml.machineLearning as machineLearning
+import machineLearning
 from model import *
 from configparser import ConfigParser
 from torch.utils.tensorboard import SummaryWriter
