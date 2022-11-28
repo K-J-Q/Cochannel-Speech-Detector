@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import loader.utils as utils
 from torchsummary import summary
 import enum
+import numpy as np
 
 # To ensure reproducibility
 random.seed(0)
@@ -48,8 +49,12 @@ def predictFile(filePath, model, device):
     sm = torch.nn.Softmax()
 
     def IoU(predicted, ground_truth):
-        for i in range(0, len(predicted)):
-            print(i)
+        gt_vec = torch.zeros(len(predicted))
+        predicted = torch.tensor(predicted)
+        for i, startTime in enumerate(range(0, (len(predicted)-1)*windowLength, windowLength)):
+            gt_vec[i] = percentageMode((get_percentage_in_window(ground_truth, startTime, startTime+windowLength)))
+        print(f'Accuracy: {torch.sum(gt_vec == predicted)/len(predicted)*100}%')
+            
 
     labelPath = filePath[0:-3]+'txt'
 
@@ -87,6 +92,7 @@ def predictFile(filePath, model, device):
             
     if os.path.exists(labelPath):
         gt_x, gt_y = getGroundTruth(labelPath, windowLength, len(wav)/sr)
+        IoU(pred_graph, (gt_x, gt_y))
         plt.step(gt_x, gt_y)
         plt.legend(['Ground Truth', 'Predicted'])
 
@@ -98,7 +104,7 @@ def predictFile(filePath, model, device):
     plt.xticks(torch.arange(0, len(pred_graph)*windowLength, 30))
     plt.show()
 
-    IoU(pred, (gt_x, gt_y))
+    
 
 
 def predictLive(model, device):
@@ -139,8 +145,10 @@ class filterMode(enum.Enum):
     Class_2 = 2
     Occupancy = 3
 
-def get_percentage_in_window(startTime, endTime):
+def get_percentage_in_window(groundTruth, startTime, endTime):
     label_time = np.array([0.0,0.0,0.0])
+    gt_x, gt_y = groundTruth
+    gt_x, gt_y = np.array(gt_x), np.array(gt_y)
     overlap = np.logical_and([gt_x > startTime],[gt_x<=endTime])
     overlapIndex = overlap.nonzero()[1]
 
@@ -149,15 +157,17 @@ def get_percentage_in_window(startTime, endTime):
         for overlap in overlapIndex:
             label_time[gt_y[overlap]] += gt_x[overlap] - lastTime
             lastTime = gt_x[overlap]
-        label_time[gt_y[overlap+1]] += endTime-gt_x[overlap]
+        try:
+            label_time[gt_y[overlap+1]] += endTime-gt_x[overlap]
+        except IndexError:
+            print('end')
     else:
         label_time[gt_y[np.argmax(gt_x > endTime)]] = endTime-startTime
     label_time=label_time/(endTime-startTime)
-    assert np.sum(label_time) == 1
     return label_time
 
 def percentageMode(occupancy_label, mode = filterMode.Occupancy):
-    returnIndex = np.where(np.where(occupancyPercentage!=0)[0] == mode.value)[0]
+    returnIndex = np.where(np.where(occupancy_label!=0)[0] == mode.value)[0]
     return returnIndex if len(returnIndex) else occupancy_label.argmax()
 
 def getGroundTruth(file, windowLength, audioLength):
