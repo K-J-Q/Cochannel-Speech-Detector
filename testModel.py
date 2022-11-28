@@ -10,6 +10,7 @@ import seaborn as sn
 import matplotlib.pyplot as plt
 import loader.utils as utils
 from torchsummary import summary
+import enum
 
 # To ensure reproducibility
 random.seed(0)
@@ -47,15 +48,10 @@ def predictFile(filePath, model, device):
     sm = torch.nn.Softmax()
 
     def IoU(predicted, ground_truth):
-        print(ground_truth)
-        print(predicted)
+        for i in range(0, len(predicted)):
+            print(i)
 
     labelPath = filePath[0:-3]+'txt'
-
-    if os.path.exists(labelPath):
-        gt_x, gt_y = getGroundTruth(labelPath)
-        plt.step(gt_x, gt_y)
-        plt.legend(['Ground Truth', 'Predicted'])
 
     pred = []
     pred_graph = [0]
@@ -88,7 +84,11 @@ def predictFile(filePath, model, device):
             pred = sm(pred)
             pred = pred.argmax(dim=1)
             pred_graph += list(pred.cpu().numpy())
-            print(pred)
+            
+    if os.path.exists(labelPath):
+        gt_x, gt_y = getGroundTruth(labelPath, windowLength, len(wav)/sr)
+        plt.step(gt_x, gt_y)
+        plt.legend(['Ground Truth', 'Predicted'])
 
     plt.step(torch.arange(len(pred_graph))*windowLength, pred_graph)
     plt.ylim(0, 2)
@@ -98,7 +98,7 @@ def predictFile(filePath, model, device):
     plt.xticks(torch.arange(0, len(pred_graph)*windowLength, 30))
     plt.show()
 
-    # IoU(pred, (gt_x, gt_y))
+    IoU(pred, (gt_x, gt_y))
 
 
 def predictLive(model, device):
@@ -133,29 +133,58 @@ def predictLive(model, device):
             # sn.barplot(y=class_map, x=pred[0].cpu().numpy())
             # plt.show()
 
+class filterMode(enum.Enum):
+    Class_0 = 0
+    Class_1 = 1
+    Class_2 = 2
+    Occupancy = 3
 
-def getGroundTruth(file):
-    label_list = [0]
-    time_list = [0]
+def get_percentage_in_window(startTime, endTime):
+    label_time = np.array([0.0,0.0,0.0])
+    overlap = np.logical_and([gt_x > startTime],[gt_x<=endTime])
+    overlapIndex = overlap.nonzero()[1]
 
+    if len(overlapIndex):
+        lastTime = startTime
+        for overlap in overlapIndex:
+            label_time[gt_y[overlap]] += gt_x[overlap] - lastTime
+            lastTime = gt_x[overlap]
+        label_time[gt_y[overlap+1]] += endTime-gt_x[overlap]
+    else:
+        label_time[gt_y[np.argmax(gt_x > endTime)]] = endTime-startTime
+    label_time=label_time/(endTime-startTime)
+    assert np.sum(label_time) == 1
+    return label_time
+
+def percentageMode(occupancy_label, mode = filterMode.Occupancy):
+    returnIndex = np.where(np.where(occupancyPercentage!=0)[0] == mode.value)[0]
+    return returnIndex if len(returnIndex) else occupancy_label.argmax()
+
+def getGroundTruth(file, windowLength, audioLength):
+    # time(x), label(y)
+    gt_x, gt_y  = [0], [0]
+
+    windowIndex = 0
     with open(file) as f:
         for lbl in f.read().splitlines():
             lbl = lbl.split('\t')
 
-            startTime = int(float(lbl[0]))
-            endTime = int(float(lbl[1]))
-            num_speakers = int(lbl[2])
+            startTime = float(lbl[0])
+            endTime = float(lbl[1])
+            num_speaker = int(lbl[2])
 
-            if startTime != time_list[-1]:
-                time_list.append(startTime)
-                label_list.append(1)
-            time_list.append(endTime)
-            label_list.append(int(num_speakers))
-    return time_list, label_list
+            if startTime != gt_x[-1]:
+                gt_x.append(startTime)
+                gt_y.append(1)
+
+            gt_x.append(endTime)
+            gt_y.append(num_speaker)
+
+    return gt_x, gt_y
 
 
 if __name__ == "__main__":
-    model, device, _ = ml.machineLearning.selectModel(setCPU=True)
+    model, device, _ = ml.machineLearning.selectModel(setCPU=True, modelIndex=18)
 
     train_nodes, eval_nodes = get_graph_node_names(model)
     return_nodes = {
@@ -170,7 +199,7 @@ if __name__ == "__main__":
 
     # summary(model, (1, 201, 161))
     a = 'E:/Original Audio/Singapore Speech Corpus/[P] Part 3 Same BoundaryMic/3003.wav'
-    b = './data/JQ_rec.wav'
+    b = './data/1speaker_0.wav'
 
     predictFile(b, model, device)
 
