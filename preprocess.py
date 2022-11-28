@@ -8,15 +8,18 @@ import pathlib
 import torchaudio
 from loader.AudioDataset import Augmentor
 
-pathIN = './data/'
+pathIN = 'E:/Processed Audio/test'
 pathOUT = ''
 if pathOUT == '':
     pathOUT = pathIN
-mode = 'process'
+
+
+mode = 'split'
 # process/split
 
 # NOTE: Saving of multiple channels not yet implemented. May result in data wastage.
 # Will indicate if rechanneled
+
 
 def detect_silence(path, threshold, duration=0.5):
     '''
@@ -71,7 +74,7 @@ def split_silences(audio, silence_list):
 
 def main():
     discarded = 0
-    audioPaths = list(pathlib.Path(pathIN).glob('**/*.wav'))
+    audioPaths = list(pathlib.Path(pathIN).glob('*.wav'))
 
     augmentor = Augmentor()
     for audioIndex, audioPath in tqdm(enumerate(audioPaths), unit='files', total=len(audioPaths)):
@@ -91,16 +94,15 @@ def main():
                 speech_time = detect_silence(
                     audioPath, speech_cutoff if speech_cutoff > 0.03 else 0.05)
 
-                
                 aud_noise, _ = split_silences(aud, silence_time)
                 _, aud_speech = split_silences(aud, speech_time)
-
-                torchaudio.save(f'E:/Processed Audio/ENV/4 Diff Room/{audioName}',
+                torchaudio.save(f'{pathIN}/ENV/{audioName}',
                                 aud_noise[0], aud_noise[1])
-                torchaudio.save(f'E:/Processed Audio/SPEECH/4 Diff Room/{audioName}',
+                torchaudio.save(f'{pathIN}/SPEECH/{audioName}',
                                 aud_speech[0], aud_speech[1])
             else:
-                torchaudio.save(f'{pathOUT}/{audioName}', src=aud[0], sample_rate=aud[1])
+                torchaudio.save(f'{pathOUT}/{audioName}',
+                                src=aud[0], sample_rate=aud[1])
 
     print(f'Total discarded length: {discarded}')
 

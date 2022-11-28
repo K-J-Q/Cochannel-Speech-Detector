@@ -21,8 +21,7 @@ class_map = ['0', '1', '2']
 
 
 def predictFolder(model, device, folderPath):
-    audio_paths, _ = utils.getAudioPaths(folderPath, percent=0.01)
-
+    audio_paths, _ = utils.getAudioPaths(folderPath, percent=1)
     audio_test_dataset = createDataset(audio_paths, outputAudio=True)
 
     test_dataloader = torch.utils.data.DataLoader(
@@ -36,7 +35,7 @@ def predictFolder(model, device, folderPath):
     test_loss, test_acc, confusion_matrix = ml.machineLearning.eval(
         model, test_dataloader, torch.nn.CrossEntropyLoss(), device)
 
-    print(f'Validating  | Loss: {test_loss} Accuracy: {test_acc}% \n')
+    print(f'Test set  | Loss: {test_loss} Accuracy: {test_acc}% \n')
     sn.heatmap(confusion_matrix.cpu(), annot=True,
                xticklabels=class_map, yticklabels=class_map)
     plt.ylabel('Actual')
@@ -44,17 +43,34 @@ def predictFolder(model, device, folderPath):
     plt.show()
 
 
-def predictFile(filePath, model, device):
+def predictLabeledFolders(folderPath, model, device):
+    filepaths = list(Path('./data').glob('**/*.wav'))
+    
+    if __name__ == '__main__':
+        for path in filepaths:
+            predictFile(str(path), model, device, plotPredicton=True)
+    else:
+        cum_acc = 0
+        for path in filepaths:
+            cum_acc += predictFile(str(path), model, device, plotPredicton=False)
+        cum_acc/=len(filepaths)
+        print(f'\nCumulative accuracy: {cum_acc}%')
+        return cum_acc
+
+
+def predictFile(filePath, model, device, plotPredicton=True):
     augmentor = Augmentor()
-    sm = torch.nn.Softmax()
+    sm = torch.nn.Softmax(dim=1)
 
     def IoU(predicted, ground_truth):
         gt_vec = torch.zeros(len(predicted))
         predicted = torch.tensor(predicted)
         for i, startTime in enumerate(range(0, (len(predicted)-1)*windowLength, windowLength)):
-            gt_vec[i] = percentageMode((get_percentage_in_window(ground_truth, startTime, startTime+windowLength)))
-        print(f'Accuracy: {torch.sum(gt_vec == predicted)/len(predicted)*100}%')
-            
+            gt_vec[i] = percentageMode(get_percentage_in_window(
+                ground_truth, startTime, startTime+windowLength), mode=predicted[i])
+        acc = torch.sum(gt_vec == predicted)/len(predicted)*100
+        print(f'Accuracy: {acc}%')
+        return acc
 
     labelPath = filePath[0:-3]+'txt'
 
@@ -89,22 +105,27 @@ def predictFile(filePath, model, device):
             pred = sm(pred)
             pred = pred.argmax(dim=1)
             pred_graph += list(pred.cpu().numpy())
-            
+
     if os.path.exists(labelPath):
-        gt_x, gt_y = getGroundTruth(labelPath, windowLength, len(wav)/sr)
-        IoU(pred_graph, (gt_x, gt_y))
-        plt.step(gt_x, gt_y)
-        plt.legend(['Ground Truth', 'Predicted'])
+        gt_x, gt_y = getGroundTruth(labelPath)
+        print(f'({os.path.basename(labelPath)})', end=" ")
 
-    plt.step(torch.arange(len(pred_graph))*windowLength, pred_graph)
-    plt.ylim(0, 2)
-    plt.ylabel('Number of speakers')
-    plt.xlabel('Time (seconds)')
-    plt.yticks(torch.arange(0, 2))
-    plt.xticks(torch.arange(0, len(pred_graph)*windowLength, 30))
-    plt.show()
+        accuracy = IoU(pred_graph, (gt_x, gt_y))
 
-    
+        if plotPredicton == False:
+            return accuracy
+        if plotPredicton:
+            plt.step(gt_x, gt_y)
+            plt.legend(['Ground Truth', 'Predicted'])
+
+    if plotPredicton:
+        plt.step(torch.arange(len(pred_graph))*windowLength, pred_graph)
+        plt.ylim(0, 2)
+        plt.ylabel('Number of speakers')
+        plt.xlabel('Time (seconds)')
+        plt.yticks(torch.arange(0, 2))
+        plt.xticks(torch.arange(0, len(pred_graph)*windowLength, 30))
+        plt.show()
 
 
 def predictLive(model, device):
@@ -139,18 +160,22 @@ def predictLive(model, device):
             # sn.barplot(y=class_map, x=pred[0].cpu().numpy())
             # plt.show()
 
+
 class filterMode(enum.Enum):
     Class_0 = 0
     Class_1 = 1
     Class_2 = 2
     Occupancy = 3
 
+
 def get_percentage_in_window(groundTruth, startTime, endTime):
-    label_time = np.array([0.0,0.0,0.0])
+    label_time = np.array([0.0, 0.0, 0.0])
     gt_x, gt_y = groundTruth
     gt_x, gt_y = np.array(gt_x), np.array(gt_y)
-    overlap = np.logical_and([gt_x > startTime],[gt_x<=endTime])
+    overlap = np.logical_and([gt_x > startTime], [gt_x <= endTime])
     overlapIndex = overlap.nonzero()[1]
+
+    print(startTime, endTime, end=" | ")
 
     if len(overlapIndex):
         lastTime = startTime
@@ -160,21 +185,24 @@ def get_percentage_in_window(groundTruth, startTime, endTime):
         try:
             label_time[gt_y[overlap+1]] += endTime-gt_x[overlap]
         except IndexError:
-            print('end')
+            pass
     else:
         label_time[gt_y[np.argmax(gt_x > endTime)]] = endTime-startTime
-    label_time=label_time/(endTime-startTime)
+    label_time = label_time/(endTime-startTime)
     return label_time
 
-def percentageMode(occupancy_label, mode = filterMode.Occupancy):
-    returnIndex = np.where(np.where(occupancy_label!=0)[0] == mode.value)[0]
-    return returnIndex if len(returnIndex) else occupancy_label.argmax()
 
-def getGroundTruth(file, windowLength, audioLength):
+def percentageMode(occupancy_label, mode=filterMode.Occupancy):
+    mode = mode.value if isinstance(mode, filterMode) else int(mode)
+    returnIndex = np.where(np.where(occupancy_label != 0)[0] == mode)[0]
+    print(mode, f'{occupancy_label}')
+    return int(returnIndex) if len(returnIndex) else int(occupancy_label.argmax())
+
+
+def getGroundTruth(file):
     # time(x), label(y)
-    gt_x, gt_y  = [0], [0]
+    gt_x, gt_y = [0], [0]
 
-    windowIndex = 0
     with open(file) as f:
         for lbl in f.read().splitlines():
             lbl = lbl.split('\t')
@@ -194,7 +222,8 @@ def getGroundTruth(file, windowLength, audioLength):
 
 
 if __name__ == "__main__":
-    model, device, _ = ml.machineLearning.selectModel(setCPU=True, modelIndex=18)
+    model, device, _ = ml.machineLearning.selectModel(
+        setCPU=False, modelIndex=22)
 
     train_nodes, eval_nodes = get_graph_node_names(model)
     return_nodes = {
@@ -211,8 +240,11 @@ if __name__ == "__main__":
     a = 'E:/Original Audio/Singapore Speech Corpus/[P] Part 3 Same BoundaryMic/3003.wav'
     b = './data/1speaker_0.wav'
 
-    predictFile(b, model, device)
+    print(f'\n---------------------------------------\n')
 
-    # predictFolder(model, device, 'E:/Original Audio/')
+    # predictFile(b, model, device)
+    predictLabeledFolders('./data', model, device)
+    # predictFolder(
+    #     model, device, 'E:/Processed Audio/test/')
 
     # predictLive(model, device)

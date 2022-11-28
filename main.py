@@ -7,6 +7,7 @@ from configparser import ConfigParser
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 import loader.utils as utils
+import testModel
 
 if __name__ == '__main__':
     config = ConfigParser()
@@ -17,9 +18,8 @@ if __name__ == '__main__':
 
     # Get Audio paths for dataset
     testRun = config['data'].getboolean('is_test_run')
-
     audio_train_paths, audio_val_paths = utils.getAudioPaths(
-        'E:/Processed Audio', percent=float(config['data']['train_percent']))
+        '/media/jianquan/Data/Processed Audio/train/', percent=float(config['data']['train_percent']))
 
     # create dataset with transforms (as required)
     audio_train_dataset = createDataset(audio_train_paths, transformParams=utils.getTransforms(
@@ -41,7 +41,7 @@ if __name__ == '__main__':
         audio_train_dataset,
         batch_size=bsize,
         num_workers=workers,
-        # persistent_workers=True,
+        persistent_workers=True,
         # prefetch_factor=12,
         shuffle=True,
         pin_memory=True,
@@ -52,6 +52,7 @@ if __name__ == '__main__':
         audio_val_dataset,
         batch_size=bsize,
         num_workers=workers,
+        persistent_workers=True,
         shuffle=False,
         pin_memory=True,
         collate_fn=collate_batch
@@ -92,9 +93,9 @@ if __name__ == '__main__':
         optimizer, patience=2, verbose=True)
 
     #  train model
-    for epoch in range(startEpoch, epochs):
+    for epoch in range(startEpoch+1, epochs+1):
         lr = optimizer.param_groups[0]['lr']
-        print(f'Epoch {epoch+1}/{epochs}\n-------------------------------')
+        print(f'Epoch {epoch}/{epochs}\n-------------------------------')
         print(f'LR: {lr}')
         train_loss, train_accuracy = machineLearning.train(
             model, train_dataloader, lossFn, optimizer, device)
@@ -118,9 +119,11 @@ if __name__ == '__main__':
         print(f'Validating  | Loss: {val_loss} Accuracy: {val_accuracy}% \n')
         scheduler.step(val_loss)
 
-    if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) != 0:
+    test_acc = testModel.predictLabeledFolders('./data', model, device)
+
+    if config['logger'].getboolean('log_model_params') and epoch% int(config['model']['checkpoint']) != 0:
         writer.add_hparams({'Learning Rate': lr, 'Batch Size': bsize, 'Epochs': epoch, 'Weight Decay': decay, 'Dropout': float(
-            config['model']['dropout'])}, {'Accuracy': val_accuracy, 'Loss': val_loss})
+            config['model']['dropout'])}, {'Accuracy': val_accuracy, 'Loss': val_loss, 'Test Accuracy': test_acc})
 
     torch.save(model, utils.uniquify(
         f'saved_model/{title}({modelIndex})_epoch{epoch}.pt'))

@@ -4,6 +4,7 @@ import torchmetrics
 from configparser import ConfigParser
 from torch.profiler import profile, record_function, ProfilerActivity
 from pathlib import Path
+import os
 
 config = ConfigParser()
 config.read('config.ini')
@@ -16,7 +17,7 @@ def selectModel(setCPU = False, modelIndex = None):
     device = torch.device("cuda" if (torch.cuda.is_available() and not setCPU) else "cpu") 
     model_paths = [str(p) for p in Path('./saved_model/').glob(f'*.pt')]
     for i, model_path in enumerate(model_paths):
-        print(f'[{i}] {model_path}')
+        print(f'[{i}] {os.path.basename(model_path)}')
     path = model_paths[int(input('Select saved model > ')) if modelIndex == None else modelIndex]
     model = torch.load(path, map_location=device)
     epoch = path.split('epoch',1)[1][:-3]
