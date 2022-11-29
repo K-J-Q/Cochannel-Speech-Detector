@@ -45,17 +45,15 @@ def predictFolder(model, device, folderPath):
 
 def predictLabeledFolders(folderPath, model, device):
     filepaths = list(Path('./data').glob('**/*.wav'))
-    
-    if __name__ == '__main__':
-        for path in filepaths:
-            predictFile(str(path), model, device, plotPredicton=True)
-    else:
-        cum_acc = 0
-        for path in filepaths:
-            cum_acc += predictFile(str(path), model, device, plotPredicton=False)
-        cum_acc/=len(filepaths)
-        print(f'\nCumulative accuracy: {cum_acc}%')
-        return cum_acc
+    cum_correct_predictions, cum_length = 0,0
+    for path in filepaths:
+        correctNum, length = predictFile(str(path), model, device, plotPredicton= False if __name__ =='__main__' else False)
+        print(f'({os.path.basename(path)}) Accuracy: {correctNum/length *100}%')
+        cum_correct_predictions += correctNum
+        cum_length += length
+    cum_acc = cum_correct_predictions/cum_length*100
+    print(f'\nCumulative accuracy: {cum_acc}%')
+    return cum_acc
 
 
 def predictFile(filePath, model, device, plotPredicton=True):
@@ -68,14 +66,13 @@ def predictFile(filePath, model, device, plotPredicton=True):
         for i, startTime in enumerate(range(0, (len(predicted)-1)*windowLength, windowLength)):
             gt_vec[i] = percentageMode(get_percentage_in_window(
                 ground_truth, startTime, startTime+windowLength), mode=predicted[i])
-        acc = torch.sum(gt_vec == predicted)/len(predicted)*100
-        print(f'Accuracy: {acc}%')
-        return acc
+        num_correct_pred = torch.sum(gt_vec == predicted)
+        return num_correct_pred
 
     labelPath = filePath[0:-3]+'txt'
 
     pred = []
-    pred_graph = [0]
+    pred_graph = []
 
     # config
     batch_size = 20
@@ -94,10 +91,11 @@ def predictFile(filePath, model, device, plotPredicton=True):
                 # print(splitIndex, ' ', len(trimmed_audio))
                 if len(trimmed_audio) == sampleLength:
                     data_tensor[splitIndex][0] = trimmed_audio
-                    # plt.imshow(spectrogram_tensor[splitIndex][0])
-                    # plt.show()
-
-            # print(spectrogram_tensor)
+                else:
+                    # end of audio file
+                    data_tensor = data_tensor[0:splitIndex]
+                    break
+        
             pred = model(data_tensor.to(device))
             # for dim in pred['conv2'][-2]:
             #     plt.imshow(dim)
@@ -106,27 +104,27 @@ def predictFile(filePath, model, device, plotPredicton=True):
             pred = pred.argmax(dim=1)
             pred_graph += list(pred.cpu().numpy())
 
-    if os.path.exists(labelPath):
-        gt_x, gt_y = getGroundTruth(labelPath)
-        print(f'({os.path.basename(labelPath)})', end=" ")
-
-        accuracy = IoU(pred_graph, (gt_x, gt_y))
-
-        if plotPredicton == False:
-            return accuracy
-        if plotPredicton:
-            plt.step(gt_x, gt_y)
-            plt.legend(['Ground Truth', 'Predicted'])
-
+    
     if plotPredicton:
-        plt.step(torch.arange(len(pred_graph))*windowLength, pred_graph)
-        plt.ylim(0, 2)
+        plt.step(torch.arange(len(pred_graph)+1)*windowLength, np.insert(pred_graph,0 , 0))
+        plt.ylim(0, 2.5)
         plt.ylabel('Number of speakers')
         plt.xlabel('Time (seconds)')
-        plt.yticks(torch.arange(0, 2))
+        plt.yticks([0,1,2])
         plt.xticks(torch.arange(0, len(pred_graph)*windowLength, 30))
-        plt.show()
+        
 
+    if os.path.exists(labelPath):
+        gt_x, gt_y = getGroundTruth(labelPath)        
+        num_correct_pred = IoU(pred_graph, (gt_x, gt_y))
+
+        if plotPredicton:
+            plt.step(gt_x, gt_y)
+            plt.legend(['Predicted','Ground Truth'])
+            plt.show()
+
+        return num_correct_pred, len(pred_graph)
+    
 
 def predictLive(model, device):
     augmentor = Augmentor()
@@ -156,7 +154,6 @@ def predictLive(model, device):
                 spectrogram_tensor, 0).to(device)
             pred = model(spectrogram_tensor)
             pred = sm(pred)
-            print(pred)
             # sn.barplot(y=class_map, x=pred[0].cpu().numpy())
             # plt.show()
 
@@ -175,8 +172,6 @@ def get_percentage_in_window(groundTruth, startTime, endTime):
     overlap = np.logical_and([gt_x > startTime], [gt_x <= endTime])
     overlapIndex = overlap.nonzero()[1]
 
-    print(startTime, endTime, end=" | ")
-
     if len(overlapIndex):
         lastTime = startTime
         for overlap in overlapIndex:
@@ -194,9 +189,11 @@ def get_percentage_in_window(groundTruth, startTime, endTime):
 
 def percentageMode(occupancy_label, mode=filterMode.Occupancy):
     mode = mode.value if isinstance(mode, filterMode) else int(mode)
-    returnIndex = np.where(np.where(occupancy_label != 0)[0] == mode)[0]
-    print(mode, f'{occupancy_label}')
-    return int(returnIndex) if len(returnIndex) else int(occupancy_label.argmax())
+    if (occupancy_label==1).any():
+        return int(np.where(occupancy_label==1)[0])
+    else:
+        returnIndex = np.where(np.where(occupancy_label != 0)[0] == mode)[0]
+        return int(returnIndex) if len(returnIndex) else int(occupancy_label.argmax())
 
 
 def getGroundTruth(file):
@@ -223,7 +220,7 @@ def getGroundTruth(file):
 
 if __name__ == "__main__":
     model, device, _ = machineLearning.selectModel(
-        setCPU=False, modelIndex=22)
+        setCPU=False, modelIndex=21)
 
     train_nodes, eval_nodes = get_graph_node_names(model)
     return_nodes = {
@@ -238,7 +235,7 @@ if __name__ == "__main__":
 
     # summary(model, (1, 201, 161))
     a = 'E:/Original Audio/Singapore Speech Corpus/[P] Part 3 Same BoundaryMic/3003.wav'
-    b = './data/1speaker_0.wav'
+    b = './data/2speaker_0.wav'
 
     print(f'\n---------------------------------------\n')
 
