@@ -107,7 +107,10 @@ def createDataset(audio_paths, transformParams=[{}], outputAudio=False):
 
     return combinedDataset
 
+
 n_fft = int(config['data']['n_fft'])
+
+
 class AudioDataset(Dataset):
     """
     A custom dataset that fetches the audio path, load as waveform, perform augmentation audioTransformList and specTransformList and outputs the spectrogram
@@ -136,7 +139,8 @@ class AudioDataset(Dataset):
         self.Augmentor = Augmentor()
         self.samplesPerClass = 3
         self.outputAudio = outputAudio
-        self.dataShape = torch.Size([1, self.windowLength * 8000]) if outputAudio else generateSpec(torch.zeros([1,self.windowLength*8000])).shape
+        self.dataShape = torch.Size([1, self.windowLength * 8000]) if outputAudio else generateSpec(
+            torch.zeros([1, self.windowLength*8000])).shape
 
     def __len__(self):
         return min(len(self.env_paths), len(self.speech_paths))
@@ -144,11 +148,13 @@ class AudioDataset(Dataset):
     def __getitem__(self, idx):
         env_aud = self.__getAudio(self.env_paths[idx])
         speech1_aud = self.__getAudio(self.speech_paths[idx])
-        speech2_aud = self.__getAudio(self.speech_paths[random.randint(0, self.__len__()) - 1])
-        
-        X = torch.empty([self.class_size*self.samplesPerClass] + list(self.dataShape))
-        Y = torch.tensor([0,1,2]).repeat(self.class_size)
-        
+        speech2_aud = self.__getAudio(
+            self.speech_paths[random.randint(0, self.__len__()) - 1])
+
+        X = torch.empty(
+            [self.class_size*self.samplesPerClass] + list(self.dataShape))
+        Y = torch.tensor([0, 1, 2]).repeat(self.class_size)
+
         for i in range(self.class_size):
             env = self.__split(env_aud)
             aud1 = self.__split(speech1_aud)
@@ -167,7 +173,7 @@ class AudioDataset(Dataset):
             # torchaudio.save(loader.utils.uniquify(
             #     './merged.wav'), merged_aud, 8000)
 
-        return [X, Y]   
+        return [X, Y]
 
     def __split(self, audio):
         wav, sr = audio
@@ -181,25 +187,28 @@ class AudioDataset(Dataset):
         # if self.generateCochannelMode:
         # gain = random.uniform(0.4, 0.6)
         gain = 0.5
-            # option 1 : normalise by energy = np.linalg.norm(aud1) L2 norm
-            # option 2: normalise by amplitude
-            # option 3: normalise by noisefloor (estimate noisefloor by median of spectrogram)
+        # option 1 : normalise by energy = np.linalg.norm(aud1) L2 norm
+        # option 2: normalise by amplitude
+        # option 3: normalise by noisefloor (estimate noisefloor by median of spectrogram)
 
         return aud1*gain + aud2*(1-gain)
-    
+
     def __getAudio(self, audioPath):
         waveform, sample_rate = torchaudio.load(audioPath)
         if self.beforeCochannelAugmentSox:
-            audio, _ = torchaudio.sox_effects.apply_effects_tensor(torch.unsqueeze(audio,0), 8000, self.beforeCochannelAugmentSox)
+            audio, _ = torchaudio.sox_effects.apply_effects_tensor(
+                torch.unsqueeze(audio, 0), 8000, self.beforeCochannelAugmentSox)
         return waveform, sample_rate
+
 
 def generateSpec(wav):
     import librosa
     import numpy as np
-    spec = torch.tensor(np.abs(librosa.stft(wav.numpy(), n_fft = n_fft)))
+    spec = torch.tensor(np.abs(librosa.stft(wav.numpy(), n_fft=n_fft)))
     spec = spec/(spec + spec.median()+1e-12)
     # spec = spectrogram(wav)
     return spec
+
 
 def specMask(spectrogram):
     fMasking = T.FrequencyMasking(freq_mask_param=30)
@@ -220,10 +229,9 @@ def collate_batch(batches):
     for i, (x, y) in enumerate(batches):
         X[i*samplesPerBatch:(i+1)*samplesPerBatch] = x
         Y[i*samplesPerBatch:(i+1)*samplesPerBatch] = y
-    
+
     Y = torch.Tensor(Y).type(torch.LongTensor)
     return X, Y
-
 
 
 def main():

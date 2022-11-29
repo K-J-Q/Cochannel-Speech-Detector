@@ -8,13 +8,13 @@ import pathlib
 import torchaudio
 from loader.AudioDataset import Augmentor
 
-pathIN = 'E:/Processed Audio/test'
+pathIN = './data'
 pathOUT = ''
 if pathOUT == '':
     pathOUT = pathIN
 
 
-mode = 'split'
+mode = 'process'
 # process/split
 
 # NOTE: Saving of multiple channels not yet implemented. May result in data wastage.
