@@ -15,7 +15,8 @@ class CNNNetwork(nn.Module):
 
         self.dispClass = dispClass
 
-        self.generateSpec = torchaudio.transforms.MelSpectrogram(n_fft=nfft,n_mels=64)
+        self.generateSpec = torchaudio.transforms.MelSpectrogram(
+            n_fft=nfft, n_mels=64)
         self.augmentSpec = nn.Sequential(torchaudio.transforms.FrequencyMasking(
             30, True), torchaudio.transforms.TimeMasking(20, True))
 
@@ -39,6 +40,8 @@ class CNNNetwork(nn.Module):
         # return x/(x+10*x.median()+1e-12)
 
     def forward(self, wav):
+        # wav = torchaudio.functional.highpass_biquad(wav, 8000, 2)
+        wav = torchaudio.functional.dcshift(wav, -wav.mean())
         x = self.generateSpec(wav)
         x = self.__normaliseSpec(x)
 
