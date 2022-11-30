@@ -48,7 +48,7 @@ def predictLabeledFolders(folderPath, model, device):
     cum_correct_predictions, cum_length = 0, 0
     for path in filepaths:
         correctNum, length = predictFile(str(
-            path), model, device, plotPredicton=False if __name__ == '__main__' else False)
+            path), model, device, plotPredicton=True if __name__ == '__main__' else False)
         cum_correct_predictions += correctNum
         cum_length += length
     cum_acc = cum_correct_predictions/cum_length*100
@@ -86,18 +86,23 @@ def predictFile(filePath, model, device, plotPredicton=True):
                     # end of audio file
                     data_tensor = data_tensor[0:splitIndex]
                     break
+            if len(data_tensor) > 1:
+                pred = model(data_tensor.to(device))
+                if type(pred) == dict:
+                    if 'spec' in pred:
+                        data = pred['spec'][0][0].cpu()
+                        plt.imshow(data)
+                        plt.show()
+                    # for dim in pred['conv2'][-2]:
+                    #     plt.imshow(dim)
+                    #     plt.show()
+                    pred = sm(pred['out'])
+                else:
+                    pred = sm(pred)
+                pred = pred.argmax(dim=1)
+                pred_graph += list(pred.cpu().numpy())
 
-            pred = model(data_tensor.to(device))
-            if 'spec' in pred:
-                plt.imshow(pred['spec'][0][0].cpu())
-                plt.show()
-            # for dim in pred['conv2'][-2]:
-            #     plt.imshow(dim)
-            #     plt.show()
-            pred = sm(pred['out'])
-            pred = pred.argmax(dim=1)
-            pred_graph += list(pred.cpu().numpy())
-            predLength = len(pred_graph)
+    predLength = len(pred_graph)
 
     if plotPredicton:
         plt.bar((torch.arange(predLength+1) *
@@ -230,10 +235,10 @@ if __name__ == "__main__":
     model, device, _ = machineLearning.selectModel(setCPU=False, modelIndex=7)
 
     train_nodes, eval_nodes = get_graph_node_names(model)
-    print(eval_nodes)
+    # print(eval_nodes)
     return_nodes = {
         # node_name: user-specified key for output dict
-        # 'truediv': 'spec',
+        'truediv': 'spec',
         # 'conv1': 'conv1',
         # 'conv2': 'conv2',
         # 'conv3': 'conv3',
@@ -249,8 +254,8 @@ if __name__ == "__main__":
 
     print(f'\n---------------------------------------\n')
 
-    # predictFile(b, model, device)
-    predictLabeledFolders('./data', model, device)
+    predictFile(b, model, device)
+    # predictLabeledFolders('./data', model, device)
     # predictFolder(
     #     model, device, 'E:/Processed Audio/test/')
 
