@@ -1,6 +1,6 @@
 from torchvision.models.feature_extraction import get_graph_node_names, create_feature_extractor
 import torchaudio
-from torchaudio.io import StreamReader
+# from torchaudio.io import StreamReader
 from pathlib import Path
 import torch
 import machineLearning
@@ -134,7 +134,6 @@ def predictFile(filePath, model, device, plotPredicton=True):
             plt.show()
 
         return num_correct_pred, predLength
-    return 0, 0
 
 
 def predictLive(model, device):
@@ -254,8 +253,8 @@ if __name__ == "__main__":
 
     print(f'\n---------------------------------------\n')
 
-    predictFile(b, model, device)
-    # predictLabeledFolders('./data', model, device)
+    # predictFile(b, model, device)
+    predictLabeledFolders('./data', model, device)
     # predictFolder(
     #     model, device, 'E:/Processed Audio/test/')
 
