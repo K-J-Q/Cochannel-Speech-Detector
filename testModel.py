@@ -87,10 +87,12 @@ def predictFile(filePath, model, device, plotPredicton=True):
                     break
 
             pred = model(data_tensor.to(device))
+            plt.imshow(pred['spec'][0][0].cpu())
+            plt.show()
             # for dim in pred['conv2'][-2]:
             #     plt.imshow(dim)
             #     plt.show()
-            pred = sm(pred)
+            pred = sm(pred['out'])
             pred = pred.argmax(dim=1)
             pred_graph += list(pred.cpu().numpy())
             predLength = len(pred_graph)
@@ -131,7 +133,7 @@ def predictLive(model, device):
 
     streamer = StreamReader(
         src="audio=" +
-            "@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\wave_{F944BDCC-04EE-4726-8FAD-BFC74FE170A3}",
+            "@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\wave_{F0156C43-323C-461D-9659-7478EB2D0708}",
         format="dshow",
     )
 
@@ -148,7 +150,9 @@ def predictLive(model, device):
             # wav = torch.cat((wav, chunk[:, 0]))
             wav, sr = augmentor.audio_preprocessing([chunk.T, 44100])
             pred = model(torch.unsqueeze(wav, dim=0).to(device))
-            pred = sm(pred)
+            plt.imshow(pred['spec'][0][0].cpu())
+            plt.show()
+            pred = sm(pred['out'])
             print(pred)
             # sn.barplot(y=class_map, x=pred[0].cpu().numpy())
             # plt.show()
@@ -222,23 +226,26 @@ if __name__ == "__main__":
         setCPU=False, modelIndex=7)
 
     train_nodes, eval_nodes = get_graph_node_names(model)
+    print(eval_nodes)
     return_nodes = {
         # node_name: user-specified key for output dict
+        'truediv': 'spec',
         'conv1': 'conv1',
         'conv2': 'conv2',
         'conv3': 'conv3',
         'conv4': 'conv4',
+        'fc3': 'out'
     }
-    # model = create_feature_extractor(model, return_nodes=return_nodes)
+    model = create_feature_extractor(model, return_nodes=return_nodes)
     model.eval()
 
     # summary(model, (1, 201, 161))
     a = 'E:/Original Audio/Singapore Speech Corpus/[P] Part 3 Same BoundaryMic/3003.wav'
-    b = './data/1speaker_0.wav'
+    b = './data/1speaker_4.wav'
 
     print(f'\n---------------------------------------\n')
 
-    # predictFile(b, model, device)
+    predictFile(b, model, device)
     # predictLabeledFolders('./data', model, device)
     # predictFolder(
     #     model, device, 'E:/Processed Audio/test/')
