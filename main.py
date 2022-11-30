@@ -121,7 +121,7 @@ if __name__ == '__main__':
 
     test_acc = testModel.predictLabeledFolders('./data', model, device)
 
-    if config['logger'].getboolean('log_model_params') and epoch% int(config['model']['checkpoint']) != 0:
+    if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) != 0:
         writer.add_hparams({'Learning Rate': lr, 'Batch Size': bsize, 'Epochs': epoch, 'Weight Decay': decay, 'Dropout': float(
             config['model']['dropout'])}, {'Accuracy': val_accuracy, 'Loss': val_loss, 'Test Accuracy': test_acc})
 

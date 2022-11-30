@@ -15,7 +15,8 @@ class CNNNetwork(nn.Module):
 
         self.dispClass = dispClass
 
-        self.generateSpec = torchaudio.transforms.MelSpectrogram(n_fft=nfft,n_mels=64)
+        self.generateSpec = torchaudio.transforms.MelSpectrogram(
+            n_fft=nfft, n_mels=64)
         self.augmentSpec = nn.Sequential(torchaudio.transforms.FrequencyMasking(
             30, True), torchaudio.transforms.TimeMasking(20, True))
 

@@ -1,6 +1,6 @@
 from torchvision.models.feature_extraction import get_graph_node_names, create_feature_extractor
 import torchaudio
-from torchaudio.io import StreamReader
+# from torchaudio.io import StreamReader
 from pathlib import Path
 import torch
 import machineLearning
@@ -71,6 +71,7 @@ def predictFile(filePath, model, device, plotPredicton=True):
     with torch.no_grad():
         wav, sr = augmentor.resample(
             augmentor.rechannel(torchaudio.load(filePath)))
+        wav = torchaudio.functional.dcshift(wav,-wav.mean())
         sampleLength = windowLength * sr
         wav = wav[0]
         batch_length = batch_size*sampleLength
@@ -87,8 +88,9 @@ def predictFile(filePath, model, device, plotPredicton=True):
                     break
 
             pred = model(data_tensor.to(device))
-            plt.imshow(pred['spec'][0][0].cpu())
-            plt.show()
+            if 'spec' in pred:
+                plt.imshow(pred['spec'][0][0].cpu())
+                plt.show()
             # for dim in pred['conv2'][-2]:
             #     plt.imshow(dim)
             #     plt.show()
@@ -96,6 +98,7 @@ def predictFile(filePath, model, device, plotPredicton=True):
             pred = pred.argmax(dim=1)
             pred_graph += list(pred.cpu().numpy())
             predLength = len(pred_graph)
+
     if plotPredicton:
         plt.bar((torch.arange(predLength+1) *
                 windowLength)-1, np.insert(pred_graph, 0, 0))
@@ -125,7 +128,8 @@ def predictFile(filePath, model, device, plotPredicton=True):
             plt.legend(['Ground Truth', 'Computed Truth', 'Model Prediction'])
             plt.show()
 
-        return num_correct_pred, predLength
+        return int(num_correct_pred), predLength
+    return 0,0
 
 
 def predictLive(model, device):
@@ -150,8 +154,9 @@ def predictLive(model, device):
             # wav = torch.cat((wav, chunk[:, 0]))
             wav, sr = augmentor.audio_preprocessing([chunk.T, 44100])
             pred = model(torch.unsqueeze(wav, dim=0).to(device))
-            plt.imshow(pred['spec'][0][0].cpu())
-            plt.show()
+            if 'spec' in pred:
+                plt.imshow(pred['spec'][0][0].cpu())
+                plt.show()
             pred = sm(pred['out'])
             print(pred)
             # sn.barplot(y=class_map, x=pred[0].cpu().numpy())
@@ -222,18 +227,17 @@ def getGroundTruth(file):
 
 
 if __name__ == "__main__":
-    model, device, _ = machineLearning.selectModel(
-        setCPU=False, modelIndex=7)
+    model, device, _ = machineLearning.selectModel(setCPU=False, modelIndex=7)
 
-    train_nodes, eval_nodes = get_graph_node_names(model)
-    print(eval_nodes)
+    # train_nodes, eval_nodes = get_graph_node_names(model)
+    # print(eval_nodes)
     return_nodes = {
         # node_name: user-specified key for output dict
-        'truediv': 'spec',
-        'conv1': 'conv1',
-        'conv2': 'conv2',
-        'conv3': 'conv3',
-        'conv4': 'conv4',
+        # 'truediv': 'spec',
+        # 'conv1': 'conv1',
+        # 'conv2': 'conv2',
+        # 'conv3': 'conv3',
+        # 'conv4': 'conv4',
         'fc3': 'out'
     }
     model = create_feature_extractor(model, return_nodes=return_nodes)
@@ -245,12 +249,12 @@ if __name__ == "__main__":
 
     print(f'\n---------------------------------------\n')
 
-    predictFile(b, model, device)
-    # predictLabeledFolders('./data', model, device)
+    # predictFile(b, model, device)
+    predictLabeledFolders('./data', model, device)
     # predictFolder(
     #     model, device, 'E:/Processed Audio/test/')
 
-    predictLive(model, device)
+    # predictLive(model, device)
 
 
 # ffmpeg command to find device:
