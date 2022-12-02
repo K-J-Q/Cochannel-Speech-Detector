@@ -90,8 +90,8 @@ if __name__ == '__main__':
         for i in config['logger']:
             config['logger'][i] = 'false'
 
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer, patience=2, verbose=True)
+    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    #     optimizer, patience=2, verbose=True)
 
     #  train model
     for epoch in range(startEpoch+1, epochs+1):
@@ -119,7 +119,7 @@ if __name__ == '__main__':
 
         print(f'Training    | Loss: {train_loss} Accuracy: {train_accuracy}%')
         print(f'Validating  | Loss: {val_loss} Accuracy: {val_accuracy}% \n')
-        scheduler.step(val_loss)
+        # scheduler.step(val_loss)
 
     test_acc = testModel.predictLabeledFolders('./data', model, device)
 
@@ -132,5 +132,5 @@ if __name__ == '__main__':
         epoch = epochs + 0.1
 
     if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) != 0:
-        writer.add_hparams({'Name': title, 'Learning Rate': lr, 'Batch Size': bsize, 'class_size': int(config['data']['class_size']), 'Epochs': int(epoch), 'Weight Decay': decay, 'Dropout': float(
+        writer.add_hparams({'Learning Rate': lr, 'Batch Size': bsize, 'class_size': int(config['data']['class_size']), 'Epochs': int(epoch), 'Weight Decay': decay, 'Dropout': float(
             config['model']['dropout'])}, {'Accuracy': val_accuracy, 'Loss': val_loss, 'Test Accuracy': test_acc})

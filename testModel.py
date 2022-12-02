@@ -1,6 +1,6 @@
 from torchvision.models.feature_extraction import get_graph_node_names, create_feature_extractor
 import torchaudio
-
+# from torchaudio.io import StreamReader
 from pathlib import Path
 import torch
 import machineLearning
@@ -132,7 +132,6 @@ def predictFile(filePath, model, device, plotPredicton=True):
 
 
 def predictLive(model, device):
-    from torchaudio.io import StreamReader
     augmentor = Augmentor()
 
     streamer = StreamReader(
@@ -195,6 +194,7 @@ def plotFeatures(modelOutput):
             if layers != 'out':
                 batchFeatures = modelOutput[layers]
                 for i, feature in enumerate(batchFeatures):
+                    print(feature.max(), feature.min())
                     plt.title(f'{layers} ({i})')
                     plt.imshow(feature[0].cpu())
                     plt.show()
@@ -248,7 +248,7 @@ if __name__ == "__main__":
         # 'elu': 'conv1',
         # 'elu_1': 'conv2',
         # 'conv3': 'conv3',
-        # 'conv4': 'conv4',2
+        # 'conv4': 'conv4',
         'fc3': 'out'
     }
 
@@ -257,11 +257,11 @@ if __name__ == "__main__":
 
     # summary(model, (1, 201, 161))
     a = 'E:/Original Audio/Singapore Speech Corpus/[P] Part 3 Same BoundaryMic/3003.wav'
-    b = './data/nspeaker_0.wav'
+    b = './data/test.wav'
 
     print(f'\n---------------------------------------\n')
 
-    predictFile(b, model, device)
+    # predictFile(b, model, device)
     predictLabeledFolders('./data', model, device)
     # predictFolder(
     #     model, device, 'E:/Processed Audio/test/')

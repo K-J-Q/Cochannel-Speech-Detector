@@ -32,7 +32,9 @@ class CNNNetwork(nn.Module):
         self.fc3 = nn.Linear(24, 3, bias=False)
 
     def __normaliseSpec(self, x):
+        x/=x.max()
         x = torch.clamp(x, min=1e-10)
+        # x = torch.clamp(x, max=x.max()*0.9)
         x = x.log10()
         x = torch.maximum(x, x.max() - 8.0)
         x = (x + 4.0) / 4.0
@@ -40,7 +42,8 @@ class CNNNetwork(nn.Module):
         # return x/(x+10*x.median()+1e-12)
 
     def forward(self, wav):
-        wav = torchaudio.functional.dcshift(wav, wav.mean())
+        wav -= wav.mean()
+        # wav /= wav.max()*3
         x = self.generateSpec(wav)
         x = self.__normaliseSpec(x)
 
