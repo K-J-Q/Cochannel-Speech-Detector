@@ -244,9 +244,9 @@ if __name__ == "__main__":
 
     return_nodes = {
         # node_name: user-specified key for output dict
-        'truediv': 'spec',
-        'elu': 'conv1',
-        'elu_1': 'conv2',
+        # 'truediv': 'spec',
+        # 'elu': 'conv1',
+        # 'elu_1': 'conv2',
         # 'conv3': 'conv3',
         # 'conv4': 'conv4',2
         'fc3': 'out'
@@ -262,7 +262,7 @@ if __name__ == "__main__":
     print(f'\n---------------------------------------\n')
 
     predictFile(b, model, device)
-    # predictLabeledFolders('./data', model, device)
+    predictLabeledFolders('./data', model, device)
     # predictFolder(
     #     model, device, 'E:/Processed Audio/test/')
 
