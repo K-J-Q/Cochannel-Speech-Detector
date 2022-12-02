@@ -1,6 +1,6 @@
 from torchvision.models.feature_extraction import get_graph_node_names, create_feature_extractor
 import torchaudio
-# from torchaudio.io import StreamReader
+
 from pathlib import Path
 import torch
 import machineLearning
@@ -18,6 +18,8 @@ random.seed(0)
 torch.manual_seed(0)
 
 class_map = ['0', '1', '2']
+
+sm = torch.nn.Softmax(dim=1)
 
 
 def predictFolder(model, device, folderPath):
@@ -58,7 +60,6 @@ def predictLabeledFolders(folderPath, model, device):
 
 def predictFile(filePath, model, device, plotPredicton=True):
     augmentor = Augmentor()
-    sm = torch.nn.Softmax(dim=1)
     labelPath = filePath[0:-3]+'txt'
 
     pred = []
@@ -71,7 +72,8 @@ def predictFile(filePath, model, device, plotPredicton=True):
     with torch.no_grad():
         wav, sr = augmentor.resample(
             augmentor.rechannel(torchaudio.load(filePath)))
-
+        wav = torchaudio.functional.dcshift(wav, -wav.mean())
+        wav = torchaudio.functional.highpass_biquad(wav, 8000, 10)
         sampleLength = windowLength * sr
         wav = wav[0]
         batch_length = batch_size*sampleLength
@@ -88,17 +90,7 @@ def predictFile(filePath, model, device, plotPredicton=True):
                     break
             if len(data_tensor) > 1:
                 pred = model(data_tensor.to(device))
-                if type(pred) == dict:
-                    if 'spec' in pred:
-                        data = pred['spec'][0][0].cpu()
-                        plt.imshow(data)
-                        plt.show()
-                    # for dim in pred['conv2'][-2]:
-                    #     plt.imshow(dim)
-                    #     plt.show()
-                    pred = sm(pred['out'])
-                else:
-                    pred = sm(pred)
+                pred = plotFeatures(pred)
                 pred = pred.argmax(dim=1)
                 pred_graph += list(pred.cpu().numpy())
 
@@ -111,6 +103,8 @@ def predictFile(filePath, model, device, plotPredicton=True):
         plt.ylabel('Number of speakers')
         plt.xlabel('Time (seconds)')
         plt.yticks([0, 1, 2])
+        if not os.path.exists(labelPath):
+            plt.show()
         # plt.xticks(torch.arange(0, predLength*windowLength, 30))
 
     if os.path.exists(labelPath):
@@ -134,34 +128,33 @@ def predictFile(filePath, model, device, plotPredicton=True):
             plt.show()
 
         return num_correct_pred, predLength
+    return 0, 0
 
 
 def predictLive(model, device):
+    from torchaudio.io import StreamReader
     augmentor = Augmentor()
 
     streamer = StreamReader(
         src="audio=" +
-            "@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\wave_{F0156C43-323C-461D-9659-7478EB2D0708}",
+            "@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\wave_{3A6E565D-0D97-49F8-800D-22B353BB540F}",
         format="dshow",
     )
 
     streamer.add_basic_audio_stream(
-        frames_per_chunk=44100*2, sample_rate=44100)
+        frames_per_chunk=8000*2, sample_rate=8000)
 
     stream_iterator = streamer.stream()
     wav = torch.Tensor([])
-    sm = torch.nn.Softmax()
 
     with torch.no_grad():
         while True:
             (chunk,) = next(stream_iterator)
             # wav = torch.cat((wav, chunk[:, 0]))
-            wav, sr = augmentor.audio_preprocessing([chunk.T, 44100])
+            wav, sr = augmentor.audio_preprocessing([chunk.T, 8000])
+            wav = torchaudio.functional.dcshift(wav, -wav.mean())
             pred = model(torch.unsqueeze(wav, dim=0).to(device))
-            if 'spec' in pred:
-                plt.imshow(pred['spec'][0][0].cpu())
-                plt.show()
-            pred = sm(pred['out'])
+            pred = plotFeatures(pred)
             print(pred)
             # sn.barplot(y=class_map, x=pred[0].cpu().numpy())
             # plt.show()
@@ -194,6 +187,20 @@ def get_percentage_in_window(groundTruth, startTime, endTime):
         label_time[gt_y[np.argmax(gt_x > endTime)]] = endTime-startTime
     label_time = label_time/(endTime-startTime)
     return label_time
+
+
+def plotFeatures(modelOutput):
+    if type(modelOutput) == dict:
+        for layers in modelOutput:
+            if layers != 'out':
+                batchFeatures = modelOutput[layers]
+                for i, feature in enumerate(batchFeatures):
+                    plt.title(f'{layers} ({i})')
+                    plt.imshow(feature[0].cpu())
+                    plt.show()
+        return sm(modelOutput['out'])
+    else:
+        return sm(modelOutput)
 
 
 def percentageMode(occupancy_label, mode=filterMode.Occupancy):
@@ -231,30 +238,31 @@ def getGroundTruth(file):
 
 
 if __name__ == "__main__":
-    model, device, _ = machineLearning.selectModel(setCPU=False, modelIndex=7)
+    model, device, _ = machineLearning.selectModel(setCPU=False)
 
-    train_nodes, eval_nodes = get_graph_node_names(model)
-    # print(eval_nodes)
+    print(get_graph_node_names(model)[1])
+
     return_nodes = {
         # node_name: user-specified key for output dict
         'truediv': 'spec',
-        # 'conv1': 'conv1',
-        # 'conv2': 'conv2',
+        'elu': 'conv1',
+        'elu_1': 'conv2',
         # 'conv3': 'conv3',
-        # 'conv4': 'conv4',
+        # 'conv4': 'conv4',2
         'fc3': 'out'
     }
+
     model = create_feature_extractor(model, return_nodes=return_nodes)
     model.eval()
 
     # summary(model, (1, 201, 161))
     a = 'E:/Original Audio/Singapore Speech Corpus/[P] Part 3 Same BoundaryMic/3003.wav'
-    b = './data/1speaker_4.wav'
+    b = './data/nspeaker_0.wav'
 
     print(f'\n---------------------------------------\n')
 
-    # predictFile(b, model, device)
-    predictLabeledFolders('./data', model, device)
+    predictFile(b, model, device)
+    # predictLabeledFolders('./data', model, device)
     # predictFolder(
     #     model, device, 'E:/Processed Audio/test/')
 

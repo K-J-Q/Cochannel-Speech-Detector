@@ -19,7 +19,7 @@ if __name__ == '__main__':
     # Get Audio paths for dataset
     testRun = config['data'].getboolean('is_test_run')
     audio_train_paths, audio_val_paths = utils.getAudioPaths(
-        'E:/Processed Audio/train/', percent=float(config['data']['train_percent']))
+        '/media/jianquan/Data/Processed Audio/train/', percent=float(config['data']['train_percent']))
 
     # create dataset with transforms (as required)
     audio_train_dataset = createDataset(audio_train_paths, transformParams=utils.getTransforms(
@@ -82,8 +82,9 @@ if __name__ == '__main__':
     if config['logger'].getboolean('master_logger') and not testRun:
         writer = SummaryWriter(logTitle)
         if config['logger'].getboolean('log_graph'):
-            spec, label = next(iter(val_dataloader))
-            writer.add_graph(model, spec.to(device))
+            data = next(iter(val_dataloader))[0].to(device)
+            model(data)  # to initialise lazy params
+            writer.add_graph(model, data)
         writer.close()
     else:
         for i in config['logger']:
@@ -91,8 +92,6 @@ if __name__ == '__main__':
 
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, patience=2, verbose=True)
-
-    epoch = None
 
     #  train model
     for epoch in range(startEpoch+1, epochs+1):
@@ -109,6 +108,7 @@ if __name__ == '__main__':
             model, val_dataloader, lossFn, device)
 
         if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) == 0:
+            test_acc = testModel.predictLabeledFolders('./data', model, device)
             writer.add_hparams({'Learning Rate': lr, 'Batch Size': bsize, 'class_size': int(config['data']['class_size']), 'Epochs': epoch, 'Weight Decay': decay, 'Dropout': float(
                 config['model']['dropout'])}, {'Accuracy': val_accuracy, 'Loss': val_loss, 'Test Accuracy': test_acc})
 
@@ -124,8 +124,6 @@ if __name__ == '__main__':
     test_acc = testModel.predictLabeledFolders('./data', model, device)
 
     if epoch != None:
-        
-
         torch.save(model, utils.uniquify(
             f'saved_model/{title}({modelIndex})_epoch{epoch}.pt'))
     else:
@@ -134,5 +132,5 @@ if __name__ == '__main__':
         epoch = epochs + 0.1
 
     if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) != 0:
-        writer.add_hparams({'Learning Rate': lr, 'Batch Size': bsize, 'class_size': int(config['data']['class_size']), 'Epochs': int(epoch), 'Weight Decay': decay, 'Dropout': float(
+        writer.add_hparams({'Name': title, 'Learning Rate': lr, 'Batch Size': bsize, 'class_size': int(config['data']['class_size']), 'Epochs': int(epoch), 'Weight Decay': decay, 'Dropout': float(
             config['model']['dropout'])}, {'Accuracy': val_accuracy, 'Loss': val_loss, 'Test Accuracy': test_acc})
