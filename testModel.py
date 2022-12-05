@@ -1,6 +1,6 @@
 from torchvision.models.feature_extraction import get_graph_node_names, create_feature_extractor
 import torchaudio
-# from torchaudio.io import StreamReader
+# 
 from pathlib import Path
 import torch
 import machineLearning
@@ -114,7 +114,7 @@ def predictFile(filePath, model, device, plotPredicton=True):
         pred_graph = torch.tensor(pred_graph)
         for i, startTime in enumerate(range(0, (predLength)*windowLength, windowLength)):
             gt_vec[i] = percentageMode(get_percentage_in_window(
-                ground_truth, startTime, startTime+windowLength), mode=filterMode.Occupancy)
+                ground_truth, startTime, startTime+windowLength), mode=filterEnum.Occupancy)
         num_correct_pred = torch.sum(gt_vec == pred_graph)
 
         gt_x, gt_y = ground_truth
@@ -130,13 +130,23 @@ def predictFile(filePath, model, device, plotPredicton=True):
         return num_correct_pred, predLength
     return 0, 0
 
+def selectMicrophone():
+    micID = []
+    for i, device in enumerate(k):
+        if '(audio)' in device:
+            print(f'[{len(micID)}] {device}')
+            micID.append(k[i+1].split('"')[1])
+
+    device = micID[int(input('Select Microphone Device > '))]
+    return device
 
 def predictLive(model, device):
     augmentor = Augmentor()
 
+    from torchaudio.io import StreamReader
+
     streamer = StreamReader(
-        src="audio=" +
-            "@device_cm_{33D9A762-90C8-11D0-BD43-00A0C911CE86}\wave_{3A6E565D-0D97-49F8-800D-22B353BB540F}",
+        src="audio=" + selectMicrophone(),
         format="dshow",
     )
 
@@ -159,7 +169,7 @@ def predictLive(model, device):
             # plt.show()
 
 
-class filterMode(enum.Enum):
+class filterEnum(enum.Enum):
     Class_0 = 0
     Class_1 = 1
     Class_2 = 2
@@ -203,13 +213,13 @@ def plotFeatures(modelOutput):
         return sm(modelOutput)
 
 
-def percentageMode(occupancy_label, mode=filterMode.Occupancy):
+def percentageMode(occupancy_label, mode=filterEnum.Occupancy):
     if (occupancy_label == 1).any():
         return int(np.where(occupancy_label == 1)[0])
-    elif mode == filterMode.Occupancy:
+    elif mode == filterEnum.Occupancy:
         return int(occupancy_label.argmax())
     else:
-        target_class = mode.value() if isinstance(mode, filterMode) else int(mode)
+        target_class = mode.value() if isinstance(mode, filterEnum) else int(mode)
         classOccurance = np.any(
             np.where(occupancy_label != 0)[0] == target_class)
         return target_class if classOccurance else int(occupancy_label.argmax())
