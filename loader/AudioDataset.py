@@ -22,6 +22,9 @@ class Augmentor():
     noise_multiplier = float(config['augmentations']
                              ['pad_trunc_noise_multiplier'])
 
+    def __init__():
+        pass
+
     def audio_preprocessing(self, audioIn):
         return self.resample(self.rechannel(audioIn))
 
@@ -199,21 +202,6 @@ class AudioDataset(Dataset):
             audio, _ = torchaudio.sox_effects.apply_effects_tensor(
                 torch.unsqueeze(audio, 0), 8000, self.beforeCochannelAugmentSox)
         return waveform, sample_rate
-
-
-def generateSpec(wav):
-    import librosa
-    import numpy as np
-    spec = torch.tensor(np.abs(librosa.stft(wav.numpy(), n_fft=n_fft)))
-    spec = spec/(spec + spec.median()+1e-12)
-    # spec = spectrogram(wav)
-    return spec
-
-
-def specMask(spectrogram):
-    fMasking = T.FrequencyMasking(freq_mask_param=30)
-    tMasking = T.TimeMasking(time_mask_param=30)
-    return(tMasking(fMasking(spectrogram)))
 
 
 def collate_batch(batches):
