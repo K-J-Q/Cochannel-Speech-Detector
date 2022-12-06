@@ -12,8 +12,7 @@ config.read('config.ini')
 class CNNNetwork(nn.Module):
     def __init__(self, nfft):
         super(CNNNetwork, self).__init__()
-        self.generateSpec = torchaudio.transforms.MelSpectrogram(
-            n_fft=nfft, n_mels=64)
+        self.generateSpec = torchaudio.transforms.Spectrogram(n_fft=nfft)
 
         # self.augmentSpec = nn.Sequential(torchaudio.transforms.FrequencyMasking(
         #     30, True), torchaudio.transforms.TimeMasking(20, True))

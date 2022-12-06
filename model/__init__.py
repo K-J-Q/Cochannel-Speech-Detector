@@ -1,2 +1,2 @@
 from .CNN import CNNNetwork
-from.CNN_spec import CNNNetwork_spec
+from .CNN_specNorm import CNNspecNorm

@@ -22,7 +22,7 @@ class Augmentor():
     noise_multiplier = float(config['augmentations']
                              ['pad_trunc_noise_multiplier'])
 
-    def __init__():
+    def __init__(self):
         pass
 
     def audio_preprocessing(self, audioIn):

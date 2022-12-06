@@ -19,7 +19,7 @@ if __name__ == '__main__':
     # Get Audio paths for dataset
     testRun = config['data'].getboolean('is_test_run')
     audio_train_paths, audio_val_paths = utils.getAudioPaths(
-        '/media/jianquan/Data/Processed Audio/train/', percent=float(config['data']['train_percent']))
+        'E:/Processed Audio/train/', percent=float(config['data']['train_percent']))
 
     # create dataset with transforms (as required)
     audio_train_dataset = createDataset(audio_train_paths, transformParams=utils.getTransforms(

@@ -6,27 +6,30 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>639</width>
-    <height>600</height>
+    <width>266</width>
+    <height>459</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>MainWindow</string>
   </property>
+  <property name="autoFillBackground">
+   <bool>false</bool>
+  </property>
   <widget class="QWidget" name="centralwidget">
-   <widget class="QSplitter" name="splitter_2">
+   <widget class="QSplitter" name="splitter">
     <property name="geometry">
      <rect>
-      <x>160</x>
-      <y>70</y>
-      <width>331</width>
-      <height>391</height>
+      <x>40</x>
+      <y>20</y>
+      <width>191</width>
+      <height>383</height>
      </rect>
     </property>
     <property name="orientation">
      <enum>Qt::Vertical</enum>
     </property>
-    <widget class="QSplitter" name="splitter">
+    <widget class="QSplitter" name="mic_selection">
      <property name="orientation">
       <enum>Qt::Vertical</enum>
      </property>
@@ -44,7 +47,7 @@
        <set>Qt::AlignCenter</set>
       </property>
      </widget>
-     <widget class="QComboBox" name="comboBox"/>
+     <widget class="QComboBox" name="mic_comboBox"/>
     </widget>
     <widget class="QLabel" name="model_output">
      <property name="font">
@@ -59,6 +62,108 @@
       <set>Qt::AlignCenter</set>
      </property>
     </widget>
+    <widget class="QWidget" name="verticalLayoutWidget">
+     <layout class="QVBoxLayout" name="verticalLayout">
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout_2">
+        <item>
+         <widget class="QLabel" name="label_5">
+          <property name="font">
+           <font>
+            <bold>false</bold>
+           </font>
+          </property>
+          <property name="text">
+           <string>0.12</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_6">
+          <property name="font">
+           <font>
+            <bold>false</bold>
+           </font>
+          </property>
+          <property name="text">
+           <string>0.80</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_7">
+          <property name="font">
+           <font>
+            <bold>false</bold>
+           </font>
+          </property>
+          <property name="text">
+           <string>0.08</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QHBoxLayout" name="horizontalLayout">
+        <item>
+         <widget class="QLabel" name="label_3">
+          <property name="font">
+           <font>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="text">
+           <string>Class 0</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_2">
+          <property name="font">
+           <font>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="text">
+           <string>Class 1</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_4">
+          <property name="font">
+           <font>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="text">
+           <string>Class 2</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </widget>
     <widget class="QPushButton" name="startStopButton">
      <property name="text">
       <string>Start</string>
@@ -71,7 +176,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>639</width>
+     <width>266</width>
      <height>22</height>
     </rect>
    </property>

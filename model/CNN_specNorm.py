@@ -9,9 +9,9 @@ config = ConfigParser()
 config.read('config.ini')
 
 
-class CNNNetwork(nn.Module):
+class CNNspecNorm(nn.Module):
     def __init__(self, nfft):
-        super(CNNNetwork, self).__init__()
+        super(CNNspecNorm, self).__init__()
         self.generateSpec = torchaudio.transforms.MelSpectrogram(
             n_fft=nfft, n_mels=64)
 
@@ -51,7 +51,7 @@ class CNNNetwork(nn.Module):
         x = self.drp(F.elu(self.conv2(x)))
         x = self.drp(F.elu(self.conv3(x)))
         x = self.drp(self.pool1(F.elu(self.conv4(x))))
-        
+
         x = x.view(x.shape[0], -1)
         x = self.bn1(F.elu(self.fc1(x)))
         x = self.bn2(F.elu(self.fc2(x)))
@@ -61,6 +61,6 @@ class CNNNetwork(nn.Module):
 
 
 if __name__ == "__main__":
-    cnn = CNNNetwork(512)
+    cnn = CNNspecNorm(512)
     summary(cnn.cuda(), (1, 16000))
     # (1, 64, 44) is the shape of the signal which we obtain in dataset.py
