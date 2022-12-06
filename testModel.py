@@ -42,6 +42,7 @@ def predictFolder(model, device, folderPath):
                xticklabels=class_map, yticklabels=class_map)
     plt.ylabel('Actual')
     plt.xlabel('Predicted')
+    plt.title('Singapore Speech Corpus test set')
     plt.show()
 
 
@@ -302,7 +303,7 @@ if __name__ == "__main__":
         'fc3': 'out'
     }
 
-    model = create_feature_extractor(model, return_nodes=return_nodes)
+    # model = create_feature_extractor(model, return_nodes=return_nodes)
     model.eval()
 
     # summary(model, (1, 201, 161))
@@ -313,10 +314,10 @@ if __name__ == "__main__":
 
     # predictFile(b, model, device)
 
-    predictLabeledFolders('./data', model, device)
+    # predictLabeledFolders('./data', model, device)
 
-    # predictFolder(
-    #     model, device, 'E:/Processed Audio/test/')
+    predictFolder(
+        model, device, 'E:/Processed Audio/test/')
 
     # predictLive(model, device)
 
