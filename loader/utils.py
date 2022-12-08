@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 import shutil
+import importlib
+import inspect
 
 
 def getTransforms(augment):
@@ -64,9 +66,6 @@ def removeHparams():
     if deletedCount:
         print(f'{deletedCount} folders deleted')
 
-import os
-import importlib, inspect
-
 
 def select_model():
     model_class = None
@@ -107,6 +106,7 @@ def select_model():
             print('Invalid input')
 
     return model_class
+
 
 if __name__ == "__main__":
     model = select_model()

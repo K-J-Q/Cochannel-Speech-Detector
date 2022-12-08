@@ -118,27 +118,22 @@ def predictFile(filePath, model, device, plotPredicton=True):
 
                 pred = pred.argmax(dim=1)
                 pred_graph += list(pred.cpu().numpy())
-        
-        if plotPredicton:
-            ax1 = plt.subplot(2, 1, 1)
-            specData.plotSpec()
-            plt.title(filePath)
 
     predLength = len(pred_graph)
-    ax2 = plt.subplot(2, 1, 2, sharex=ax1)
-    plt.tight_layout()
 
     if plotPredicton:
-        plt.bar((torch.arange(predLength+1) *
-                windowLength)-1, np.insert(pred_graph, 0, 0))
+        ax1 = plt.subplot(2, 1, 1)
+        specData.plotSpec()
+        plt.title(filePath)
+        ax2 = plt.subplot(2, 1, 2, sharex=ax1)
+        plt.tight_layout()
+        plt.bar((torch.arange(predLength+1) * windowLength) -
+                1, np.insert(pred_graph, 0, 0))
         plt.xlim(0, windowLength*predLength)
         plt.ylim(0, 2.5)
         plt.ylabel('Number of speakers')
         plt.xlabel('Time (seconds)')
         plt.yticks([0, 1, 2])
-        
-        if not os.path.exists(labelPath):
-            plt.show()
 
     if os.path.exists(labelPath):
         confusion_matrix = torchmetrics.classification.MulticlassConfusionMatrix(
@@ -165,6 +160,8 @@ def predictFile(filePath, model, device, plotPredicton=True):
             plt.legend(['Ground Truth', 'Computed Truth', 'Model Prediction'])
             plt.show()
         return confusion_matrix(pred_graph, gt_vec)
+    else:
+        plt.show()
     return 0
 
 
