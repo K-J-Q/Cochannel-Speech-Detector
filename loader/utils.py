@@ -64,6 +64,50 @@ def removeHparams():
     if deletedCount:
         print(f'{deletedCount} folders deleted')
 
+import os
+import importlib, inspect
+
+
+def select_model():
+    model_class = None
+    # Get the list of files in the 'model' directory
+    files = os.listdir('model')
+    # Filter out any files that are not Python files
+    files = [file for file in files if file.endswith('.py')]
+
+    # Print a list of available models
+    print('Available models:')
+    for i, file in enumerate(files):
+        print(f'{i+1}. {file[:-3]}')
+
+    # Prompt the user to select a model
+    while model_class is None:
+        # Get the user's input
+        selection = input('Enter the number of the model you want to use: ')
+        try:
+            # Convert the input to an integer
+            selection = int(selection)
+            # Check if the selection is within the range of available models
+            if selection > 0 and selection <= len(files):
+                # Import the selected module
+                module = importlib.import_module(
+                    'model.' + files[selection - 1][:-3])
+                # Loop through the attributes in the module
+                for attr in dir(module):
+                    # Check if the attribute is a class
+                    if inspect.isclass(getattr(module, attr)):
+                        # Get the class
+                        model_class = getattr(module, attr)
+                        break
+            else:
+                # If the selection is not within the range of available models, print an error message
+                print('Invalid selection')
+        except ValueError:
+            # If the input cannot be converted to an integer, print an error message
+            print('Invalid input')
+
+    return model_class
 
 if __name__ == "__main__":
-    removeHparams()
+    model = select_model()
+    print(model(512))

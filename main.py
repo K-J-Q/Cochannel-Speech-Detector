@@ -65,7 +65,8 @@ if __name__ == '__main__':
     if config['model'].getboolean('load_pretrained'):
         model, _, startEpoch = machineLearning.selectModel()
     else:
-        model = CNNNetwork_mel(nfft=int(config['data']['n_fft'])).to(device)
+        model = utils.select_model()
+        model = model(nfft=int(config['data']['n_fft'])).to(device)
 
     lr = float(config['model']['learning_rate'])
     epochs = int(config['model']['num_epochs'])
