@@ -77,6 +77,7 @@ def predictLabeledFolders(folderPath, model, device):
 
 
 def predictFile(filePath, model, device, plotPredicton=True):
+    model = extractModelFeature(model)
     augmentor = Augmentor()
     labelPath = filePath[0:-3]+'txt'
 
@@ -312,12 +313,7 @@ def getGroundTruth(file):
     return gt_x, gt_y
 
 
-if __name__ == "__main__":
-    model, device, _ = machineLearning.selectModel(
-        setCPU=False)
-
-    print(get_graph_node_names(model)[1])
-
+def extractModelFeature(model):
     return_nodes = {
         # node_name: user-specified key for output dict
         'truediv': 'spec',
@@ -328,20 +324,29 @@ if __name__ == "__main__":
         'fc3': 'out'
     }
 
-    model = create_feature_extractor(model, return_nodes=return_nodes)
+    return create_feature_extractor(model, return_nodes=return_nodes)
+
+
+if __name__ == "__main__":
+    model, device, _ = machineLearning.selectModel(
+        setCPU=False)
+
+    print(get_graph_node_names(model)[1])
+
     model.eval()
 
     # summary(model, (1, 201, 161))
     a = 'E:/Original Audio/Singapore Speech Corpus/[P] Part 3 Same BoundaryMic/3003.wav'
-    b = './data/test.wav'
-
     print(f'\n---------------------------------------\n')
 
-    # predictFile(b, model, device)
+    filePath = './data/test.wav'
+    folderPath = './data/omni mic'
 
-    predictLabeledFolders('./data/omni mic', model, device)
+    # predictFile(filePath, model, device)
 
-    # predictFolder(
-    #     model, device, 'E:/Processed Audio/test/')
+    # predictLabeledFolders(folderPath, model, device)
+
+    predictFolder(
+        model, device, 'E:/Processed Audio/test/')
 
     # predictLive(model, device)

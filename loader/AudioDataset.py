@@ -179,6 +179,9 @@ class AudioDataset(Dataset):
 
         return [X, Y]
 
+    def __removeDC(self, wav):
+        return wav - wav.mean()
+
     def __split(self, audio):
         wav, sr = audio
         cut_length = self.windowLength*sr
@@ -201,9 +204,10 @@ class AudioDataset(Dataset):
 
     def __getAudio(self, audioPath):
         waveform, sample_rate = torchaudio.load(audioPath)
-        if self.beforeCochannelAugmentSox:
-            audio, _ = torchaudio.sox_effects.apply_effects_tensor(
-                torch.unsqueeze(audio, 0), 8000, self.beforeCochannelAugmentSox)
+        # if self.beforeCochannelAugmentSox:
+        #     audio, _ = torchaudio.sox_effects.apply_effects_tensor(
+        #         torch.unsqueeze(audio, 0), 8000, self.beforeCochannelAugmentSox)
+        waveform = self.__removeDC(waveform)
         return waveform, sample_rate
 
 

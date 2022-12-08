@@ -39,8 +39,6 @@ class CNNNetwork_mel(nn.Module):
         # return x/(x+10*x.median()+1e-12)
 
     def forward(self, wav):
-        wav -= wav.mean()
-
         x = self.generateSpec(wav)
         x = self.__normaliseSpec(x)
 

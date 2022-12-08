@@ -76,12 +76,13 @@ def main(input_path=None, output_path=None, mode=None):
         mode = args.mode
 
     discarded = 0
-    audioPaths = list(pathlib.Path(input_path).glob('*.wav'))
+    audioPaths = list(pathlib.Path(input_path).glob('**/*.wav'))
 
     augmentor = Augmentor()
     for audioIndex, audioPath in tqdm(enumerate(audioPaths), unit='files', total=len(audioPaths)):
         # only used if cut-off halfway
-        if audioIndex >= 220:
+        print(audioPath)
+        if audioIndex >= 0:
             _, audioName = os.path.split(audioPath)
             aud = torchaudio.load(audioPath)
             aud = augmentor.resample(augmentor.rechannel(aud), False)
@@ -102,7 +103,7 @@ def main(input_path=None, output_path=None, mode=None):
                                 aud_noise[0], aud_noise[1])
                 torchaudio.save(f'{output_path}/SPEECH/{audioName}',
                                 aud_speech[0], aud_speech[1])
-
-
+            if mode =='process':
+                torchaudio.save(f'{audioPath}', aud[0], aud[1])
 if __name__ == '__main__':
     main(input_path='./data/omni mic', output_path='', mode='process')
