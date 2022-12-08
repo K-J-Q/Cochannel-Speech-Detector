@@ -48,7 +48,7 @@ def predictFolder(model, device, folderPath):
     plt.show()
 
 
-def predictLabeledFolders(folderPath, model, device):
+def predictLabeledFolders(model, device, folderPath):
     folderPath = list(Path(folderPath).glob('**/'))
     cum_folder_acc = 0
     for folder in folderPath:
@@ -56,8 +56,7 @@ def predictLabeledFolders(folderPath, model, device):
         filepaths = list(Path(folder).glob('*.wav'))
         confusionMatrix = torch.zeros([3, 3])
         for path in filepaths:
-            confusionMatrix += predictFile(str(
-                path), model, device, plotPredicton=True if __name__ == '__main__' else False)
+            confusionMatrix += predictFile(model, device, str(path), plotPredicton=True if __name__ == '__main__' else False)
         cum_acc = torch.sum(torch.eye(3)*confusionMatrix) / \
             torch.sum(confusionMatrix) * 100
         cum_folder_acc += cum_acc
@@ -76,7 +75,7 @@ def predictLabeledFolders(folderPath, model, device):
     return cum_folder_acc, confusionMatrix
 
 
-def predictFile(filePath, model, device, plotPredicton=True):
+def predictFile(model, device, filePath, plotPredicton=True):
     model = extractModelFeature(model)
     augmentor = Augmentor()
     labelPath = filePath[0:-3]+'txt'
@@ -115,7 +114,8 @@ def predictFile(filePath, model, device, plotPredicton=True):
                 if plotPredicton:
                     pred = specData.addSpec(pred)
                 else:
-                    pred = sm(pred['out']) if type(pred) == dict else sm(pred)
+                    pred = sm(pred['out']) if isinstance(
+                        pred, dict) else sm(pred)
 
                 pred = pred.argmax(dim=1)
                 pred_graph += list(pred.cpu().numpy())
@@ -179,7 +179,7 @@ class specFeatures:
             [self.windowOutputShape[2], int(self.windowOutputShape[3]*self.audioLength/windowLength)])
 
     def addSpec(self, modelOutput):
-        if type(modelOutput) == dict:
+        if isinstance(modelOutput, dict):
             for layers in modelOutput:
                 if layers != 'out':
                     batchFeatures = modelOutput[layers]
@@ -244,8 +244,10 @@ def predictLive(model, device):
             wav = torchaudio.functional.dcshift(wav, -wav.mean())
             wav /= wav.max()
             pred = model(torch.unsqueeze(wav, dim=0).to(device))
-            pred = sm(pred['out']) if type(pred) == dict else sm(pred)
+            pred = sm(pred['out']) if isinstance(pred, dict) else sm(pred)
             print(pred)
+            # check if pred is dict
+
             # sn.barplot(y=class_map, x=pred[0].cpu().numpy())
             # plt.show()
 
@@ -324,7 +326,7 @@ def extractModelFeature(model):
         'fc3': 'out'
     }
 
-    return create_feature_extractor(model, return_nodes=return_nodes)
+    return create_feature_extractor(model, return_nodes=return_nodes) if __name__ == "__main__" else model
 
 
 if __name__ == "__main__":
@@ -342,9 +344,9 @@ if __name__ == "__main__":
     filePath = './data/test.wav'
     folderPath = './data/omni mic'
 
-    # predictFile(filePath, model, device)
+    predictFile(model, device,filePath)
 
-    # predictLabeledFolders(folderPath, model, device)
+    predictLabeledFolders(model, device,folderPath)
 
     predictFolder(
         model, device, 'E:/Processed Audio/test/')

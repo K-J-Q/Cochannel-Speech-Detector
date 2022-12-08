@@ -10,6 +10,7 @@ import loader.utils as utils
 import testModel
 
 if __name__ == '__main__':
+    
     config = ConfigParser()
     config.read('config.ini')
     torch.backends.cudnn.benchmark = True
@@ -41,21 +42,20 @@ if __name__ == '__main__':
         audio_train_dataset,
         batch_size=bsize,
         num_workers=workers,
-        persistent_workers=True,
-        # prefetch_factor=12,
         shuffle=True,
         pin_memory=True,
         collate_fn=collate_batch,
+        persistent_workers=True
     )
 
     val_dataloader = DataLoader(
         audio_val_dataset,
         batch_size=bsize,
-        num_workers=workers,
-        persistent_workers=True,
+        num_workers=1,
         shuffle=False,
         pin_memory=True,
-        collate_fn=collate_batch
+        collate_fn=collate_batch,
+        persistent_workers=True
     )
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -96,9 +96,9 @@ if __name__ == '__main__':
 
     #  train model
     for epoch in range(startEpoch+1, epochs+1):
-        lr = optimizer.param_groups[0]['lr']
         print(f'Epoch {epoch}/{epochs}\n-------------------------------')
-        print(f'LR: {lr}')
+        if epoch == 1:
+            start = datetime.now()
         train_loss, train_accuracy = machineLearning.train(
             model, train_dataloader, lossFn, optimizer, device)
         if config['model'].getboolean('save_model_checkpoint') and epoch % int(config['model']['checkpoint']) == 0:
@@ -110,7 +110,7 @@ if __name__ == '__main__':
 
         if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) == 0:
             test_acc, _ = testModel.predictLabeledFolders(
-                './data/omni mic', model, device)
+                model, device, './data/omni mic')
             writer.add_hparams({'Learning Rate': lr, 'Batch Size': bsize, 'class_size': int(config['data']['class_size']), 'Epochs': epoch, 'Weight Decay': decay, 'Dropout': float(
                 config['model']['dropout'])}, {'Accuracy': val_accuracy, 'Loss': val_loss, 'Test Accuracy': test_acc})
 
@@ -121,10 +121,16 @@ if __name__ == '__main__':
 
         print(f'Training    | Loss: {train_loss} Accuracy: {train_accuracy}%')
         print(f'Validating  | Loss: {val_loss} Accuracy: {val_accuracy}% \n')
+
+        if epoch == 1:
+            end = datetime.now()
+            print(f'Time to complete epoch: {end-start}')
+            print(
+                f'Estimated time to complete training: {(end-start)*epochs}({end+(end-start)*epochs})')
         # scheduler.step(val_loss)
 
     test_acc, _ = testModel.predictLabeledFolders(
-        './data/omni mic', model, device)
+         model, device,'./data/omni mic')
 
     if epoch != None:
         torch.save(model, utils.uniquify(

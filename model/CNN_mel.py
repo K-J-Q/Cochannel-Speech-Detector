@@ -26,7 +26,6 @@ class CNNNetwork_mel(nn.Module):
         self.bn1 = nn.BatchNorm1d(120)
         self.bn2 = nn.BatchNorm1d(24)
         self.fc1 = nn.LazyLinear(out_features=120, bias=False)
-        # self.fc1 = nn.Linear(1152, 120, bias=False)
         self.fc2 = nn.Linear(120, 24, bias=False)
         self.fc3 = nn.Linear(24, 3, bias=False)
 
@@ -34,13 +33,13 @@ class CNNNetwork_mel(nn.Module):
         x = torch.clamp(x, min=1e-10)
         x = x.log10()
         x = torch.maximum(x, x.max() - 8.0)
-        x = (x + 4.0) / 4.0
+        x = (x - x.min()) / (x.max())
         return x
         # return x/(x+10*x.median()+1e-12)
 
     def forward(self, wav):
         x = self.generateSpec(wav)
-        x = self.__normaliseSpec(x)
+        # x = self.__normaliseSpec(x)
 
         # if self.training:
         #     x = self.augmentSpec(x)
