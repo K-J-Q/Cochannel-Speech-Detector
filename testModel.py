@@ -1,6 +1,6 @@
 from torchvision.models.feature_extraction import get_graph_node_names, create_feature_extractor
 import torchaudio
-#
+import torchmetrics
 from pathlib import Path
 import torch
 import machineLearning
@@ -38,8 +38,10 @@ def predictFolder(model, device, folderPath):
         model, test_dataloader, torch.nn.CrossEntropyLoss(), device)
 
     print(f'Test set  | Loss: {test_loss} Accuracy: {test_acc}% \n')
+
     sn.heatmap(confusion_matrix.cpu(), annot=True,
                xticklabels=class_map, yticklabels=class_map)
+
     plt.ylabel('Actual')
     plt.xlabel('Predicted')
     plt.title('Singapore Speech Corpus test set')
@@ -47,16 +49,31 @@ def predictFolder(model, device, folderPath):
 
 
 def predictLabeledFolders(folderPath, model, device):
-    filepaths = list(Path('./data').glob('**/*.wav'))
-    cum_correct_predictions, cum_length = 0, 0
-    for path in filepaths:
-        correctNum, length = predictFile(str(
-            path), model, device, plotPredicton=False if __name__ == '__main__' else False)
-        cum_correct_predictions += correctNum
-        cum_length += length
-    cum_acc = cum_correct_predictions/cum_length*100
-    print(f'\nCumulative accuracy: {cum_acc}%')
-    return cum_acc
+    folderPath = list(Path(folderPath).glob('**/'))
+    cum_folder_acc = 0
+    for folder in folderPath:
+        print(f'\n---------------{folder}---------------')
+        filepaths = list(Path(folder).glob('*.wav'))
+        confusionMatrix = torch.zeros([3, 3])
+        for path in filepaths:
+            confusionMatrix += predictFile(str(
+                path), model, device, plotPredicton=True if __name__ == '__main__' else False)
+        cum_acc = torch.sum(torch.eye(3)*confusionMatrix) / \
+            torch.sum(confusionMatrix) * 100
+        cum_folder_acc += cum_acc
+        print(f'Cumulative accuracy: {cum_acc}%')
+        if __name__ == '__main__':
+            sn.heatmap(confusionMatrix, annot=True,
+                       xticklabels=class_map, yticklabels=class_map)
+            datasetStats = torch.sum(confusionMatrix, 1)
+            print(
+                f'Dataset | Class 0: {datasetStats[0]} Class 1: {datasetStats[1]}, Class 2: {datasetStats[2]}')
+            plt.ylabel('Actual')
+            plt.xlabel('Predicted')
+            plt.title(folder)
+            plt.show()
+
+    return cum_folder_acc, confusionMatrix
 
 
 def predictFile(filePath, model, device, plotPredicton=True):
@@ -86,7 +103,8 @@ def predictFile(filePath, model, device, plotPredicton=True):
                 trimmed_audio = wav[j:j+sampleLength]
                 # print(splitIndex, ' ', len(trimmed_audio))
                 if len(trimmed_audio) == sampleLength:
-                    data_tensor[splitIndex][0] = trimmed_audio
+                    data_tensor[splitIndex][0] = trimmed_audio / \
+                        trimmed_audio.max()
                 else:
                     # end of audio file
                     data_tensor = data_tensor[0:splitIndex]
@@ -100,13 +118,16 @@ def predictFile(filePath, model, device, plotPredicton=True):
 
                 pred = pred.argmax(dim=1)
                 pred_graph += list(pred.cpu().numpy())
-        ax1 = plt.subplot(2, 1, 1)
+        
         if plotPredicton:
+            ax1 = plt.subplot(2, 1, 1)
             specData.plotSpec()
+            plt.title(filePath)
 
     predLength = len(pred_graph)
-    ax2 = plt.subplot(2, 1, 2)
+    ax2 = plt.subplot(2, 1, 2, sharex=ax1)
     plt.tight_layout()
+
     if plotPredicton:
         plt.bar((torch.arange(predLength+1) *
                 windowLength)-1, np.insert(pred_graph, 0, 0))
@@ -115,20 +136,25 @@ def predictFile(filePath, model, device, plotPredicton=True):
         plt.ylabel('Number of speakers')
         plt.xlabel('Time (seconds)')
         plt.yticks([0, 1, 2])
+        
         if not os.path.exists(labelPath):
             plt.show()
 
     if os.path.exists(labelPath):
+        confusion_matrix = torchmetrics.classification.MulticlassConfusionMatrix(
+            3)
         ground_truth = getGroundTruth(labelPath)
         gt_vec = torch.zeros(predLength)
 
         pred_graph = torch.tensor(pred_graph)
         for i, startTime in enumerate(range(0, (predLength)*windowLength, windowLength)):
             gt_vec[i] = percentageMode(get_percentage_in_window(
-                ground_truth, startTime, startTime+windowLength), mode=filterEnum.Occupancy)
+                ground_truth, startTime, startTime+windowLength), mode=pred_graph[i])
+
         num_correct_pred = torch.sum(gt_vec == pred_graph)
 
         gt_x, gt_y = ground_truth
+
         print(
             f'({os.path.basename(labelPath)}) Accuracy: {num_correct_pred/predLength *100}%')
 
@@ -138,17 +164,18 @@ def predictFile(filePath, model, device, plotPredicton=True):
                      windowLength, np.insert(gt_vec, 0, 0), 'g')
             plt.legend(['Ground Truth', 'Computed Truth', 'Model Prediction'])
             plt.show()
-
-        return num_correct_pred, predLength
-    return 0, 0
+        return confusion_matrix(pred_graph, gt_vec)
+    return 0
 
 
 class specFeatures:
     specIndex = 0
 
     def __init__(self, model, device, wav, sr, windowLength):
-        self.windowOutputShape = model(
-            torch.unsqueeze(wav[:, 0:sr*windowLength], dim=0).to(device))['spec'].shape
+        assert wav.shape[0] == 1
+        modelOut = model(
+            torch.unsqueeze(wav[:, 0:sr*windowLength], dim=0).to(device))
+        self.windowOutputShape = modelOut['spec'].shape
         self.audioLength = len(wav[0])/sr
         self.spec = torch.zeros(
             [self.windowOutputShape[2], int(self.windowOutputShape[3]*self.audioLength/windowLength)])
@@ -170,7 +197,8 @@ class specFeatures:
             return sm(modelOutput)
 
     def plotSpec(self):
-        plt.imshow(self.spec, origin='lower')
+        plt.imshow(self.spec, origin='lower',
+                   aspect='auto', extent=[0, self.audioLength, 0, self.windowOutputShape[2]])
 
 
 def selectMicrophone():
@@ -215,10 +243,10 @@ def predictLive(model, device):
             (chunk,) = next(stream_iterator)
             # wav = torch.cat((wav, chunk[:, 0]))
             wav, sr = augmentor.audio_preprocessing([chunk.T, 8000])
-            wav = torchaudio.functional.dcshift(wav, -wav.mean())*3
-            print(wav.max())
+            wav = torchaudio.functional.dcshift(wav, -wav.mean())
+            wav /= wav.max()
             pred = model(torch.unsqueeze(wav, dim=0).to(device))
-            pred = plotFeatures(pred)
+            pred = sm(pred['out']) if type(pred) == dict else sm(pred)
             print(pred)
             # sn.barplot(y=class_map, x=pred[0].cpu().numpy())
             # plt.show()
@@ -303,7 +331,7 @@ if __name__ == "__main__":
         'fc3': 'out'
     }
 
-    # model = create_feature_extractor(model, return_nodes=return_nodes)
+    model = create_feature_extractor(model, return_nodes=return_nodes)
     model.eval()
 
     # summary(model, (1, 201, 161))
@@ -314,13 +342,9 @@ if __name__ == "__main__":
 
     # predictFile(b, model, device)
 
-    # predictLabeledFolders('./data', model, device)
+    predictLabeledFolders('./data/omni mic', model, device)
 
-    predictFolder(
-        model, device, 'E:/Processed Audio/test/')
+    # predictFolder(
+    #     model, device, 'E:/Processed Audio/test/')
 
     # predictLive(model, device)
-
-
-# ffmpeg command to find device:
-# ffmpeg -f dshow -list_devices true -i dummy

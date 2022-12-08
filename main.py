@@ -65,7 +65,7 @@ if __name__ == '__main__':
     if config['model'].getboolean('load_pretrained'):
         model, _, startEpoch = machineLearning.selectModel()
     else:
-        model = CNNNetwork(nfft=int(config['data']['n_fft'])).to(device)
+        model = CNNNetwork_mel(nfft=int(config['data']['n_fft'])).to(device)
 
     lr = float(config['model']['learning_rate'])
     epochs = int(config['model']['num_epochs'])
@@ -108,7 +108,8 @@ if __name__ == '__main__':
             model, val_dataloader, lossFn, device)
 
         if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) == 0:
-            test_acc = testModel.predictLabeledFolders('./data', model, device)
+            test_acc, _ = testModel.predictLabeledFolders(
+                './data/omni mic', model, device)
             writer.add_hparams({'Learning Rate': lr, 'Batch Size': bsize, 'class_size': int(config['data']['class_size']), 'Epochs': epoch, 'Weight Decay': decay, 'Dropout': float(
                 config['model']['dropout'])}, {'Accuracy': val_accuracy, 'Loss': val_loss, 'Test Accuracy': test_acc})
 
@@ -121,7 +122,8 @@ if __name__ == '__main__':
         print(f'Validating  | Loss: {val_loss} Accuracy: {val_accuracy}% \n')
         # scheduler.step(val_loss)
 
-    test_acc = testModel.predictLabeledFolders('./data', model, device)
+    test_acc, _ = testModel.predictLabeledFolders(
+        './data/omni mic', model, device)
 
     if epoch != None:
         torch.save(model, utils.uniquify(

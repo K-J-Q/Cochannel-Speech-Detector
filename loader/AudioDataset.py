@@ -3,6 +3,7 @@ import torchaudio
 import random
 from torch.utils.data import Dataset, DataLoader
 import torchaudio.transforms as T
+import torch.nn.functional as F
 import os
 from torch.profiler import profile, record_function, ProfilerActivity
 from audiomentations import Compose, RoomSimulator
@@ -159,15 +160,15 @@ class AudioDataset(Dataset):
         Y = torch.tensor([0, 1, 2]).repeat(self.class_size)
 
         for i in range(self.class_size):
-            env = self.__split(env_aud)
-            aud1 = self.__split(speech1_aud)
-            aud2 = self.__split(speech2_aud)
+            env = self.__normaliseAudio(self.__split(env_aud))
+            aud1 = self.__normaliseAudio(self.__split(speech1_aud))
+            aud2 = self.__normaliseAudio(self.__split(speech2_aud))
             merged_aud = self.__merge_audio(aud1, aud2)
 
             if self.outputAudio:
                 X[self.samplesPerClass * i][0] = env
                 X[self.samplesPerClass*i+1][0] = aud1
-                X[self.samplesPerClass*i+2][0] = merged_aud
+                X[self.samplesPerClass*i + 2][0] = merged_aud
             else:
                 X[self.samplesPerClass * i][0] = generateSpec(env)
                 X[self.samplesPerClass*i+1][0] = generateSpec(aud1)
@@ -186,14 +187,16 @@ class AudioDataset(Dataset):
         # assert torch.sum(wav == float('inf'))==0, print(wav)
         return audio
 
+    def __normaliseAudio(self, wav, method="max"):
+        if method == "rms":
+            return F.normalize(wav, p=2)
+        elif method == "max":
+            return wav/(wav.max()+0.01)
+
     def __merge_audio(self, aud1, aud2):
         # if self.generateCochannelMode:
         # gain = random.uniform(0.4, 0.6)
         gain = 0.5
-        # option 1 : normalise by energy = np.linalg.norm(aud1) L2 norm
-        # option 2: normalise by amplitude
-        # option 3: normalise by noisefloor (estimate noisefloor by median of spectrogram)
-
         return aud1*gain + aud2*(1-gain)
 
     def __getAudio(self, audioPath):

@@ -1,3 +1,4 @@
+import argparse
 import subprocess
 import numpy as np
 import os
@@ -7,18 +8,6 @@ import glob
 import pathlib
 import torchaudio
 from loader.AudioDataset import Augmentor
-
-pathIN = './data'
-pathOUT = ''
-if pathOUT == '':
-    pathOUT = pathIN
-
-
-mode = 'process'
-# process/split
-
-# NOTE: Saving of multiple channels not yet implemented. May result in data wastage.
-# Will indicate if rechanneled
 
 
 def detect_silence(path, threshold, duration=0.5):
@@ -72,14 +61,27 @@ def split_silences(audio, silence_list):
     return (noise_aud, sr), (speech_aud, sr)
 
 
-def main():
+def main(input_path=None, output_path=None, mode=None):
+    if input_path is None:
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--input-path', type=str, required=True,
+                            help='Path to the input audio files.')
+        parser.add_argument('--output-path', type=str, required=True,
+                            help='Path to save the processed audio files.')
+        parser.add_argument('--mode', type=str, default='split', choices=['split', 'process'],
+                            help='Whether to split the audio files into noise and speech or only process them.')
+        args = parser.parse_args()
+        input_path = args.input_path
+        output_path = args.output_path
+        mode = args.mode
+
     discarded = 0
-    audioPaths = list(pathlib.Path(pathIN).glob('*.wav'))
+    audioPaths = list(pathlib.Path(input_path).glob('*.wav'))
 
     augmentor = Augmentor()
     for audioIndex, audioPath in tqdm(enumerate(audioPaths), unit='files', total=len(audioPaths)):
         # only used if cut-off halfway
-        if audioIndex >= 0:
+        if audioIndex >= 220:
             _, audioName = os.path.split(audioPath)
             aud = torchaudio.load(audioPath)
             aud = augmentor.resample(augmentor.rechannel(aud), False)
@@ -96,16 +98,11 @@ def main():
 
                 aud_noise, _ = split_silences(aud, silence_time)
                 _, aud_speech = split_silences(aud, speech_time)
-                torchaudio.save(f'{pathIN}/ENV/{audioName}',
+                torchaudio.save(f'{output_path}/ENV/{audioName}',
                                 aud_noise[0], aud_noise[1])
-                torchaudio.save(f'{pathIN}/SPEECH/{audioName}',
+                torchaudio.save(f'{output_path}/SPEECH/{audioName}',
                                 aud_speech[0], aud_speech[1])
-            else:
-                torchaudio.save(f'{pathOUT}/{audioName}',
-                                src=aud[0], sample_rate=aud[1])
-
-    print(f'Total discarded length: {discarded}')
 
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    main(input_path='./data/omni mic', output_path='', mode='process')
