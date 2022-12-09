@@ -81,7 +81,6 @@ class Augmentor():
 
 
 def createDataset(audio_paths, transformParams=[{}], outputAudio=False):
-
     combinedDataset = AudioDataset(
         audio_paths,
         outputAudio,
@@ -114,6 +113,7 @@ def createDataset(audio_paths, transformParams=[{}], outputAudio=False):
 
 n_fft = int(config['data']['n_fft'])
 
+# TODO: Remove outputAudio from AudioDataset (deprecated)
 
 class AudioDataset(Dataset):
     """
@@ -198,8 +198,7 @@ class AudioDataset(Dataset):
 
     def __merge_audio(self, aud1, aud2):
         # if self.generateCochannelMode:
-        # gain = random.uniform(0.4, 0.6)
-        gain = 0.5
+        gain = random.uniform(0.4, 0.6)
         return aud1*gain + aud2*(1-gain)
 
     def __getAudio(self, audioPath):

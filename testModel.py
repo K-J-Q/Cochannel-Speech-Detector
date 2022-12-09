@@ -330,25 +330,26 @@ def extractModelFeature(model):
 
 
 if __name__ == "__main__":
-    model, device, _ = machineLearning.selectModel(
-        setCPU=False)
+    model, device, epoch = machineLearning.selectTrainedModel(setCPU=False)
+    
+
+    if epoch == 0:
+        model = model(512)
 
     print(get_graph_node_names(model)[1])
-
+    model = model.to(device)
     model.eval()
-
-    # summary(model, (1, 201, 161))
-    a = 'E:/Original Audio/Singapore Speech Corpus/[P] Part 3 Same BoundaryMic/3003.wav'
+    
     print(f'\n---------------------------------------\n')
 
     filePath = './data/test.wav'
     folderPath = './data/omni mic'
 
-    predictFile(model, device,filePath)
+    # predictFile(model, device,filePath)
 
     predictLabeledFolders(model, device,folderPath)
 
-    predictFolder(
-        model, device, 'E:/Processed Audio/test/')
+    # predictFolder(
+    #     model, device, 'E:/Processed Audio/test/' if os.name == 'nt' else '/media/jianquan/Data/Processed Audio/test/')
 
     # predictLive(model, device)

@@ -2,9 +2,10 @@ import torch
 from tqdm import tqdm
 import torchmetrics
 from configparser import ConfigParser
-from torch.profiler import profile, record_function, ProfilerActivity
 from pathlib import Path
 import os
+import importlib
+import inspect
 
 config = ConfigParser()
 config.read('config.ini')
@@ -12,20 +13,50 @@ config.read('config.ini')
 batch_size = int((config['data']['batch_size']))
 num_classes = 3
 
+def selectModel(modelName):
+    model_class = None
+    files = os.listdir('model')
+    files = [file for file in files if file.endswith('.py')]
+    print('Available models:')
+    for i, file in enumerate(files):
+        print(f'{i+1}. {file[:-3]}')
+    # search for model class named modelName
+    
+    while model_class is None:
+        selection = input('Enter the number of the model you want to use: ')
+        try:
+            selection = int(selection)
+            if selection > 0 and selection <= len(files):
+                module = importlib.import_module(
+                    'model.' + files[selection - 1][:-3])
+                for attr in dir(module):
+                    if inspect.isclass(getattr(module, attr)):
+                        model_class = getattr(module, attr)
+                        break
+            else:
+                print('Invalid selection')
+        except ValueError:
+            print('Invalid input')
+    return model_class
 
-def selectModel(setCPU = False, modelIndex = None):
+def selectTrainedModel(setCPU = False, modelIndex = None):
     device = torch.device("cuda" if (torch.cuda.is_available() and not setCPU) else "cpu") 
     model_paths = [str(p) for p in Path('./saved_model/').glob(f'*.pt')]
     for i, model_path in enumerate(model_paths):
         print(f'[{i}] {os.path.basename(model_path)}')
-    path = model_paths[int(input('Select saved model > ')) if modelIndex == None else modelIndex]
-    model = torch.load(path, map_location=device)
-    epoch = path.split('epoch',1)[1][:-3]
-    try:
-        epoch=int(epoch)
-    except:
-        epoch = int(epoch.split('(')[0])
-    return model, device, epoch
+    modelIndex = input('Select saved model > ') if modelIndex == None else modelIndex
+    if len(modelIndex) == 0:
+        model = selectModel()
+        return model, device, 0
+    else:
+        path = model_paths[int(modelIndex)]
+        model = torch.load(path)
+        epoch = path.split('epoch',1)[1][:-3]
+        try:
+            epoch=int(epoch)
+        except:
+            epoch = int(epoch.split('(')[0])
+        return model, device, epoch
 
 def train(model, dataloader, cost, optimizer, device):
     acc_metric = torchmetrics.Accuracy().to(device)
@@ -38,7 +69,7 @@ def train(model, dataloader, cost, optimizer, device):
     #     record_shapes=True,
     #     profile_memory=True) as prof:
     for batch, (X, Y) in tqdm(enumerate(dataloader), unit='batch', total=total_batch):
-        X, Y = X.to(device), Y.to(device)
+        X, Y = X.to(device, non_blocking = True), Y.to(device, non_blocking = True)
         optimizer.zero_grad()
         pred = model(X)
         batch_loss = cost(pred, Y)

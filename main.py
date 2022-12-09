@@ -2,25 +2,22 @@ from loader.AudioDataset import createDataset, collate_batch
 from torch.utils.data import Dataset, DataLoader
 import torch
 import machineLearning
-from model import *
 from configparser import ConfigParser
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
+import os
 import loader.utils as utils
 import testModel
 
 if __name__ == '__main__':
-    
     config = ConfigParser()
     config.read('config.ini')
-    torch.backends.cudnn.benchmark = True
 
     utils.clearUselesslogs(minFiles=3)
+    trainPath = 'E:/Processed Audio/train/' if os.name == 'nt' else '/media/jianquan/Data/Processed Audio/train/'
 
-    # Get Audio paths for dataset
-    testRun = config['data'].getboolean('is_test_run')
-    audio_train_paths, audio_val_paths = utils.getAudioPaths(
-        'E:/Processed Audio/train/', percent=float(config['data']['train_percent']))
+
+    audio_train_paths, audio_val_paths = utils.getAudioPaths(trainPath , percent=float(config['data']['train_percent']))
 
     # create dataset with transforms (as required)
     audio_train_dataset = createDataset(audio_train_paths, transformParams=utils.getTransforms(
@@ -51,7 +48,7 @@ if __name__ == '__main__':
     val_dataloader = DataLoader(
         audio_val_dataset,
         batch_size=bsize,
-        num_workers=1,
+        num_workers=int(workers/2),
         shuffle=False,
         pin_memory=True,
         collate_fn=collate_batch,
@@ -59,13 +56,14 @@ if __name__ == '__main__':
     )
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(device)
 
     startEpoch = 0
 
     if config['model'].getboolean('load_pretrained'):
-        model, _, startEpoch = machineLearning.selectModel()
+        model, _, startEpoch = machineLearning.selectTrainedModel()
     else:
-        model = utils.select_model()
+        model = machineLearning.selectModel()
         model = model(nfft=int(config['data']['n_fft'])).to(device)
 
     lr = float(config['model']['learning_rate'])
@@ -80,7 +78,7 @@ if __name__ == '__main__':
         'title'] else datetime.now().strftime("%Y-%m-%d,%H-%M-%S")
     logTitle, modelIndex = utils.uniquify(f'./logs/{title}', True)
     # TensorBoard logging (as required)
-    if config['logger'].getboolean('master_logger') and not testRun:
+    if config['logger'].getboolean('master_logger'):
         writer = SummaryWriter(logTitle)
         if config['logger'].getboolean('log_graph'):
             data = next(iter(val_dataloader))[0].to(device)

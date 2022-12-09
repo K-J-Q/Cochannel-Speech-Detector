@@ -33,13 +33,14 @@ class CNNNetwork_mel(nn.Module):
         x = torch.clamp(x, min=1e-10)
         x = x.log10()
         x = torch.maximum(x, x.max() - 8.0)
-        x = (x - x.min()) / (x.max())
+        x -= x.min()
+        x /= x.max()
         return x
         # return x/(x+10*x.median()+1e-12)
 
     def forward(self, wav):
         x = self.generateSpec(wav)
-        # x = self.__normaliseSpec(x)
+        x = self.__normaliseSpec(x)
 
         # if self.training:
         #     x = self.augmentSpec(x)
@@ -61,4 +62,3 @@ class CNNNetwork_mel(nn.Module):
 if __name__ == "__main__":
     cnn = CNNNetwork_mel(512)
     summary(cnn.cuda(), (1, 16000))
-    # (1, 64, 44) is the shape of the signal which we obtain in dataset.py
