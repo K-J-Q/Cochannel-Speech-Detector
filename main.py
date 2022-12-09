@@ -137,3 +137,5 @@ if __name__ == '__main__':
     if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) != 0:
         writer.add_hparams({'Learning Rate': lr, 'Batch Size': bsize, 'class_size': int(config['data']['class_size']), 'Epochs': int(epoch), 'Weight Decay': decay, 'Dropout': float(
             config['model']['dropout'])}, {'Accuracy': val_accuracy, 'Loss': val_loss, 'Test Accuracy': test_acc})
+
+    print('Done!')
