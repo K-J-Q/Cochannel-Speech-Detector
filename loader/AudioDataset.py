@@ -143,8 +143,7 @@ class AudioDataset(Dataset):
         self.Augmentor = Augmentor()
         self.samplesPerClass = 3
         self.outputAudio = outputAudio
-        self.dataShape = torch.Size([1, self.windowLength * 8000]) if outputAudio else generateSpec(
-            torch.zeros([1, self.windowLength*8000])).shape
+        self.dataShape = torch.Size([1, self.windowLength * 8000])
 
     def __len__(self):
         return min(len(self.env_paths), len(self.speech_paths))
@@ -165,15 +164,9 @@ class AudioDataset(Dataset):
             aud2 = self.__normaliseAudio(self.__split(speech2_aud))
             merged_aud = self.__merge_audio(aud1, aud2)
 
-            if self.outputAudio:
-                X[self.samplesPerClass * i][0] = env
-                X[self.samplesPerClass*i+1][0] = aud1
-                X[self.samplesPerClass*i + 2][0] = merged_aud
-            else:
-                X[self.samplesPerClass * i][0] = generateSpec(env)
-                X[self.samplesPerClass*i+1][0] = generateSpec(aud1)
-                X[self.samplesPerClass*i+2][0] = generateSpec(merged_aud)
-
+            X[self.samplesPerClass * i][0] = env
+            X[self.samplesPerClass*i+1][0] = aud1
+            X[self.samplesPerClass*i + 2][0] = merged_aud
             # torchaudio.save(loader.utils.uniquify(
             #     './merged.wav'), merged_aud, 8000)
 
@@ -190,11 +183,8 @@ class AudioDataset(Dataset):
         # assert torch.sum(wav == float('inf'))==0, print(wav)
         return audio
 
-    def __normaliseAudio(self, wav, method="max"):
-        if method == "rms":
-            return F.normalize(wav, p=2)
-        elif method == "max":
-            return wav/(wav.max()+0.01)
+    def __normaliseAudio(self, wav):
+        return wav / torch.max(torch.abs(wav))
 
     def __merge_audio(self, aud1, aud2):
         # if self.generateCochannelMode:
@@ -230,12 +220,9 @@ def collate_batch(batches):
 
 def main():
     import utils
-    env_paths = utils.getAudioPaths('E:/Processed Audio/ENV/4 Diff Room')
-    speech_paths = utils.getAudioPaths(
-        'E:/Processed Audio/SPEECH/4 Diff Room')
 
-    dataset = createDataset(env_paths, speech_paths,
-                            utils.getTransforms(False))
+    audio_path = utils.getAudioPaths('E:/Processed Audio/train/' if os.name == 'nt' else '/media/jianquan/Data/Processed Audio/train/')[0]
+    dataset = createDataset(audio_path, utils.getTransforms(False), outputAudio=True)
 
     dataloader = DataLoader(
         dataset,

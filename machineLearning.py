@@ -13,15 +13,14 @@ config.read('config.ini')
 batch_size = int((config['data']['batch_size']))
 num_classes = 3
 
-def selectModel(modelName):
+def selectModel():
     model_class = None
     files = os.listdir('model')
     files = [file for file in files if file.endswith('.py')]
     print('Available models:')
     for i, file in enumerate(files):
         print(f'{i+1}. {file[:-3]}')
-    # search for model class named modelName
-    
+
     while model_class is None:
         selection = input('Enter the number of the model you want to use: ')
         try:

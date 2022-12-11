@@ -8,6 +8,7 @@ from datetime import datetime
 import os
 import loader.utils as utils
 import testModel
+import glob
 
 if __name__ == '__main__':
     config = ConfigParser()
@@ -141,5 +142,11 @@ if __name__ == '__main__':
     if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) != 0:
         writer.add_hparams({'Learning Rate': lr, 'Batch Size': bsize, 'class_size': int(config['data']['class_size']), 'Epochs': int(epoch), 'Weight Decay': decay, 'Dropout': float(
             config['model']['dropout'])}, {'Accuracy': val_accuracy, 'Loss': val_loss, 'Test Accuracy': test_acc})
+
+    # delete models starting with title variable using glob
+    for file in glob.glob(f'saved_model/{title}({modelIndex})*'):
+        if file != f'saved_model/{title}({modelIndex})_epoch{epoch}.pt':
+            print(f'Deleting {file}')
+            os.remove(file)
 
     print('Done!')
