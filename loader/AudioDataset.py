@@ -166,21 +166,19 @@ class AudioDataset(Dataset):
             aud2 = self.__split(speech2_aud)
             merged_aud = self.__merge_audio(aud1, aud2)
 
-            X[self.samplesPerClass * i][0] = env
-            X[self.samplesPerClass*i+1][0] = aud1
-            X[self.samplesPerClass*i + 2][0] = merged_aud
-            # torchaudio.save(loader.utils.uniquify(
-            #     './merged.wav'), merged_aud, 8000)
-
+            X[self.samplesPerClass * i][0] = self.__augmentAudio(env)
+            X[self.samplesPerClass*i+1][0] = self.__augmentAudio(aud1)
+            X[self.samplesPerClass*i + 2][0] = self.__augmentAudio(merged_aud)
+            # torchaudio.save('test.wav', X[self.samplesPerClass*i+2], 8000)
         return [X, Y]
 
     def __augmentAudio(self, wav, augments=[]):
         if 'add_noise' in augments:
-            gain = random.uniform(0, 0.2)
+            gain = random.uniform(0, 0.1)*wav.max()
             noise = torch.randn(wav.shape)
             wav = wav + gain * noise
-        if 'add_reverb' in augments:
-            pass
+        if 'reverb' in augments: 
+            wav = torchaudio.sox_effects.apply_effects_tensor(wav, sample_rate=8000, effects=[["reverb", "70"], ['channels', '1']])[0]
         return wav
         
 
@@ -198,11 +196,11 @@ class AudioDataset(Dataset):
         return wav
 
     def __merge_audio(self, aud1, aud2):
-        # if self.generateCochannelMode:
+        gain_div = 0.2
         aud1 = self.__normaliseAudio(aud1)
         aud2 = self.__normaliseAudio(aud2)
-        gain = random.uniform(0.2, 0.8)
-        return aud1*gain + aud2*(1-gain)
+        gain = random.uniform(0, gain_div)
+        return aud1*(0.5-gain) + aud2*(0.5+gain)
 
     def __getAudio(self, audioPath):
         waveform, sample_rate = torchaudio.load(audioPath)
@@ -239,7 +237,7 @@ def main():
 
     dataloader = DataLoader(
         dataset,
-        batch_size=10,
+        batch_size=2,
         num_workers=2,
         shuffle=True,
         collate_fn=collate_batch

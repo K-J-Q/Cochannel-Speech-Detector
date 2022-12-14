@@ -1,11 +1,12 @@
-import torch
-from tqdm import tqdm
-import torchmetrics
-from configparser import ConfigParser
-from pathlib import Path
-import os
 import importlib
 import inspect
+import os
+from configparser import ConfigParser
+from pathlib import Path
+
+import torch
+import torchmetrics
+from tqdm import tqdm
 
 config = ConfigParser()
 config.read('config.ini')
@@ -13,13 +14,14 @@ config.read('config.ini')
 batch_size = int((config['data']['batch_size']))
 num_classes = 3
 
+
 def selectModel():
     model_class = None
     files = os.listdir('model')
     files = [file for file in files if file.endswith('.py')]
     print('Available models:')
     for i, file in enumerate(files):
-        print(f'{i+1}. {file[:-3]}')
+        print(f'{i + 1}. {file[:-3]}')
 
     while model_class is None:
         selection = input('Enter the number of the model you want to use: ')
@@ -38,8 +40,9 @@ def selectModel():
             print('Invalid input')
     return model_class
 
-def selectTrainedModel(setCPU = False, modelIndex = None):
-    device = torch.device("cuda" if (torch.cuda.is_available() and not setCPU) else "cpu") 
+
+def selectTrainedModel(setCPU=False, modelIndex=None):
+    device = torch.device("cuda" if (torch.cuda.is_available() and not setCPU) else "cpu")
     model_paths = [str(p) for p in Path('./saved_model/').glob(f'*.pt')]
     for i, model_path in enumerate(model_paths):
         print(f'[{i}] {os.path.basename(model_path)}')
@@ -50,12 +53,13 @@ def selectTrainedModel(setCPU = False, modelIndex = None):
     else:
         path = model_paths[int(modelIndex)]
         model = torch.load(path)
-        epoch = path.split('epoch',1)[1][:-3]
+        epoch = path.split('epoch', 1)[1][:-3]
         try:
-            epoch=int(epoch)
+            epoch = int(epoch)
         except:
             epoch = int(epoch.split('(')[0])
         return model, device, epoch
+
 
 def train(model, dataloader, cost, optimizer, device):
     acc_metric = torchmetrics.Accuracy().to(device)
@@ -68,7 +72,7 @@ def train(model, dataloader, cost, optimizer, device):
     #     record_shapes=True,
     #     profile_memory=True) as prof:
     for batch, (X, Y) in tqdm(enumerate(dataloader), unit='batch', total=total_batch):
-        X, Y = X.to(device, non_blocking = True), Y.to(device, non_blocking = True)
+        X, Y = X.to(device, non_blocking=True), Y.to(device, non_blocking=True)
         optimizer.zero_grad()
         pred = model(X)
         if type(pred) == tuple:
@@ -79,9 +83,9 @@ def train(model, dataloader, cost, optimizer, device):
         optimizer.step()
         train_loss += batch_loss.item()
         train_accuracy += batch_accuracy.item()
-        if batch % int(total_batch/10) == 0:
+        if batch % int(total_batch / 10) == 0:
             print(
-                f" Loss (per sample): {batch_loss.item()/batch_size}  Accuracy: {batch_accuracy*100}%")
+                f" Loss (per sample): {batch_loss.item() / batch_size}  Accuracy: {batch_accuracy * 100}%")
         # prof.step()
 
     train_loss /= train_size
@@ -126,6 +130,7 @@ def tensorBoardLogging(writer, train_loss, train_accuracy, val_loss,
     writer.add_scalar('2 Validate/1 Model loss', val_loss, epoch)
     writer.add_scalar('2 Validate/2 Model accuracy', val_accuracy, epoch)
     writer.close()
+
 
 if __name__ == "__main__":
     print(selectModel())

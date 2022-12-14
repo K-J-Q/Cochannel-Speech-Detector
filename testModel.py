@@ -1,17 +1,15 @@
-from torchvision.models.feature_extraction import get_graph_node_names, create_feature_extractor
-import torchaudio
-import torchmetrics
+import enum
 from pathlib import Path
-import torch
+
+import matplotlib.pyplot as plt
+import numpy as np
+import seaborn as sn
+import torchmetrics
+from torchvision.models.feature_extraction import get_graph_node_names, create_feature_extractor
+
+import loader.utils as utils
 import machineLearning
 from loader.AudioDataset import *
-import random
-import seaborn as sn
-import matplotlib.pyplot as plt
-import loader.utils as utils
-from torchsummary import summary
-import enum
-import numpy as np
 
 # To ensure reproducibility
 random.seed(0)
@@ -59,12 +57,12 @@ def predictLabeledFolders(model, device, folderPath, saveFigPath=None):
         for path in filepaths:
             confusionMatrix += predictFile(model, device, str(path),
                                            plotPredicton=True if __name__ == '__main__' else False)
-        cum_acc = torch.sum(torch.eye(3)*confusionMatrix) / \
-            torch.sum(confusionMatrix) * 100
+        cum_acc = torch.sum(torch.eye(3) * confusionMatrix) / \
+                  torch.sum(confusionMatrix) * 100
         cum_folder_acc += cum_acc
         print(f'Cumulative accuracy: {cum_acc}%')
         sn.heatmap(confusionMatrix, annot=True,
-                       xticklabels=class_map, yticklabels=class_map)
+                   xticklabels=class_map, yticklabels=class_map)
         datasetStats = torch.sum(confusionMatrix, 1)
         print(
             f'Dataset | Class 0: {datasetStats[0]} Class 1: {datasetStats[1]}, Class 2: {datasetStats[2]}')
@@ -74,7 +72,7 @@ def predictLabeledFolders(model, device, folderPath, saveFigPath=None):
         if __name__ == '__main__':
             plt.show()
         elif saveFigPath:
-            plt.savefig(saveFigPath+'.png')
+            plt.savefig(utils.uniquify(saveFigPath + '.png'))
             plt.close()
 
     return cum_folder_acc, confusionMatrix
@@ -83,7 +81,7 @@ def predictLabeledFolders(model, device, folderPath, saveFigPath=None):
 def predictFile(model, device, filePath, plotPredicton=True):
     model = extractModelFeature(model)
     augmentor = Augmentor()
-    labelPath = filePath[0:-3]+'txt'
+    labelPath = filePath[0:-3] + 'txt'
 
     pred = []
     pred_graph = []
@@ -100,14 +98,14 @@ def predictFile(model, device, filePath, plotPredicton=True):
         wav = torchaudio.functional.dcshift(wav, -wav.mean())
         sampleLength = windowLength * sr
         wav = wav[0]
-        batch_length = batch_size*sampleLength
-        for batch in range(0, len(wav)-sampleLength, batch_length):
-            data_tensor = torch.zeros([batch_size, 1,  8000 * windowLength])
+        batch_length = batch_size * sampleLength
+        for batch in range(0, len(wav) - sampleLength, batch_length):
+            data_tensor = torch.zeros([batch_size, 1, 8000 * windowLength])
             for splitIndex, j in enumerate(range(batch, batch + batch_length, sampleLength)):
-                trimmed_audio = wav[j:j+sampleLength]
+                trimmed_audio = wav[j:j + sampleLength]
                 # print(splitIndex, ' ', len(trimmed_audio))
                 if len(trimmed_audio) == sampleLength:
-                    trimmed_audio/=torch.max(torch.abs(trimmed_audio))
+                    trimmed_audio /= torch.max(torch.abs(trimmed_audio))
                     data_tensor[splitIndex][0] = trimmed_audio
                 else:
                     # end of audio file
@@ -132,9 +130,9 @@ def predictFile(model, device, filePath, plotPredicton=True):
         plt.title(filePath)
         ax2 = plt.subplot(2, 1, 2, sharex=ax1)
         plt.tight_layout()
-        plt.bar((torch.arange(predLength+1) * windowLength) -
+        plt.bar((torch.arange(predLength + 1) * windowLength) -
                 1, np.insert(pred_graph, 0, 0))
-        plt.xlim(0, windowLength*predLength)
+        plt.xlim(0, windowLength * predLength)
         plt.ylim(0, 2.5)
         plt.ylabel('Number of speakers')
         plt.xlabel('Time (seconds)')
@@ -147,20 +145,20 @@ def predictFile(model, device, filePath, plotPredicton=True):
         gt_vec = torch.zeros(predLength)
 
         pred_graph = torch.tensor(pred_graph)
-        for i, startTime in enumerate(range(0, (predLength)*windowLength, windowLength)):
+        for i, startTime in enumerate(range(0, (predLength) * windowLength, windowLength)):
             gt_vec[i] = percentageMode(get_percentage_in_window(
-                ground_truth, startTime, startTime+windowLength), mode=pred_graph[i])
+                ground_truth, startTime, startTime + windowLength), mode=pred_graph[i])
 
         num_correct_pred = torch.sum(gt_vec == pred_graph)
 
         gt_x, gt_y = ground_truth
 
         print(
-            f'({os.path.basename(labelPath)}) Accuracy: {num_correct_pred/predLength *100}%')
+            f'({os.path.basename(labelPath)}) Accuracy: {num_correct_pred / predLength * 100}%')
 
         if plotPredicton:
             plt.step(gt_x, gt_y, 'c')
-            plt.step(torch.arange(predLength+1) *
+            plt.step(torch.arange(predLength + 1) *
                      windowLength, np.insert(gt_vec, 0, 0), 'g')
             plt.legend(['Ground Truth', 'Computed Truth', 'Model Prediction'])
             plt.show()
@@ -176,11 +174,11 @@ class specFeatures:
     def __init__(self, model, device, wav, sr, windowLength):
         assert wav.shape[0] == 1
         modelOut = model(
-            torch.unsqueeze(wav[:, 0:sr*windowLength], dim=0).to(device))
+            torch.unsqueeze(wav[:, 0:sr * windowLength], dim=0).to(device))
         self.windowOutputShape = modelOut['spec'].shape
-        self.audioLength = len(wav[0])/sr
+        self.audioLength = len(wav[0]) / sr
         self.spec = torch.zeros(
-            [self.windowOutputShape[2], int(self.windowOutputShape[3]*self.audioLength/windowLength)])
+            [self.windowOutputShape[2], int(self.windowOutputShape[3] * self.audioLength / windowLength)])
 
     def addSpec(self, modelOutput):
         if isinstance(modelOutput, dict):
@@ -189,7 +187,7 @@ class specFeatures:
                     batchFeatures = modelOutput[layers]
                     for i, feature in enumerate(batchFeatures):
                         self.spec[:, self.specIndex: self.specIndex +
-                                  self.windowOutputShape[3]] = feature[0]
+                                                     self.windowOutputShape[3]] = feature[0]
                         self.specIndex += self.windowOutputShape[3]
                         # plt.title(f'{layers} ({i})')
                         # plt.imshow(feature[0].cpu())
@@ -216,7 +214,7 @@ def selectMicrophone():
     k = s.split(']')
     for i, device in enumerate(k):
         if 'Alternative name ' in device:
-            device_name = k[i-1].split('\n')[0]
+            device_name = k[i - 1].split('\n')[0]
             print(f"[{len(micID)}] {device_name}")
             micID.append(device.split('"')[1])
 
@@ -235,7 +233,7 @@ def predictLive(model, device):
     )
 
     streamer.add_basic_audio_stream(
-        frames_per_chunk=8000*2, sample_rate=8000)
+        frames_per_chunk=8000 * 2, sample_rate=8000)
 
     stream_iterator = streamer.stream()
     wav = torch.Tensor([])
@@ -276,12 +274,12 @@ def get_percentage_in_window(groundTruth, startTime, endTime):
             label_time[gt_y[overlap]] += gt_x[overlap] - lastTime
             lastTime = gt_x[overlap]
         try:
-            label_time[gt_y[overlap+1]] += endTime-gt_x[overlap]
+            label_time[gt_y[overlap + 1]] += endTime - gt_x[overlap]
         except IndexError:
             pass
     else:
-        label_time[gt_y[np.argmax(gt_x > endTime)]] = endTime-startTime
-    label_time = label_time/(endTime-startTime)
+        label_time[gt_y[np.argmax(gt_x > endTime)]] = endTime - startTime
+    label_time = label_time / (endTime - startTime)
     return label_time
 
 
@@ -336,7 +334,7 @@ def extractModelFeature(model):
 
 
 if __name__ == "__main__":
-    model, device, epoch = machineLearning.selectTrainedModel(setCPU=False)
+    model, device, epoch = machineLearning.selectTrainedModel(setCPU=True)
     if epoch == 0:
         model = model(512)
 
@@ -347,12 +345,12 @@ if __name__ == "__main__":
 
     print(f'\n---------------------------------------\n')
 
-    filePath = 'untitled #1.wav'
-    folderPath = './data/omni mic'
+    # filePath = 'testNorm.wav'
+    folderPath = './data/other mic'
 
-    # predictFile(model, device,filePath)
+    # predictFile(model, device, filePath)
 
-    predictLabeledFolders(model, device, folderPath)
+    predictLabeledFolders(model, device, folderPath, 'confMatrix')
 
     # predictFolder(
     #     model, device, 'E:/Processed Audio/test/' if os.name == 'nt' else '/media/jianquan/Data/Processed Audio/test/')

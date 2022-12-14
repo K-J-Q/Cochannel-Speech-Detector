@@ -34,8 +34,14 @@ class CNNNetwork_mel(nn.Module):
         self.fc2 = nn.Linear(120, 3, bias=False)
 
     def __normaliseSpec(self, x):
+        # x = torch.clamp(x, max=1e2)
         x = torch.clamp(x, min=1e-10)
         x = x.log10()
+        # max_val = x.reshape(
+        #     x.shape[0], 1, -1).amin(2).view(x.shape[0], 1, 1, 1)
+
+        # x = torch.maximum(x, max_val-8)
+
         min_val = x.reshape(
             x.shape[0], 1, -1).amin(2).view(x.shape[0], 1, 1, 1)
         x -= min_val
@@ -51,7 +57,6 @@ class CNNNetwork_mel(nn.Module):
             wav = self.audioNorm.train()(wav)
             if self.augmentor is not None:
                 wav = self.augmentor(wav, 8000)
-        print(wav[0].abs().max())
         return wav
 
     def forward(self, wav):
