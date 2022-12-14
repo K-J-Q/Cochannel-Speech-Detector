@@ -124,7 +124,7 @@ class AudioDataset(Dataset):
     """
 
     class_size = int(config['data']['class_size'])
-    windowLength = int(int(config['augmentations']['duration'])/1000)
+    windowLength = int(config['augmentations']['duration'])/1000
 
     augment = Compose([RoomSimulator()])
 
@@ -143,7 +143,9 @@ class AudioDataset(Dataset):
         self.Augmentor = Augmentor()
         self.samplesPerClass = 3
         self.outputAudio = outputAudio
-        self.dataShape = torch.Size([1, self.windowLength * 8000])
+        self.dataShape = torch.Size([1, int(self.windowLength * 8000)])
+        self.sampleLength = int(self.windowLength*8000)
+
 
     def __len__(self):
         return min(len(self.env_paths), len(self.speech_paths))
@@ -159,9 +161,9 @@ class AudioDataset(Dataset):
         Y = torch.tensor([0, 1, 2]).repeat(self.class_size)
 
         for i in range(self.class_size):
-            env = self.__normaliseAudio(self.__split(env_aud))
-            aud1 = self.__normaliseAudio(self.__split(speech1_aud))
-            aud2 = self.__normaliseAudio(self.__split(speech2_aud))
+            env = self.__split(env_aud)
+            aud1 = self.__split(speech1_aud)
+            aud2 = self.__split(speech2_aud)
             merged_aud = self.__merge_audio(aud1, aud2)
 
             X[self.samplesPerClass * i][0] = env
@@ -172,23 +174,34 @@ class AudioDataset(Dataset):
 
         return [X, Y]
 
+    def __augmentAudio(self, wav, augments=[]):
+        if 'add_noise' in augments:
+            gain = random.uniform(0, 0.2)
+            noise = torch.randn(wav.shape)
+            wav = wav + gain * noise
+        if 'add_reverb' in augments:
+            pass
+        return wav
+        
+
     def __removeDC(self, wav):
         return wav - wav.mean()
 
     def __split(self, audio):
         wav, sr = audio
-        cut_length = self.windowLength*sr
-        start_idx = random.randint(0, len(wav[0])-cut_length)
-        audio = wav[:, start_idx: start_idx+cut_length]
-        # assert torch.sum(wav == float('inf'))==0, print(wav)
+        start_idx = random.randint(0, len(wav[0])-self.sampleLength)
+        audio = wav[:, start_idx: start_idx+self.sampleLength]
         return audio
 
     def __normaliseAudio(self, wav):
-        return wav / torch.max(torch.abs(wav))
+        wav /= torch.max(torch.abs(wav))
+        return wav
 
     def __merge_audio(self, aud1, aud2):
         # if self.generateCochannelMode:
-        gain = random.uniform(0.4, 0.6)
+        aud1 = self.__normaliseAudio(aud1)
+        aud2 = self.__normaliseAudio(aud2)
+        gain = random.uniform(0.2, 0.8)
         return aud1*gain + aud2*(1-gain)
 
     def __getAudio(self, audioPath):

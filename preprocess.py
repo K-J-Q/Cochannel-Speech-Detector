@@ -8,7 +8,7 @@ import glob
 import pathlib
 import torchaudio
 from loader.AudioDataset import Augmentor
-
+import loader.utils as utils
 
 def detect_silence(path, threshold, duration=0.5):
     '''
@@ -82,6 +82,7 @@ def main(input_path=None, output_path=None, mode=None):
     for audioIndex, audioPath in tqdm(enumerate(audioPaths), unit='files', total=len(audioPaths)):
         # only used if cut-off halfway
         print(audioPath)
+        
         if audioIndex >= 0:
             _, audioName = os.path.split(audioPath)
             aud = torchaudio.load(audioPath)
@@ -99,11 +100,12 @@ def main(input_path=None, output_path=None, mode=None):
 
                 aud_noise, _ = split_silences(aud, silence_time)
                 _, aud_speech = split_silences(aud, speech_time)
-                torchaudio.save(f'{output_path}/ENV/{audioName}',
+                torchaudio.save(utils.uniquify(f'{output_path}/ENV/{audioName}'),
                                 aud_noise[0], aud_noise[1])
-                torchaudio.save(f'{output_path}/SPEECH/{audioName}',
+                torchaudio.save(utils.uniquify(f'{output_path}/SPEECH/{audioName}'),
                                 aud_speech[0], aud_speech[1])
             if mode =='process':
-                torchaudio.save(f'{audioPath}', aud[0], aud[1])
+                torchaudio.save(utils.uniquify(f'{output_path}/{audioName}'), aud[0], aud[1])
+
 if __name__ == '__main__':
-    main(input_path='./data/omni mic', output_path='', mode='process')
+    main(input_path='E:/Original Audio/LibriCSS', output_path='E:/Processed Audio/LibriCSS/recorded', mode='process')

@@ -71,6 +71,8 @@ def train(model, dataloader, cost, optimizer, device):
         X, Y = X.to(device, non_blocking = True), Y.to(device, non_blocking = True)
         optimizer.zero_grad()
         pred = model(X)
+        if type(pred) == tuple:
+            pred = pred[0]
         batch_loss = cost(pred, Y)
         batch_accuracy = acc_metric(pred, Y)
         batch_loss.backward()
@@ -104,6 +106,8 @@ def eval(model, dataloader, cost, device):
         for batch, (X, Y) in tqdm(enumerate(dataloader), unit='batch', total=total_batch):
             X, Y = X.to(device), Y.to(device)
             pred = model(X)
+            if type(pred) == tuple:
+                pred = pred[0]
             batch_loss = cost(pred, Y)
             batch_accuracy = acc_metric(pred, Y)
             val_loss += batch_loss.item()

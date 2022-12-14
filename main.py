@@ -9,14 +9,26 @@ import os
 import loader.utils as utils
 import testModel
 import glob
+import torch_audiomentations as aug
+
+testPath  = './data/omni mic'
+trainPath = 'E:/Processed Audio/train/' if os.name == 'nt' else '/media/jianquan/Data/Processed Audio/train/'
+
+startEpoch = 0
+
+augmentations = aug.Compose(
+        transforms=[
+            # aug.PitchShift(sample_rate=8000),
+            # aug.AddColoredNoise(p=1, min_snr_in_db=0, max_snr_in_db=5),
+        ]
+    )
+
 
 if __name__ == '__main__':
     config = ConfigParser()
     config.read('config.ini')
 
     utils.clearUselesslogs(minFiles=3)
-    trainPath = 'E:/Processed Audio/train/' if os.name == 'nt' else '/media/jianquan/Data/Processed Audio/train/'
-
 
     audio_train_paths, audio_val_paths = utils.getAudioPaths(trainPath , percent=float(config['data']['train_percent']))
 
@@ -59,13 +71,13 @@ if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(device)
 
-    startEpoch = 0
-
+    
     if config['model'].getboolean('load_pretrained'):
-        model, _, startEpoch = machineLearning.selectTrainedModel()
+        model, _, modelEpoch = machineLearning.selectTrainedModel()
+        startEpoch = modelEpoch if startEpoch==0 else startEpoch
     else:
         model = machineLearning.selectModel()
-        model = model(nfft=int(config['data']['n_fft'])).to(device)
+        model = model(512, augmentations).to(device)
 
     lr = float(config['model']['learning_rate'])
     epochs = int(config['model']['num_epochs'])
@@ -89,6 +101,9 @@ if __name__ == '__main__':
     else:
         for i in config['logger']:
             config['logger'][i] = 'false'
+    
+    testModel.predictLabeledFolders(
+        model, device, testPath, f'records/{title}({modelIndex})_epoch0')
 
     # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
     #     optimizer, patience=2, verbose=True)
@@ -102,14 +117,14 @@ if __name__ == '__main__':
             model, train_dataloader, lossFn, optimizer, device)
         if config['model'].getboolean('save_model_checkpoint') and epoch % int(config['model']['checkpoint']) == 0:
             torch.save(model, utils.uniquify(
-                f'saved_model/{title}({modelIndex})_epoch{epoch}.pt'))
+                f'saved_model/{title} ({modelIndex})_epoch{epoch}.pt'))
 
         val_loss, val_accuracy, _ = machineLearning.eval(
             model, val_dataloader, lossFn, device)
 
         if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) == 0:
             test_acc, _ = testModel.predictLabeledFolders(
-                model, device, './data/omni mic')
+                model, device, testPath, f'records/{title}({modelIndex})_epoch{epoch}')
             writer.add_hparams({'Learning Rate': lr, 'Batch Size': bsize, 'class_size': int(config['data']['class_size']), 'Epochs': epoch, 'Weight Decay': decay, 'Dropout': float(
                 config['model']['dropout'])}, {'Accuracy': val_accuracy, 'Loss': val_loss, 'Test Accuracy': test_acc})
 
@@ -129,24 +144,18 @@ if __name__ == '__main__':
         # scheduler.step(val_loss)
 
     test_acc, _ = testModel.predictLabeledFolders(
-         model, device,'./data/omni mic')
-
-    if epoch != None:
-        torch.save(model, utils.uniquify(
-            f'saved_model/{title}({modelIndex})_epoch{epoch}.pt'))
-    else:
-        val_loss, val_accuracy, _ = machineLearning.eval(
-            model, val_dataloader, lossFn, device)
-        epoch = epochs + 0.1
+            model, device,testPath)
 
     if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) != 0:
         writer.add_hparams({'Learning Rate': lr, 'Batch Size': bsize, 'class_size': int(config['data']['class_size']), 'Epochs': int(epoch), 'Weight Decay': decay, 'Dropout': float(
             config['model']['dropout'])}, {'Accuracy': val_accuracy, 'Loss': val_loss, 'Test Accuracy': test_acc})
 
     # delete models starting with title variable using glob
-    for file in glob.glob(f'saved_model/{title}({modelIndex})*'):
-        if file != f'saved_model/{title}({modelIndex})_epoch{epoch}.pt':
-            print(f'Deleting {file}')
-            os.remove(file)
+    for file in glob.glob(f'saved_model/{title} ({modelIndex})*'):
+        print(f'Deleting {file}')
+        os.remove(file)
+    
+    torch.save(model, utils.uniquify(
+            f'saved_model/{title} ({modelIndex})_epoch{epoch}.pt'))
 
     print('Done!')

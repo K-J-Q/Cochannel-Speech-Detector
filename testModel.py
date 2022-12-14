@@ -9,6 +9,7 @@ import random
 import seaborn as sn
 import matplotlib.pyplot as plt
 import loader.utils as utils
+from torchsummary import summary
 import enum
 import numpy as np
 
@@ -47,29 +48,34 @@ def predictFolder(model, device, folderPath):
     plt.show()
 
 
-def predictLabeledFolders(model, device, folderPath):
+def predictLabeledFolders(model, device, folderPath, saveFigPath=None):
     folderPath = list(Path(folderPath).glob('**/'))
+    assert len(folderPath) > 0
     cum_folder_acc = 0
     for folder in folderPath:
         print(f'\n---------------{folder}---------------')
         filepaths = list(Path(folder).glob('*.wav'))
         confusionMatrix = torch.zeros([3, 3])
         for path in filepaths:
-            confusionMatrix += predictFile(model, device, str(path), plotPredicton=True if __name__ == '__main__' else False)
+            confusionMatrix += predictFile(model, device, str(path),
+                                           plotPredicton=True if __name__ == '__main__' else False)
         cum_acc = torch.sum(torch.eye(3)*confusionMatrix) / \
             torch.sum(confusionMatrix) * 100
         cum_folder_acc += cum_acc
         print(f'Cumulative accuracy: {cum_acc}%')
-        if __name__ == '__main__':
-            sn.heatmap(confusionMatrix, annot=True,
+        sn.heatmap(confusionMatrix, annot=True,
                        xticklabels=class_map, yticklabels=class_map)
-            datasetStats = torch.sum(confusionMatrix, 1)
-            print(
-                f'Dataset | Class 0: {datasetStats[0]} Class 1: {datasetStats[1]}, Class 2: {datasetStats[2]}')
-            plt.ylabel('Actual')
-            plt.xlabel('Predicted')
-            plt.title(folder)
+        datasetStats = torch.sum(confusionMatrix, 1)
+        print(
+            f'Dataset | Class 0: {datasetStats[0]} Class 1: {datasetStats[1]}, Class 2: {datasetStats[2]}')
+        plt.ylabel('Actual')
+        plt.xlabel('Predicted')
+        plt.title(folder)
+        if __name__ == '__main__':
             plt.show()
+        elif saveFigPath:
+            plt.savefig(saveFigPath+'.png')
+            plt.close()
 
     return cum_folder_acc, confusionMatrix
 
@@ -92,7 +98,6 @@ def predictFile(model, device, filePath, plotPredicton=True):
         if plotPredicton:
             specData = specFeatures(model, device, wav, sr, windowLength)
         wav = torchaudio.functional.dcshift(wav, -wav.mean())
-        wav = torchaudio.functional.highpass_biquad(wav, 8000, 10)
         sampleLength = windowLength * sr
         wav = wav[0]
         batch_length = batch_size*sampleLength
@@ -102,8 +107,8 @@ def predictFile(model, device, filePath, plotPredicton=True):
                 trimmed_audio = wav[j:j+sampleLength]
                 # print(splitIndex, ' ', len(trimmed_audio))
                 if len(trimmed_audio) == sampleLength:
-                    data_tensor[splitIndex][0] = trimmed_audio / \
-                        trimmed_audio.max()
+                    trimmed_audio/=torch.max(torch.abs(trimmed_audio))
+                    data_tensor[splitIndex][0] = trimmed_audio
                 else:
                     # end of audio file
                     data_tensor = data_tensor[0:splitIndex]
@@ -315,14 +320,16 @@ def getGroundTruth(file):
 
 
 def extractModelFeature(model):
+    nodes = get_graph_node_names(model)[1]
+    spec_index = nodes.index('conv1') - 1
     return_nodes = {
         # node_name: user-specified key for output dict
-        'truediv': 'spec',
+        nodes[spec_index]: 'spec',
         # 'elu': 'conv1',
         # 'elu_1': 'conv2',
         # 'conv3': 'conv3',
         # 'conv4': 'conv4',
-        'fc3': 'out'
+        nodes[-1]: 'out'
     }
 
     return create_feature_extractor(model, return_nodes=return_nodes) if __name__ == "__main__" else model
@@ -330,23 +337,22 @@ def extractModelFeature(model):
 
 if __name__ == "__main__":
     model, device, epoch = machineLearning.selectTrainedModel(setCPU=False)
-    
-
     if epoch == 0:
         model = model(512)
 
-    print(get_graph_node_names(model)[1])
+    print(model)
+
     model = model.to(device)
     model.eval()
-    
+
     print(f'\n---------------------------------------\n')
 
-    filePath = './data/test.wav'
+    filePath = 'untitled #1.wav'
     folderPath = './data/omni mic'
 
     # predictFile(model, device,filePath)
 
-    predictLabeledFolders(model, device,folderPath)
+    predictLabeledFolders(model, device, folderPath)
 
     # predictFolder(
     #     model, device, 'E:/Processed Audio/test/' if os.name == 'nt' else '/media/jianquan/Data/Processed Audio/test/')
