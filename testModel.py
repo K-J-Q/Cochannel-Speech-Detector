@@ -61,7 +61,8 @@ def predictLabeledFolders(model, device, folderPath, saveFigPath=None):
                   torch.sum(confusionMatrix) * 100
         cum_folder_acc += cum_acc
         print(f'Cumulative accuracy: {cum_acc}%')
-        sn.heatmap(confusionMatrix, annot=True,
+        confusionMatrixNormalised = confusionMatrix/torch.sum(confusionMatrix, dim=1).unsqueeze(1)
+        sn.heatmap(confusionMatrixNormalised, annot=True, fmt='.4f',
                    xticklabels=class_map, yticklabels=class_map)
         datasetStats = torch.sum(confusionMatrix, 1)
         print(

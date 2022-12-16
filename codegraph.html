@@ -1,0 +1,1201 @@
+<!--
+ * Copyright (c) 2015 Mountainstorm
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ *
+ * Original from https://github.com/mountainstorm/jquery.graphviz.svg/blob/master/demo.html
+ -->
+<html>
+	<head>
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.4/css/bootstrap.min.css">
+		<!-- <link rel="stylesheet" href="css/graphviz.svg.css"> -->
+	</head>
+
+	<style>
+        #instructions {
+            color: #000000;
+            position: absolute;
+            z-index: 100;
+            bottom: 0px;
+            left: 0px;
+        }
+    </style>
+	<body>
+		<h4 id="instructions">Click node to highlight; Shift-scroll to zoom; Esc to unhighlight</h4>
+		<div id="graph" style="width: 100%; height: 100%; overflow: scroll;"></div>
+
+		<script type="text/javascript" src="https://code.jquery.com/jquery-2.1.3.min.js"></script>
+		<script type="text/javascript" src="https://cdn.rawgit.com/jquery/jquery-mousewheel/master/jquery.mousewheel.min.js"></script>
+		<script type="text/javascript" src="https://cdn.rawgit.com/jquery/jquery-color/master/jquery.color.js"></script>
+		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.4/js/bootstrap.min.js"></script>
+		<script type="text/javascript">!function(t){"use strict";String.prototype.startsWith=function(t){return 0==this.indexOf(t)},String.prototype.endsWith=function(t){return-1!==this.indexOf(t,this.length-t.length)};var e=function(t,e){this.type=null,this.options=null,this.enabled=null,this.$element=null,this.init("graphviz.svg",t,e)};e.VERSION="1.0.1",e.GVPT_2_PX=32.5,e.DEFAULTS={url:null,svg:null,shrink:"0.125pt",tooltips:{init:function(e){var i=t(this);i.tooltip({container:e,placement:"auto left",animation:!1,viewport:null}).on("hide.bs.tooltip",function(){if(i.attr("data-tooltip-keepvisible"))return!1})},show:function(){var e=t(this);e.attr("data-tooltip-keepvisible",!0),e.tooltip("show")},hide:function(){var e=t(this);e.removeAttr("data-tooltip-keepvisible"),e.tooltip("hide")},update:function(){var e=t(this);e.attr("data-tooltip-keepvisible")&&e.tooltip("show")}},zoom:!0,highlight:{selected:function(t,e){return t},unselected:function(t,e){return jQuery.Color(t).transition(e,.9)}},ready:null},e.prototype.init=function(e,i,n){if(this.enabled=!0,this.type=e,this.$element=t(i),this.options=this.getOptions(n),n.url){var o=this;t.get(n.url,null,function(e){var i=t("svg",e);o.$element.html(document.adoptNode(i[0])),o.setup()},"xml")}else n.svg&&this.$element.html(n.svg),this.setup()},e.prototype.getDefaults=function(){return e.DEFAULTS},e.prototype.getOptions=function(e){return(e=t.extend({},this.getDefaults(),this.$element.data(),e)).shrink&&("object"!=typeof e.shrink&&(e.shrink={x:e.shrink,y:e.shrink}),e.shrink.x=this.convertToPx(e.shrink.x),e.shrink.y=this.convertToPx(e.shrink.y)),e},e.prototype.setup=function(){var e=this.options,i=t(this.$element.children("svg")),n=i.children("g:first");this.$svg=i,this.$graph=n,this.$background=n.children("polygon:first"),this.$nodes=n.children(".node"),this.$edges=n.children(".edge"),this._nodesByName={},this._edgesByName={},this.$element.addClass("graphviz-svg"),this.$background.length&&this.$element.css("background",this.$background.attr("fill"));var o=this;this.$nodes.each(function(){o.setupNodesEdges(t(this),!0)}),this.$edges.each(function(){o.setupNodesEdges(t(this),!1)});var r=this.$graph.children("title");this.$graph.attr("data-name",r.text()),r.remove(),e.zoom&&this.setupZoom(),e.ready&&e.ready.call(this)},e.prototype.setupNodesEdges=function(e,i){var n=this,o=this.options;e.find("polygon, ellipse, path").each(function(){var e=t(this);e.data("graphviz.svg.color",{fill:e.attr("fill"),stroke:e.attr("stroke")}),i&&o.shrink&&n.scaleNode(e)});var r,s,h=e.children("title");if(h[0]){var a=h.text().replace(/:[snew][ew]?/g,"");e.attr("data-name",a),h.remove(),i?this._nodesByName[a]=e[0]:this._edgesByName[a]=e[0];for(var l=e[0].previousSibling;l&&8!=l.nodeType;)l=l.previousSibling;if(null!=l&&8==l.nodeType){var p=(r=l.nodeValue.trim(),(s=document.createElement("div")).innerHTML=r,s.childNodes[0].nodeValue);p!=a&&e.attr("data-comment",p)}}e.children("a").filter(function(){return t(this).attr("xlink:title")}).each(function(){var e=t(this);e.attr("title",e.attr("xlink:title")),e.removeAttr("xlink:title"),o.tooltips&&o.tooltips.init.call(this,n.$element)})},e.prototype.setupZoom=function(){var t=this,e=this.$element,i=this.$svg;this.zoom={width:i.attr("width"),height:i.attr("height"),percentage:null},this.scaleView(100),e.mousewheel(function(n){if(n.shiftKey){var o=t.zoom.percentage;(o-=n.deltaY*n.deltaFactor)<100&&(o=100);var r=n.pageX-i.offset().left,s=n.pageY-i.offset().top,h=r/i.width(),a=s/i.height(),l=n.pageX-e.offset().left,p=n.pageY-e.offset().top;return t.scaleView(o),e.scrollLeft(h*i.width()+.5-l),e.scrollTop(a*i.height()+.5-p),!1}})},e.prototype.scaleView=function(t){var e=this,i=this.$svg;i.attr("width",t+"%"),i.attr("height",t+"%"),this.zoom.percentage=t,this.$nodes.add(this.$edges).children("a[title]").each(function(){e.options.tooltips.update.call(this)})},e.prototype.scaleNode=function(t){var e=this.options.shrink.x,i=this.options.shrink.y,n=t.prop("tagName");if("ellipse"==n)t.attr("rx",parseFloat(t.attr("rx"))-e),t.attr("ry",parseFloat(t.attr("ry"))-i);else if("polygon"==n){var o=t[0].getBBox(),r=o.x+o.width/2,s=o.y+o.height/2,h=t.attr("points").split(" "),a="";for(var l in h){var p=h[l].split(","),d=parseFloat(p[0]),u=parseFloat(p[1]);a+=(r-d)/(o.width/2)*e+d+","+((s-u)/(o.height/2)*i+u)+" "}t.attr("points",a)}},e.prototype.convertToPx=function(t){var i=t;if("string"==typeof t){var n=t.length,o=1;t.endsWith("px")?n-=2:t.endsWith("pt")&&(n-=2,o=e.GVPT_2_PX),i=parseFloat(t.substring(0,n))*o}return i},e.prototype.findEdge=function(t,e,i){var n=[];for(var o in this._edgesByName){var r=e(t,o);r&&(i&&i.push(this._edgesByName[o]),n.push(r))}return n},e.prototype.findLinked=function(e,i,n,o){var r=t(e),s=null;i&&(s=o);var h=this.findEdge(r.attr("data-name"),n,s);for(var a in h){var l=this._nodesByName[h[a]];o.is(l)||(o.push(l),this.findLinked(l,i,n,o))}},e.prototype.colorElement=function(e,i){var n=this.$element.css("background");e.find("polygon, ellipse, path").each(function(){var e=t(this),o=e.data("graphviz.svg.color");o.fill&&"path"!=e.prop("tagName")&&e.attr("fill",i(o.fill,n)),o.stroke&&e.attr("stroke",i(o.stroke,n))})},e.prototype.restoreElement=function(e){e.find("polygon, ellipse, path").each(function(){var e=t(this),i=e.data("graphviz.svg.color");i.fill&&e.attr("fill",i.fill),i.stroke&&e.attr("stroke",i.stroke)})},e.prototype.nodes=function(){return this.$nodes},e.prototype.edges=function(){return this.$edges},e.prototype.nodesByName=function(){return this._nodesByName},e.prototype.edgesByName=function(){return this._edgesByName},e.prototype.linkedTo=function(e,i){var n=t();return this.findLinked(e,i,function(t,e){var i=null,n="->"+t;return e.endsWith(n)&&(i=e.substring(0,e.length-n.length)),i},n),n},e.prototype.linkedFrom=function(e,i){var n=t();return this.findLinked(e,i,function(t,e){var i=null,n=t+"->";return e.startsWith(n)&&(i=e.substring(n.length)),i},n),n},e.prototype.linked=function(e,i){var n=t();return this.findLinked(e,i,function(t,e){return"^"+name+"--(.*)$"},n),this.findLinked(e,i,function(t,e){return"^(.*)--"+name+"$"},n),n},e.prototype.tooltip=function(e,i){var n=this.options;e.each(function(){t(this).children("a[title]").each(function(){i?n.tooltips.show.call(this):n.tooltips.hide.call(this)})})},e.prototype.bringToFront=function(t){t.detach().appendTo(this.$graph)},e.prototype.sendToBack=function(t){this.$background.length?$element.insertAfter(this.$background):t.detach().prependTo(this.$graph)},e.prototype.highlight=function(e,i){var n=this,o=this.options,r=this.$nodes.add(this.$edges);e&&e.length>0?(r.not(e).each(function(){n.colorElement(t(this),o.highlight.unselected),n.tooltip(t(this))}),e.each(function(){n.colorElement(t(this),o.highlight.selected)}),i&&this.tooltip(e,!0)):(r.each(function(){n.restoreElement(t(this))}),this.tooltip(r))},e.prototype.destroy=function(){var t=this;this.hide(function(){t.$element.off("."+t.type).removeData(t.type)})};var i=t.fn.graphviz;t.fn.graphviz=function(i){return this.each(function(){var n=t(this),o=n.data("graphviz.svg"),r="object"==typeof i&&i;!o&&/destroy/.test(i)||(o||n.data("graphviz.svg",o=new e(this,r)),"string"==typeof i&&o[i]())})},t.fn.graphviz.Constructor=e,t.fn.graphviz.noConflict=function(){return t.fn.graphviz=i,this}}(jQuery);</script>
+		<script type="text/javascript">
+ 			$(document).ready(function(){
+                $("#graph").graphviz({
+                    svg: `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 7.0.2 (20221119.0110)
+ -->
+<!-- Title: G Pages: 1 -->
+<svg width="2019pt" height="3230pt"
+ viewBox="0.00 0.00 2019.00 3230.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(4 3226)">
+<title>G</title>
+<polygon fill="white" stroke="none" points="-4,4 -4,-3226 2015,-3226 2015,4 -4,4"/>
+<g id="clust1" class="cluster">
+<title>cluster_G</title>
+<path fill="#808080" fill-opacity="0.094118" stroke="black" d="M20,-8C20,-8 1991,-8 1991,-8 1997,-8 2003,-14 2003,-20 2003,-20 2003,-3202 2003,-3202 2003,-3208 1997,-3214 1991,-3214 1991,-3214 20,-3214 20,-3214 14,-3214 8,-3208 8,-3202 8,-3202 8,-20 8,-20 8,-14 14,-8 20,-8"/>
+</g>
+<g id="clust4" class="cluster">
+<title>cluster_CNN_mel</title>
+<path fill="#808080" fill-opacity="0.094118" stroke="black" d="M331.29,-2467C331.29,-2467 839.15,-2467 839.15,-2467 845.15,-2467 851.15,-2473 851.15,-2479 851.15,-2479 851.15,-2793 851.15,-2793 851.15,-2799 845.15,-2805 839.15,-2805 839.15,-2805 331.29,-2805 331.29,-2805 325.29,-2805 319.29,-2799 319.29,-2793 319.29,-2793 319.29,-2479 319.29,-2479 319.29,-2473 325.29,-2467 331.29,-2467"/>
+<text text-anchor="middle" x="585.22" y="-2789.8" font-family="Times New Roman,serif" font-size="14.00">CNN_mel</text>
+</g>
+<g id="clust5" class="cluster">
+<title>cluster_CNN_mel__CNNNetwork_mel</title>
+<path fill="#808080" fill-opacity="0.094118" stroke="black" d="M339.29,-2537C339.29,-2537 831.15,-2537 831.15,-2537 837.15,-2537 843.15,-2543 843.15,-2549 843.15,-2549 843.15,-2762 843.15,-2762 843.15,-2768 837.15,-2774 831.15,-2774 831.15,-2774 339.29,-2774 339.29,-2774 333.29,-2774 327.29,-2768 327.29,-2762 327.29,-2762 327.29,-2549 327.29,-2549 327.29,-2543 333.29,-2537 339.29,-2537"/>
+<text text-anchor="middle" x="585.22" y="-2758.8" font-family="Times New Roman,serif" font-size="14.00">CNN_mel.CNNNetwork_mel</text>
+</g>
+<g id="clust14" class="cluster">
+<title>cluster_newNet</title>
+<path fill="#808080" fill-opacity="0.094118" stroke="black" d="M86.1,-2876C86.1,-2876 226.8,-2876 226.8,-2876 232.8,-2876 238.8,-2882 238.8,-2888 238.8,-2888 238.8,-3194 238.8,-3194 238.8,-3200 232.8,-3206 226.8,-3206 226.8,-3206 86.1,-3206 86.1,-3206 80.1,-3206 74.1,-3200 74.1,-3194 74.1,-3194 74.1,-2888 74.1,-2888 74.1,-2882 80.1,-2876 86.1,-2876"/>
+<text text-anchor="middle" x="156.45" y="-3190.8" font-family="Times New Roman,serif" font-size="14.00">newNet</text>
+</g>
+<g id="clust15" class="cluster">
+<title>cluster_newNet__AudioClassifier</title>
+<path fill="#808080" fill-opacity="0.094118" stroke="black" d="M94.1,-2969C94.1,-2969 218.8,-2969 218.8,-2969 224.8,-2969 230.8,-2975 230.8,-2981 230.8,-2981 230.8,-3163 230.8,-3163 230.8,-3169 224.8,-3175 218.8,-3175 218.8,-3175 94.1,-3175 94.1,-3175 88.1,-3175 82.1,-3169 82.1,-3163 82.1,-3163 82.1,-2981 82.1,-2981 82.1,-2975 88.1,-2969 94.1,-2969"/>
+<text text-anchor="middle" x="156.45" y="-3159.8" font-family="Times New Roman,serif" font-size="14.00">newNet.AudioClassifier</text>
+</g>
+<g id="clust2" class="cluster">
+<title>cluster_CNN</title>
+<path fill="#808080" fill-opacity="0.094118" stroke="black" d="M350.38,-2813C350.38,-2813 820.06,-2813 820.06,-2813 826.06,-2813 832.06,-2819 832.06,-2825 832.06,-2825 832.06,-3067 832.06,-3067 832.06,-3073 826.06,-3079 820.06,-3079 820.06,-3079 350.38,-3079 350.38,-3079 344.38,-3079 338.38,-3073 338.38,-3067 338.38,-3067 338.38,-2825 338.38,-2825 338.38,-2819 344.38,-2813 350.38,-2813"/>
+<text text-anchor="middle" x="585.22" y="-3063.8" font-family="Times New Roman,serif" font-size="14.00">CNN</text>
+</g>
+<g id="clust3" class="cluster">
+<title>cluster_CNN__CNNNetwork</title>
+<path fill="#808080" fill-opacity="0.094118" stroke="black" d="M358.38,-2883C358.38,-2883 812.06,-2883 812.06,-2883 818.06,-2883 824.06,-2889 824.06,-2895 824.06,-2895 824.06,-3036 824.06,-3036 824.06,-3042 818.06,-3048 812.06,-3048 812.06,-3048 358.38,-3048 358.38,-3048 352.38,-3048 346.38,-3042 346.38,-3036 346.38,-3036 346.38,-2895 346.38,-2895 346.38,-2889 352.38,-2883 358.38,-2883"/>
+<text text-anchor="middle" x="585.22" y="-3032.8" font-family="Times New Roman,serif" font-size="14.00">CNN.CNNNetwork</text>
+</g>
+<g id="clust8" class="cluster">
+<title>cluster_libricss</title>
+<path fill="#808080" fill-opacity="0.094118" stroke="black" d="M320.9,-2074C320.9,-2074 842.46,-2074 842.46,-2074 848.46,-2074 854.46,-2080 854.46,-2086 854.46,-2086 854.46,-2227 854.46,-2227 854.46,-2233 848.46,-2239 842.46,-2239 842.46,-2239 320.9,-2239 320.9,-2239 314.9,-2239 308.9,-2233 308.9,-2227 308.9,-2227 308.9,-2086 308.9,-2086 308.9,-2080 314.9,-2074 320.9,-2074"/>
+<text text-anchor="middle" x="581.68" y="-2223.8" font-family="Times New Roman,serif" font-size="14.00">libricss</text>
+</g>
+<g id="clust6" class="cluster">
+<title>cluster_guiLoader</title>
+<path fill="#808080" fill-opacity="0.094118" stroke="black" d="M28,-2247C28,-2247 566.27,-2247 566.27,-2247 572.27,-2247 578.27,-2253 578.27,-2259 578.27,-2259 578.27,-2447 578.27,-2447 578.27,-2453 572.27,-2459 566.27,-2459 566.27,-2459 28,-2459 28,-2459 22,-2459 16,-2453 16,-2447 16,-2447 16,-2259 16,-2259 16,-2253 22,-2247 28,-2247"/>
+<text text-anchor="middle" x="297.13" y="-2443.8" font-family="Times New Roman,serif" font-size="14.00">guiLoader</text>
+</g>
+<g id="clust7" class="cluster">
+<title>cluster_guiLoader__MainWindow</title>
+<path fill="#808080" fill-opacity="0.094118" stroke="black" d="M36,-2255C36,-2255 558.27,-2255 558.27,-2255 564.27,-2255 570.27,-2261 570.27,-2267 570.27,-2267 570.27,-2354 570.27,-2354 570.27,-2360 564.27,-2366 558.27,-2366 558.27,-2366 36,-2366 36,-2366 30,-2366 24,-2360 24,-2354 24,-2354 24,-2267 24,-2267 24,-2261 30,-2255 36,-2255"/>
+<text text-anchor="middle" x="297.13" y="-2350.8" font-family="Times New Roman,serif" font-size="14.00">guiLoader.MainWindow</text>
+</g>
+<g id="clust9" class="cluster">
+<title>cluster_loader__AudioDataset</title>
+<path fill="#808080" fill-opacity="0.094118" stroke="black" d="M599.22,-649C599.22,-649 1983,-649 1983,-649 1989,-649 1995,-655 1995,-661 1995,-661 1995,-1213 1995,-1213 1995,-1219 1989,-1225 1983,-1225 1983,-1225 599.22,-1225 599.22,-1225 593.22,-1225 587.22,-1219 587.22,-1213 587.22,-1213 587.22,-661 587.22,-661 587.22,-655 593.22,-649 599.22,-649"/>
+<text text-anchor="middle" x="1291.11" y="-1209.8" font-family="Times New Roman,serif" font-size="14.00">loader.AudioDataset</text>
+</g>
+<g id="clust10" class="cluster">
+<title>cluster_loader__AudioDataset__AudioDataset</title>
+<path fill="#808080" fill-opacity="0.094118" stroke="black" d="M607.22,-793C607.22,-793 1422.16,-793 1422.16,-793 1428.16,-793 1434.16,-799 1434.16,-805 1434.16,-805 1434.16,-1182 1434.16,-1182 1434.16,-1188 1428.16,-1194 1422.16,-1194 1422.16,-1194 607.22,-1194 607.22,-1194 601.22,-1194 595.22,-1188 595.22,-1182 595.22,-1182 595.22,-805 595.22,-805 595.22,-799 601.22,-793 607.22,-793"/>
+<text text-anchor="middle" x="1014.69" y="-1178.8" font-family="Times New Roman,serif" font-size="14.00">loader.AudioDataset.AudioDataset</text>
+</g>
+<g id="clust11" class="cluster">
+<title>cluster_loader__AudioDataset__Augmentor</title>
+<path fill="#808080" fill-opacity="0.094118" stroke="black" d="M1466.16,-674C1466.16,-674 1975,-674 1975,-674 1981,-674 1987,-680 1987,-686 1987,-686 1987,-899 1987,-899 1987,-905 1981,-911 1975,-911 1975,-911 1466.16,-911 1466.16,-911 1460.16,-911 1454.16,-905 1454.16,-899 1454.16,-899 1454.16,-686 1454.16,-686 1454.16,-680 1460.16,-674 1466.16,-674"/>
+<text text-anchor="middle" x="1720.58" y="-895.8" font-family="Times New Roman,serif" font-size="14.00">loader.AudioDataset.Augmentor</text>
+</g>
+<g id="clust12" class="cluster">
+<title>cluster_loader__utils</title>
+<path fill="#808080" fill-opacity="0.094118" stroke="black" d="M935.96,-260C935.96,-260 1093.42,-260 1093.42,-260 1099.42,-260 1105.42,-266 1105.42,-272 1105.42,-272 1105.42,-629 1105.42,-629 1105.42,-635 1099.42,-641 1093.42,-641 1093.42,-641 935.96,-641 935.96,-641 929.96,-641 923.96,-635 923.96,-629 923.96,-629 923.96,-272 923.96,-272 923.96,-266 929.96,-260 935.96,-260"/>
+<text text-anchor="middle" x="1014.69" y="-625.8" font-family="Times New Roman,serif" font-size="14.00">loader.utils</text>
+</g>
+<g id="clust13" class="cluster">
+<title>cluster_machineLearning</title>
+<path fill="#808080" fill-opacity="0.094118" stroke="black" d="M904.85,-1971C904.85,-1971 1405.9,-1971 1405.9,-1971 1411.9,-1971 1417.9,-1977 1417.9,-1983 1417.9,-1983 1417.9,-2268 1417.9,-2268 1417.9,-2274 1411.9,-2280 1405.9,-2280 1405.9,-2280 904.85,-2280 904.85,-2280 898.85,-2280 892.85,-2274 892.85,-2268 892.85,-2268 892.85,-1983 892.85,-1983 892.85,-1977 898.85,-1971 904.85,-1971"/>
+<text text-anchor="middle" x="1155.37" y="-2264.8" font-family="Times New Roman,serif" font-size="14.00">machineLearning</text>
+</g>
+<g id="clust16" class="cluster">
+<title>cluster_preprocess</title>
+<path fill="#808080" fill-opacity="0.094118" stroke="black" d="M646.11,-16C646.11,-16 1096.96,-16 1096.96,-16 1102.96,-16 1108.96,-22 1108.96,-28 1108.96,-28 1108.96,-169 1108.96,-169 1108.96,-175 1102.96,-181 1096.96,-181 1096.96,-181 646.11,-181 646.11,-181 640.11,-181 634.11,-175 634.11,-169 634.11,-169 634.11,-28 634.11,-28 634.11,-22 640.11,-16 646.11,-16"/>
+<text text-anchor="middle" x="871.53" y="-165.8" font-family="Times New Roman,serif" font-size="14.00">preprocess</text>
+</g>
+<g id="clust17" class="cluster">
+<title>cluster_testModel</title>
+<path fill="#808080" fill-opacity="0.094118" stroke="black" d="M631.26,-1234C631.26,-1234 1664.64,-1234 1664.64,-1234 1670.64,-1234 1676.64,-1240 1676.64,-1246 1676.64,-1246 1676.64,-1850 1676.64,-1850 1676.64,-1856 1670.64,-1862 1664.64,-1862 1664.64,-1862 631.26,-1862 631.26,-1862 625.26,-1862 619.26,-1856 619.26,-1850 619.26,-1850 619.26,-1246 619.26,-1246 619.26,-1240 625.26,-1234 631.26,-1234"/>
+<text text-anchor="middle" x="1147.95" y="-1846.8" font-family="Times New Roman,serif" font-size="14.00">testModel</text>
+</g>
+<g id="clust18" class="cluster">
+<title>cluster_testModel__specFeatures</title>
+<path fill="#808080" fill-opacity="0.094118" stroke="black" d="M1218.74,-1594C1218.74,-1594 1383.27,-1594 1383.27,-1594 1389.27,-1594 1395.27,-1600 1395.27,-1606 1395.27,-1606 1395.27,-1819 1395.27,-1819 1395.27,-1825 1389.27,-1831 1383.27,-1831 1383.27,-1831 1218.74,-1831 1218.74,-1831 1212.74,-1831 1206.74,-1825 1206.74,-1819 1206.74,-1819 1206.74,-1606 1206.74,-1606 1206.74,-1600 1212.74,-1594 1218.74,-1594"/>
+<text text-anchor="middle" x="1301.01" y="-1815.8" font-family="Times New Roman,serif" font-size="14.00">testModel.specFeatures</text>
+</g>
+<!-- CNN -->
+<g id="node1" class="node">
+<title>CNN</title>
+<ellipse fill="#ffffff" fill-opacity="0.698039" stroke="black" cx="156.45" cy="-2848" rx="29.8" ry="18"/>
+<text text-anchor="middle" x="156.45" y="-2844.3" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">CNN</text>
+</g>
+<!-- CNN__CNNNetwork -->
+<g id="node13" class="node">
+<title>CNN__CNNNetwork</title>
+<ellipse fill="#fecccc" fill-opacity="0.698039" stroke="black" cx="442.06" cy="-2848" rx="87.86" ry="26.74"/>
+<text text-anchor="middle" x="442.06" y="-2851.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">CNNNetwork</text>
+<text text-anchor="middle" x="442.06" y="-2836.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(modelCNN.py:12)</text>
+</g>
+<!-- CNN&#45;&gt;CNN__CNNNetwork -->
+<g id="edge21" class="edge">
+<title>CNN&#45;&gt;CNN__CNNNetwork</title>
+<path fill="none" stroke="#000000" d="M186.73,-2848C223.34,-2848 287.88,-2848 342.78,-2848"/>
+<polygon fill="#000000" stroke="#000000" points="342.46,-2851.5 352.46,-2848 342.46,-2844.5 342.46,-2851.5"/>
+</g>
+<!-- CNN__CNNNetwork____init__ -->
+<g id="node14" class="node">
+<title>CNN__CNNNetwork____init__</title>
+<ellipse fill="#ff9999" fill-opacity="0.698039" stroke="black" cx="728.38" cy="-2990" rx="87.86" ry="26.74"/>
+<text text-anchor="middle" x="728.38" y="-2993.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">__init__</text>
+<text text-anchor="middle" x="728.38" y="-2978.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(modelCNN.py:13)</text>
+</g>
+<!-- CNN&#45;&gt;CNN__CNNNetwork____init__ -->
+<g id="edge20" class="edge">
+<title>CNN&#45;&gt;CNN__CNNNetwork____init__</title>
+<path fill="none" stroke="#000000" d="M186.41,-2845.64C214.1,-2845.04 255.33,-2848.68 280.9,-2872 313.74,-2901.95 274.06,-2940.41 308.9,-2968 405.95,-3044.85 558.86,-3029.26 650.5,-3010.16"/>
+<polygon fill="#000000" stroke="#000000" points="651.12,-3013.61 660.16,-3008.08 649.65,-3006.77 651.12,-3013.61"/>
+</g>
+<!-- CNN_mel -->
+<g id="node2" class="node">
+<title>CNN_mel</title>
+<ellipse fill="#ffffff" fill-opacity="0.698039" stroke="black" cx="156.45" cy="-2602" rx="47.39" ry="18"/>
+<text text-anchor="middle" x="156.45" y="-2598.3" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">CNN_mel</text>
+</g>
+<!-- CNN_mel__CNNNetwork_mel -->
+<g id="node17" class="node">
+<title>CNN_mel__CNNNetwork_mel</title>
+<ellipse fill="#fee3cc" fill-opacity="0.698039" stroke="black" cx="442.06" cy="-2502" rx="106.55" ry="26.74"/>
+<text text-anchor="middle" x="442.06" y="-2505.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">CNNNetwork_mel</text>
+<text text-anchor="middle" x="442.06" y="-2490.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(modelCNN_mel.py:13)</text>
+</g>
+<!-- CNN_mel&#45;&gt;CNN_mel__CNNNetwork_mel -->
+<g id="edge25" class="edge">
+<title>CNN_mel&#45;&gt;CNN_mel__CNNNetwork_mel</title>
+<path fill="none" stroke="#000000" d="M185.24,-2587.32C215.12,-2572.03 264.33,-2548.21 308.9,-2533 321.19,-2528.81 334.3,-2524.98 347.32,-2521.56"/>
+<polygon fill="#000000" stroke="#000000" points="347.92,-2525.02 356.75,-2519.16 346.2,-2518.24 347.92,-2525.02"/>
+</g>
+<!-- CNN_mel__CNNNetwork_mel____init__ -->
+<g id="node19" class="node">
+<title>CNN_mel__CNNNetwork_mel____init__</title>
+<ellipse fill="#ffc899" fill-opacity="0.698039" stroke="black" cx="728.38" cy="-2716" rx="106.55" ry="26.74"/>
+<text text-anchor="middle" x="728.38" y="-2719.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">__init__</text>
+<text text-anchor="middle" x="728.38" y="-2704.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(modelCNN_mel.py:14)</text>
+</g>
+<!-- CNN_mel&#45;&gt;CNN_mel__CNNNetwork_mel____init__ -->
+<g id="edge24" class="edge">
+<title>CNN_mel&#45;&gt;CNN_mel__CNNNetwork_mel____init__</title>
+<path fill="none" stroke="#000000" d="M180.89,-2617.78C209.66,-2636.25 260.59,-2666.07 308.9,-2680 407.98,-2708.56 525.27,-2716.56 610.44,-2717.99"/>
+<polygon fill="#000000" stroke="#000000" points="610.15,-2721.49 620.2,-2718.12 610.25,-2714.49 610.15,-2721.49"/>
+</g>
+<!-- guiLoader -->
+<g id="node3" class="node">
+<title>guiLoader</title>
+<ellipse fill="#ffffff" fill-opacity="0.698039" stroke="black" cx="156.45" cy="-2221" rx="47.39" ry="18"/>
+<text text-anchor="middle" x="156.45" y="-2217.3" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">guiLoader</text>
+</g>
+<!-- guiLoader__MainWindow -->
+<g id="node22" class="node">
+<title>guiLoader__MainWindow</title>
+<ellipse fill="#fefbcc" fill-opacity="0.698039" stroke="black" cx="442.06" cy="-2401" rx="120.42" ry="26.74"/>
+<text text-anchor="middle" x="442.06" y="-2404.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">MainWindow</text>
+<text text-anchor="middle" x="442.06" y="-2389.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(Qt CreatorguiLoader.py:6)</text>
+</g>
+<!-- guiLoader&#45;&gt;guiLoader__MainWindow -->
+<g id="edge29" class="edge">
+<title>guiLoader&#45;&gt;guiLoader__MainWindow</title>
+<path fill="none" stroke="#000000" d="M204.26,-2220.97C230.15,-2223.46 261.01,-2230.96 280.9,-2251 319.18,-2289.56 270.47,-2331.59 308.9,-2370 313.93,-2375.03 319.62,-2379.3 325.73,-2382.93"/>
+<polygon fill="#000000" stroke="#000000" points="323.82,-2385.88 334.31,-2387.41 327.06,-2379.68 323.82,-2385.88"/>
+</g>
+<!-- guiLoader__MainWindow____init__ -->
+<g id="node23" class="node">
+<title>guiLoader__MainWindow____init__</title>
+<ellipse fill="#fff799" fill-opacity="0.698039" stroke="black" cx="442.06" cy="-2290" rx="120.42" ry="26.74"/>
+<text text-anchor="middle" x="442.06" y="-2293.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">__init__</text>
+<text text-anchor="middle" x="442.06" y="-2278.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(Qt CreatorguiLoader.py:8)</text>
+</g>
+<!-- guiLoader&#45;&gt;guiLoader__MainWindow____init__ -->
+<g id="edge30" class="edge">
+<title>guiLoader&#45;&gt;guiLoader__MainWindow____init__</title>
+<path fill="none" stroke="#000000" d="M197.2,-2230.66C221.4,-2236.53 252.93,-2244.2 280.9,-2251 302.79,-2256.32 326.35,-2262.06 348.5,-2267.45"/>
+<polygon fill="#000000" stroke="#000000" points="347.57,-2270.83 358.11,-2269.79 349.23,-2264.03 347.57,-2270.83"/>
+</g>
+<!-- libricss -->
+<g id="node4" class="node">
+<title>libricss</title>
+<ellipse fill="#ffffff" fill-opacity="0.698039" stroke="black" cx="156.45" cy="-2109" rx="36.29" ry="18"/>
+<text text-anchor="middle" x="156.45" y="-2105.3" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">libricss</text>
+</g>
+<!-- libricss__main -->
+<g id="node27" class="node">
+<title>libricss__main</title>
+<ellipse fill="#ebfecc" fill-opacity="0.698039" stroke="black" cx="442.06" cy="-2109" rx="70.92" ry="26.74"/>
+<text text-anchor="middle" x="442.06" y="-2112.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">main</text>
+<text text-anchor="middle" x="442.06" y="-2097.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(libricss.py:46)</text>
+</g>
+<!-- libricss&#45;&gt;libricss__main -->
+<g id="edge34" class="edge">
+<title>libricss&#45;&gt;libricss__main</title>
+<path fill="none" stroke="#000000" d="M193.08,-2109C234.54,-2109 304.33,-2109 359.33,-2109"/>
+<polygon fill="#000000" stroke="#000000" points="359.32,-2112.5 369.32,-2109 359.32,-2105.5 359.32,-2112.5"/>
+</g>
+<!-- loader -->
+<g id="node5" class="node">
+<title>loader</title>
+<ellipse fill="#ffffff" fill-opacity="0.698039" stroke="black" cx="156.45" cy="-1833" rx="33.29" ry="18"/>
+<text text-anchor="middle" x="156.45" y="-1829.3" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">loader</text>
+</g>
+<!-- loader__AudioDataset -->
+<g id="node6" class="node">
+<title>loader__AudioDataset</title>
+<ellipse fill="#ffffff" fill-opacity="0.698039" stroke="black" cx="442.06" cy="-756" rx="85.29" ry="18"/>
+<text text-anchor="middle" x="442.06" y="-752.3" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">loader.AudioDataset</text>
+</g>
+<!-- loader__AudioDataset__main -->
+<g id="node32" class="node">
+<title>loader__AudioDataset__main</title>
+<ellipse fill="#99ffb8" fill-opacity="0.698039" stroke="black" cx="728.38" cy="-756" rx="125.32" ry="26.74"/>
+<text text-anchor="middle" x="728.38" y="-759.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">main</text>
+<text text-anchor="middle" x="728.38" y="-744.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderAudioDataset.py:232)</text>
+</g>
+<!-- loader__AudioDataset&#45;&gt;loader__AudioDataset__main -->
+<g id="edge1" class="edge">
+<title>loader__AudioDataset&#45;&gt;loader__AudioDataset__main</title>
+<path fill="none" stroke="#000000" d="M527.59,-756C547.67,-756 569.58,-756 591.31,-756"/>
+<polygon fill="#000000" stroke="#000000" points="591.13,-759.5 601.13,-756 591.13,-752.5 591.13,-759.5"/>
+</g>
+<!-- loader__utils -->
+<g id="node7" class="node">
+<title>loader__utils</title>
+<ellipse fill="#ffffff" fill-opacity="0.698039" stroke="black" cx="728.38" cy="-1888" rx="50.09" ry="18"/>
+<text text-anchor="middle" x="728.38" y="-1884.3" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">loader.utils</text>
+</g>
+<!-- machineLearning -->
+<g id="node8" class="node">
+<title>machineLearning</title>
+<ellipse fill="#ffffff" fill-opacity="0.698039" stroke="black" cx="1014.69" cy="-1923" rx="71.49" ry="18"/>
+<text text-anchor="middle" x="1014.69" y="-1919.3" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">machineLearning</text>
+</g>
+<!-- machineLearning__selectModel -->
+<g id="node53" class="node">
+<title>machineLearning__selectModel</title>
+<ellipse fill="#ccf3fe" fill-opacity="0.698039" stroke="black" cx="1301.01" cy="-2006" rx="108.79" ry="26.74"/>
+<text text-anchor="middle" x="1301.01" y="-2009.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">selectModel</text>
+<text text-anchor="middle" x="1301.01" y="-1994.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(machineLearning.py:18)</text>
+</g>
+<!-- machineLearning&#45;&gt;machineLearning__selectModel -->
+<g id="edge36" class="edge">
+<title>machineLearning&#45;&gt;machineLearning__selectModel</title>
+<path fill="none" stroke="#000000" d="M1067.21,-1935.59C1089.61,-1941.24 1116.1,-1948.17 1139.85,-1955 1167.58,-1962.98 1197.78,-1972.41 1224.4,-1980.97"/>
+<polygon fill="#000000" stroke="#000000" points="1223.16,-1984.24 1233.75,-1983.99 1225.31,-1977.58 1223.16,-1984.24"/>
+</g>
+<!-- main -->
+<g id="node9" class="node">
+<title>main</title>
+<ellipse fill="#ffffff" fill-opacity="0.698039" stroke="black" cx="156.45" cy="-1557" rx="27.9" ry="18"/>
+<text text-anchor="middle" x="156.45" y="-1553.3" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">main</text>
+</g>
+<!-- main&#45;&gt;loader__utils -->
+<g id="edge47" class="edge">
+<title>main&#45;&gt;loader__utils</title>
+<path fill="none" stroke="#000000" d="M172.56,-1572.11C224.71,-1623.24 404.02,-1790.8 587.22,-1866 612.21,-1876.26 641.52,-1881.77 666.86,-1884.71"/>
+<polygon fill="#000000" stroke="#000000" points="666.38,-1888.18 676.69,-1885.73 667.1,-1881.22 666.38,-1888.18"/>
+</g>
+<!-- main&#45;&gt;machineLearning -->
+<g id="edge39" class="edge">
+<title>main&#45;&gt;machineLearning</title>
+<path fill="none" stroke="#000000" d="M165.36,-1574.35C184.69,-1615.17 237.98,-1718.62 308.9,-1782 412.9,-1874.94 451.74,-1893.83 587.22,-1927 709.22,-1956.87 856.79,-1945.4 942.48,-1934.26"/>
+<polygon fill="#000000" stroke="#000000" points="942.69,-1937.76 952.14,-1932.97 941.76,-1930.82 942.69,-1937.76"/>
+</g>
+<!-- testModel -->
+<g id="node12" class="node">
+<title>testModel</title>
+<ellipse fill="#ffffff" fill-opacity="0.698039" stroke="black" cx="442.06" cy="-1557" rx="46.59" ry="18"/>
+<text text-anchor="middle" x="442.06" y="-1553.3" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">testModel</text>
+</g>
+<!-- main&#45;&gt;testModel -->
+<g id="edge50" class="edge">
+<title>main&#45;&gt;testModel</title>
+<path fill="none" stroke="#000000" d="M184.64,-1557C230.3,-1557 323.28,-1557 383.84,-1557"/>
+<polygon fill="#000000" stroke="#000000" points="383.61,-1560.5 393.61,-1557 383.61,-1553.5 383.61,-1560.5"/>
+</g>
+<!-- loader__AudioDataset__collate_batch -->
+<g id="node30" class="node">
+<title>loader__AudioDataset__collate_batch</title>
+<ellipse fill="#99ffb8" fill-opacity="0.698039" stroke="black" cx="1014.69" cy="-756" rx="125.32" ry="26.74"/>
+<text text-anchor="middle" x="1014.69" y="-759.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">collate_batch</text>
+<text text-anchor="middle" x="1014.69" y="-744.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderAudioDataset.py:214)</text>
+</g>
+<!-- main&#45;&gt;loader__AudioDataset__collate_batch -->
+<g id="edge48" class="edge">
+<title>main&#45;&gt;loader__AudioDataset__collate_batch</title>
+<path fill="none" stroke="#000000" d="M160.12,-1538.82C177.65,-1419.89 276.66,-756.78 308.9,-729 354.83,-689.43 794.21,-713.27 854.46,-720 877.58,-722.58 902.24,-727.21 925.08,-732.3"/>
+<polygon fill="#000000" stroke="#000000" points="924.12,-735.67 934.65,-734.49 925.68,-728.85 924.12,-735.67"/>
+</g>
+<!-- loader__AudioDataset__createDataset -->
+<g id="node31" class="node">
+<title>loader__AudioDataset__createDataset</title>
+<ellipse fill="#99ffb8" fill-opacity="0.698039" stroke="black" cx="1014.69" cy="-684" rx="120.42" ry="26.74"/>
+<text text-anchor="middle" x="1014.69" y="-687.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">createDataset</text>
+<text text-anchor="middle" x="1014.69" y="-672.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderAudioDataset.py:83)</text>
+</g>
+<!-- main&#45;&gt;loader__AudioDataset__createDataset -->
+<g id="edge40" class="edge">
+<title>main&#45;&gt;loader__AudioDataset__createDataset</title>
+<path fill="none" stroke="#000000" d="M160.37,-1538.68C179.97,-1415.83 292.23,-716.35 308.9,-702 394.12,-628.68 719.9,-651.31 897.15,-669.95"/>
+<polygon fill="#000000" stroke="#000000" points="896.52,-673.4 906.84,-670.98 897.27,-666.44 896.52,-673.4"/>
+</g>
+<!-- loader__utils__clearUselesslogs -->
+<g id="node47" class="node">
+<title>loader__utils__clearUselesslogs</title>
+<ellipse fill="#99ffe7" fill-opacity="0.698039" stroke="black" cx="1014.69" cy="-439" rx="82.96" ry="26.74"/>
+<text text-anchor="middle" x="1014.69" y="-442.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">clearUselesslogs</text>
+<text text-anchor="middle" x="1014.69" y="-427.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderutils.py:46)</text>
+</g>
+<!-- main&#45;&gt;loader__utils__clearUselesslogs -->
+<g id="edge44" class="edge">
+<title>main&#45;&gt;loader__utils__clearUselesslogs</title>
+<path fill="none" stroke="#000000" d="M160.86,-1538.81C176.52,-1454.59 242.53,-1094.02 280.9,-796 285.08,-763.56 285.72,-526.07 308.9,-503 392.85,-419.45 750.08,-425.45 921.37,-433.5"/>
+<polygon fill="#000000" stroke="#000000" points="920.96,-436.98 931.11,-433.97 921.29,-429.99 920.96,-436.98"/>
+</g>
+<!-- loader__utils__getAudioPaths -->
+<g id="node48" class="node">
+<title>loader__utils__getAudioPaths</title>
+<ellipse fill="#99ffe7" fill-opacity="0.698039" stroke="black" cx="1014.69" cy="-583" rx="82.96" ry="26.74"/>
+<text text-anchor="middle" x="1014.69" y="-586.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">getAudioPaths</text>
+<text text-anchor="middle" x="1014.69" y="-571.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderutils.py:31)</text>
+</g>
+<!-- main&#45;&gt;loader__utils__getAudioPaths -->
+<g id="edge43" class="edge">
+<title>main&#45;&gt;loader__utils__getAudioPaths</title>
+<path fill="none" stroke="#000000" d="M160.39,-1538.91C181.1,-1411.24 304.6,-650.99 308.9,-647 395.55,-566.57 750.24,-570.9 920.98,-578"/>
+<polygon fill="#000000" stroke="#000000" points="920.8,-581.5 930.95,-578.43 921.11,-574.51 920.8,-581.5"/>
+</g>
+<!-- loader__utils__getTransforms -->
+<g id="node49" class="node">
+<title>loader__utils__getTransforms</title>
+<ellipse fill="#99ffe7" fill-opacity="0.698039" stroke="black" cx="1014.69" cy="-295" rx="77.56" ry="26.74"/>
+<text text-anchor="middle" x="1014.69" y="-298.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">getTransforms</text>
+<text text-anchor="middle" x="1014.69" y="-283.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderutils.py:8)</text>
+</g>
+<!-- main&#45;&gt;loader__utils__getTransforms -->
+<g id="edge41" class="edge">
+<title>main&#45;&gt;loader__utils__getTransforms</title>
+<path fill="none" stroke="#000000" d="M160.98,-1538.82C177.21,-1454.67 245.35,-1094.37 280.9,-796 285.73,-755.5 281.73,-460.42 308.9,-430 467.82,-252.04 783.4,-264.79 932.3,-282.51"/>
+<polygon fill="#000000" stroke="#000000" points="931.74,-285.96 942.09,-283.71 932.6,-279.01 931.74,-285.96"/>
+</g>
+<!-- loader__utils__uniquify -->
+<g id="node51" class="node">
+<title>loader__utils__uniquify</title>
+<ellipse fill="#99ffe7" fill-opacity="0.698039" stroke="black" cx="1014.69" cy="-511" rx="82.96" ry="26.74"/>
+<text text-anchor="middle" x="1014.69" y="-514.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">uniquify</text>
+<text text-anchor="middle" x="1014.69" y="-499.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderutils.py:19)</text>
+</g>
+<!-- main&#45;&gt;loader__utils__uniquify -->
+<g id="edge42" class="edge">
+<title>main&#45;&gt;loader__utils__uniquify</title>
+<path fill="none" stroke="#000000" d="M160.64,-1538.78C175.37,-1454.43 237.87,-1093.39 280.9,-796 287.96,-747.22 273.45,-610.24 308.9,-576 394,-493.8 749.89,-498.49 921.01,-505.86"/>
+<polygon fill="#000000" stroke="#000000" points="920.85,-509.35 931,-506.3 921.17,-502.36 920.85,-509.35"/>
+</g>
+<!-- machineLearning__eval -->
+<g id="node52" class="node">
+<title>machineLearning__eval</title>
+<ellipse fill="#ccf3fe" fill-opacity="0.698039" stroke="black" cx="1014.69" cy="-2006" rx="108.79" ry="26.74"/>
+<text text-anchor="middle" x="1014.69" y="-2009.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">eval</text>
+<text text-anchor="middle" x="1014.69" y="-1994.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(machineLearning.py:97)</text>
+</g>
+<!-- main&#45;&gt;machineLearning__eval -->
+<g id="edge38" class="edge">
+<title>main&#45;&gt;machineLearning__eval</title>
+<path fill="none" stroke="#000000" d="M168.05,-1573.74C192.23,-1612.77 251.64,-1713.54 280.9,-1806 293.25,-1845.01 278.19,-1960.96 308.9,-1988 351.75,-2025.72 706.46,-2018.02 895.72,-2011.07"/>
+<polygon fill="#000000" stroke="#000000" points="895.74,-2014.57 905.6,-2010.7 895.48,-2007.58 895.74,-2014.57"/>
+</g>
+<!-- main&#45;&gt;machineLearning__selectModel -->
+<g id="edge51" class="edge">
+<title>main&#45;&gt;machineLearning__selectModel</title>
+<path fill="none" stroke="#000000" d="M165.85,-1574.15C196.78,-1637.22 302.78,-1852.87 308.9,-1858 594.58,-2097.28 770.68,-1919.19 1139.85,-1970 1164.1,-1973.34 1190.11,-1978.49 1213.96,-1983.86"/>
+<polygon fill="#000000" stroke="#000000" points="1213.12,-1987.26 1223.65,-1986.08 1214.68,-1980.43 1213.12,-1987.26"/>
+</g>
+<!-- machineLearning__selectTrainedModel -->
+<g id="node54" class="node">
+<title>machineLearning__selectTrainedModel</title>
+<ellipse fill="#ccf3fe" fill-opacity="0.698039" stroke="black" cx="1014.69" cy="-2078" rx="108.79" ry="26.74"/>
+<text text-anchor="middle" x="1014.69" y="-2081.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">selectTrainedModel</text>
+<text text-anchor="middle" x="1014.69" y="-2066.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(machineLearning.py:44)</text>
+</g>
+<!-- main&#45;&gt;machineLearning__selectTrainedModel -->
+<g id="edge46" class="edge">
+<title>main&#45;&gt;machineLearning__selectTrainedModel</title>
+<path fill="none" stroke="#000000" d="M168.14,-1573.71C192.51,-1612.68 252.3,-1713.33 280.9,-1806 294.2,-1849.09 275.79,-1976.38 308.9,-2007 353.48,-2048.23 794.39,-2031.08 854.46,-2040 879.33,-2043.69 906.02,-2049.37 930.31,-2055.22"/>
+<polygon fill="#000000" stroke="#000000" points="929.27,-2058.57 939.81,-2057.55 930.94,-2051.77 929.27,-2058.57"/>
+</g>
+<!-- machineLearning__tensorBoardLogging -->
+<g id="node55" class="node">
+<title>machineLearning__tensorBoardLogging</title>
+<ellipse fill="#ccf3fe" fill-opacity="0.698039" stroke="black" cx="1014.69" cy="-2150" rx="113.69" ry="26.74"/>
+<text text-anchor="middle" x="1014.69" y="-2153.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">tensorBoardLogging</text>
+<text text-anchor="middle" x="1014.69" y="-2138.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(machineLearning.py:126)</text>
+</g>
+<!-- main&#45;&gt;machineLearning__tensorBoardLogging -->
+<g id="edge52" class="edge">
+<title>main&#45;&gt;machineLearning__tensorBoardLogging</title>
+<path fill="none" stroke="#000000" d="M168.21,-1573.69C192.74,-1612.61 252.85,-1713.16 280.9,-1806 295.16,-1853.18 272.95,-1992.29 308.9,-2026 353.21,-2067.54 802.01,-2029.37 854.46,-2060 879.17,-2074.43 866.55,-2096.94 889.53,-2114 897.32,-2119.78 906.02,-2124.64 915.1,-2128.72"/>
+<polygon fill="#000000" stroke="#000000" points="913.51,-2131.85 924.09,-2132.42 916.18,-2125.37 913.51,-2131.85"/>
+</g>
+<!-- machineLearning__train -->
+<g id="node56" class="node">
+<title>machineLearning__train</title>
+<ellipse fill="#ccf3fe" fill-opacity="0.698039" stroke="black" cx="1014.69" cy="-2222" rx="108.79" ry="26.74"/>
+<text text-anchor="middle" x="1014.69" y="-2225.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">train</text>
+<text text-anchor="middle" x="1014.69" y="-2210.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(machineLearning.py:64)</text>
+</g>
+<!-- main&#45;&gt;machineLearning__train -->
+<g id="edge45" class="edge">
+<title>main&#45;&gt;machineLearning__train</title>
+<path fill="none" stroke="#000000" d="M168.26,-1573.67C192.9,-1612.56 253.22,-1713.05 280.9,-1806 295.91,-1856.4 270.66,-2004.9 308.9,-2041 353.96,-2083.54 525.34,-2054.72 587.22,-2058 602.06,-2058.79 842.73,-2060.88 854.46,-2070 896.98,-2103.07 851.23,-2148.13 889.53,-2186 896.3,-2192.69 904.23,-2198.15 912.76,-2202.61"/>
+<polygon fill="#000000" stroke="#000000" points="911.09,-2205.69 921.63,-2206.75 914.05,-2199.35 911.09,-2205.69"/>
+</g>
+<!-- testModel__predictLabeledFolders -->
+<g id="node70" class="node">
+<title>testModel__predictLabeledFolders</title>
+<ellipse fill="#feccfb" fill-opacity="0.698039" stroke="black" cx="728.38" cy="-1557" rx="101.23" ry="26.74"/>
+<text text-anchor="middle" x="728.38" y="-1560.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">predictLabeledFolders</text>
+<text text-anchor="middle" x="728.38" y="-1545.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(testModel.py:49)</text>
+</g>
+<!-- main&#45;&gt;testModel__predictLabeledFolders -->
+<g id="edge49" class="edge">
+<title>main&#45;&gt;testModel__predictLabeledFolders</title>
+<path fill="none" stroke="#000000" d="M183.26,-1550.96C213.25,-1544.28 264.34,-1533.94 308.9,-1530 428.15,-1519.45 459.03,-1519.29 578.27,-1530 597.54,-1531.73 618.05,-1534.7 637.5,-1538.04"/>
+<polygon fill="#000000" stroke="#000000" points="636.85,-1541.49 647.31,-1539.79 638.08,-1534.59 636.85,-1541.49"/>
+</g>
+<!-- newNet -->
+<g id="node10" class="node">
+<title>newNet</title>
+<ellipse fill="#ffffff" fill-opacity="0.698039" stroke="black" cx="156.45" cy="-769" rx="38.19" ry="18"/>
+<text text-anchor="middle" x="156.45" y="-765.3" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">newNet</text>
+</g>
+<!-- preprocess -->
+<g id="node11" class="node">
+<title>preprocess</title>
+<ellipse fill="#ffffff" fill-opacity="0.698039" stroke="black" cx="442.06" cy="-123" rx="51.19" ry="18"/>
+<text text-anchor="middle" x="442.06" y="-119.3" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">preprocess</text>
+</g>
+<!-- preprocess&#45;&gt;loader__utils -->
+<g id="edge53" class="edge">
+<title>preprocess&#45;&gt;loader__utils</title>
+<path fill="none" stroke="#000000" d="M448.58,-141.1C470.48,-213.92 551.3,-492.85 578.27,-729 580.06,-744.69 576.91,-1854.04 587.22,-1866 607.17,-1889.14 640.69,-1895.02 669.94,-1894.94"/>
+<polygon fill="#000000" stroke="#000000" points="669.92,-1898.44 679.82,-1894.66 669.72,-1891.44 669.92,-1898.44"/>
+</g>
+<!-- loader__AudioDataset__Augmentor -->
+<g id="node29" class="node">
+<title>loader__AudioDataset__Augmentor</title>
+<ellipse fill="#99ffb8" fill-opacity="0.698039" stroke="black" cx="1582.37" cy="-946" rx="120.42" ry="26.74"/>
+<text text-anchor="middle" x="1582.37" y="-949.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">Augmentor</text>
+<text text-anchor="middle" x="1582.37" y="-934.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderAudioDataset.py:16)</text>
+</g>
+<!-- preprocess&#45;&gt;loader__AudioDataset__Augmentor -->
+<g id="edge55" class="edge">
+<title>preprocess&#45;&gt;loader__AudioDataset__Augmentor</title>
+<path fill="none" stroke="#000000" d="M471.47,-138.04C499.94,-152.42 545.43,-173.57 587.22,-185 646.93,-201.33 1086.35,-224.85 1139.85,-256 1328.12,-365.62 1357.54,-444.06 1434.16,-648 1455.09,-703.7 1415.69,-869.62 1454.16,-915 1458.02,-919.54 1462.41,-923.48 1467.2,-926.89"/>
+<polygon fill="#000000" stroke="#000000" points="1465.21,-929.77 1475.56,-932.02 1468.87,-923.81 1465.21,-929.77"/>
+</g>
+<!-- preprocess__main -->
+<g id="node61" class="node">
+<title>preprocess__main</title>
+<ellipse fill="#ebccfe" fill-opacity="0.698039" stroke="black" cx="728.38" cy="-123" rx="86.03" ry="26.74"/>
+<text text-anchor="middle" x="728.38" y="-126.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">main</text>
+<text text-anchor="middle" x="728.38" y="-111.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(preprocess.py:66)</text>
+</g>
+<!-- preprocess&#45;&gt;preprocess__main -->
+<g id="edge54" class="edge">
+<title>preprocess&#45;&gt;preprocess__main</title>
+<path fill="none" stroke="#000000" d="M493.56,-123C531.52,-123 584.68,-123 630.72,-123"/>
+<polygon fill="#000000" stroke="#000000" points="630.44,-126.5 640.44,-123 630.44,-119.5 630.44,-126.5"/>
+</g>
+<!-- testModel&#45;&gt;loader__utils -->
+<g id="edge63" class="edge">
+<title>testModel&#45;&gt;loader__utils</title>
+<path fill="none" stroke="#000000" d="M461.18,-1573.66C491.73,-1603.03 552.62,-1667.42 578.27,-1736 588.41,-1763.12 567.65,-1844.65 587.22,-1866 607.64,-1888.28 640.69,-1894.26 669.56,-1894.44"/>
+<polygon fill="#000000" stroke="#000000" points="669.36,-1897.94 679.29,-1894.26 669.23,-1890.94 669.36,-1897.94"/>
+</g>
+<!-- testModel&#45;&gt;machineLearning -->
+<g id="edge64" class="edge">
+<title>testModel&#45;&gt;machineLearning</title>
+<path fill="none" stroke="#000000" d="M443.84,-1575.32C447.54,-1636.31 468.6,-1833.26 587.22,-1915 614.81,-1934.01 816.52,-1930.14 932.38,-1926.24"/>
+<polygon fill="#000000" stroke="#000000" points="932.27,-1929.75 942.15,-1925.9 932.03,-1922.75 932.27,-1929.75"/>
+</g>
+<!-- testModel&#45;&gt;machineLearning__selectTrainedModel -->
+<g id="edge65" class="edge">
+<title>testModel&#45;&gt;machineLearning__selectTrainedModel</title>
+<path fill="none" stroke="#000000" d="M444.85,-1575.34C451.63,-1634.85 481,-1824.61 587.22,-1927 677.76,-2014.28 741.09,-1965.57 854.46,-2020 871.05,-2027.96 872.74,-2034.48 889.53,-2042 900.94,-2047.11 913.26,-2051.7 925.55,-2055.76"/>
+<polygon fill="#000000" stroke="#000000" points="924.29,-2059.03 934.88,-2058.72 926.41,-2052.36 924.29,-2059.03"/>
+</g>
+<!-- testModel&#45;&gt;testModel__predictLabeledFolders -->
+<g id="edge66" class="edge">
+<title>testModel&#45;&gt;testModel__predictLabeledFolders</title>
+<path fill="none" stroke="#000000" d="M489.06,-1557C523.25,-1557 571.41,-1557 615.5,-1557"/>
+<polygon fill="#000000" stroke="#000000" points="615.4,-1560.5 625.4,-1557 615.4,-1553.5 615.4,-1560.5"/>
+</g>
+<!-- CNN__CNNNetwork____normaliseSpec -->
+<g id="node15" class="node">
+<title>CNN__CNNNetwork____normaliseSpec</title>
+<ellipse fill="#ff9999" fill-opacity="0.698039" stroke="black" cx="728.38" cy="-2918" rx="87.86" ry="26.74"/>
+<text text-anchor="middle" x="728.38" y="-2921.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">__normaliseSpec</text>
+<text text-anchor="middle" x="728.38" y="-2906.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(modelCNN.py:33)</text>
+</g>
+<!-- CNN__CNNNetwork__forward -->
+<g id="node16" class="node">
+<title>CNN__CNNNetwork__forward</title>
+<ellipse fill="#ff9999" fill-opacity="0.698039" stroke="black" cx="442.06" cy="-2932" rx="87.86" ry="26.74"/>
+<text text-anchor="middle" x="442.06" y="-2935.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">forward</text>
+<text text-anchor="middle" x="442.06" y="-2920.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(modelCNN.py:41)</text>
+</g>
+<!-- CNN__CNNNetwork__forward&#45;&gt;CNN__CNNNetwork____init__ -->
+<g id="edge23" class="edge">
+<title>CNN__CNNNetwork__forward&#45;&gt;CNN__CNNNetwork____init__</title>
+<path fill="none" stroke="#000000" d="M515.91,-2946.86C554.86,-2954.81 603,-2964.63 643.51,-2972.89"/>
+<polygon fill="#000000" stroke="#000000" points="642.73,-2976.31 653.23,-2974.87 644.13,-2969.45 642.73,-2976.31"/>
+</g>
+<!-- CNN__CNNNetwork__forward&#45;&gt;CNN__CNNNetwork____normaliseSpec -->
+<g id="edge22" class="edge">
+<title>CNN__CNNNetwork__forward&#45;&gt;CNN__CNNNetwork____normaliseSpec</title>
+<path fill="none" stroke="#000000" d="M529.14,-2927.76C560.86,-2926.2 597.03,-2924.42 629.7,-2922.81"/>
+<polygon fill="#000000" stroke="#000000" points="629.77,-2926.31 639.59,-2922.32 629.43,-2919.32 629.77,-2926.31"/>
+</g>
+<!-- CNN_mel__CNNNetwork_mel____audioNormalisation -->
+<g id="node18" class="node">
+<title>CNN_mel__CNNNetwork_mel____audioNormalisation</title>
+<ellipse fill="#ffc899" fill-opacity="0.698039" stroke="black" cx="728.38" cy="-2572" rx="106.55" ry="26.74"/>
+<text text-anchor="middle" x="728.38" y="-2575.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">__audioNormalisation</text>
+<text text-anchor="middle" x="728.38" y="-2560.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(modelCNN_mel.py:54)</text>
+</g>
+<!-- CNN_mel__CNNNetwork_mel____normaliseSpec -->
+<g id="node20" class="node">
+<title>CNN_mel__CNNNetwork_mel____normaliseSpec</title>
+<ellipse fill="#ffc899" fill-opacity="0.698039" stroke="black" cx="728.38" cy="-2644" rx="106.55" ry="26.74"/>
+<text text-anchor="middle" x="728.38" y="-2647.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">__normaliseSpec</text>
+<text text-anchor="middle" x="728.38" y="-2632.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(modelCNN_mel.py:35)</text>
+</g>
+<!-- CNN_mel__CNNNetwork_mel__forward -->
+<g id="node21" class="node">
+<title>CNN_mel__CNNNetwork_mel__forward</title>
+<ellipse fill="#ffc899" fill-opacity="0.698039" stroke="black" cx="442.06" cy="-2644" rx="106.55" ry="26.74"/>
+<text text-anchor="middle" x="442.06" y="-2647.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">forward</text>
+<text text-anchor="middle" x="442.06" y="-2632.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(modelCNN_mel.py:61)</text>
+</g>
+<!-- CNN_mel__CNNNetwork_mel__forward&#45;&gt;CNN_mel__CNNNetwork_mel____audioNormalisation -->
+<g id="edge26" class="edge">
+<title>CNN_mel__CNNNetwork_mel__forward&#45;&gt;CNN_mel__CNNNetwork_mel____audioNormalisation</title>
+<path fill="none" stroke="#000000" d="M528.91,-2628.19C545.54,-2624.05 562.65,-2619.01 578.27,-2613 582.52,-2611.36 582.99,-2609.69 587.22,-2608 602.28,-2601.97 618.67,-2596.7 634.75,-2592.17"/>
+<polygon fill="#000000" stroke="#000000" points="635.63,-2595.56 644.36,-2589.56 633.79,-2588.81 635.63,-2595.56"/>
+</g>
+<!-- CNN_mel__CNNNetwork_mel__forward&#45;&gt;CNN_mel__CNNNetwork_mel____init__ -->
+<g id="edge28" class="edge">
+<title>CNN_mel__CNNNetwork_mel__forward&#45;&gt;CNN_mel__CNNNetwork_mel____init__</title>
+<path fill="none" stroke="#000000" d="M528.91,-2659.81C545.54,-2663.95 562.65,-2668.99 578.27,-2675 582.52,-2676.64 582.99,-2678.31 587.22,-2680 602.28,-2686.03 618.67,-2691.3 634.75,-2695.83"/>
+<polygon fill="#000000" stroke="#000000" points="633.79,-2699.19 644.36,-2698.44 635.63,-2692.44 633.79,-2699.19"/>
+</g>
+<!-- CNN_mel__CNNNetwork_mel__forward&#45;&gt;CNN_mel__CNNNetwork_mel____normaliseSpec -->
+<g id="edge27" class="edge">
+<title>CNN_mel__CNNNetwork_mel__forward&#45;&gt;CNN_mel__CNNNetwork_mel____normaliseSpec</title>
+<path fill="none" stroke="#000000" d="M548.93,-2644C568.82,-2644 589.72,-2644 609.94,-2644"/>
+<polygon fill="#000000" stroke="#000000" points="609.9,-2647.5 619.9,-2644 609.9,-2640.5 609.9,-2647.5"/>
+</g>
+<!-- guiLoader__MainWindow____init__&#45;&gt;guiLoader__MainWindow____init__ -->
+<g id="edge31" class="edge">
+<title>guiLoader__MainWindow____init__&#45;&gt;guiLoader__MainWindow____init__</title>
+<path fill="none" stroke="#000000" d="M389.34,-2314.46C384.32,-2325.41 401.9,-2334.87 442.06,-2334.87 467.79,-2334.87 484.25,-2330.99 491.43,-2325.32"/>
+<polygon fill="#000000" stroke="#000000" points="494.73,-2326.5 494.33,-2315.91 488.04,-2324.44 494.73,-2326.5"/>
+</g>
+<!-- guiLoader__MainWindow__updatePrediction -->
+<g id="node24" class="node">
+<title>guiLoader__MainWindow__updatePrediction</title>
+<ellipse fill="#fff799" fill-opacity="0.698039" stroke="black" cx="156.45" cy="-2299" rx="124.4" ry="26.74"/>
+<text text-anchor="middle" x="156.45" y="-2302.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">updatePrediction</text>
+<text text-anchor="middle" x="156.45" y="-2287.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(Qt CreatorguiLoader.py:14)</text>
+</g>
+<!-- guiLoader__MainWindow__updatePrediction&#45;&gt;guiLoader__MainWindow -->
+<g id="edge33" class="edge">
+<title>guiLoader__MainWindow__updatePrediction&#45;&gt;guiLoader__MainWindow</title>
+<path fill="none" stroke="#000000" d="M254.11,-2315.97C263.59,-2319.75 272.71,-2324.36 280.9,-2330 298.77,-2342.31 290.93,-2357.83 308.9,-2370 315.68,-2374.59 323.04,-2378.5 330.72,-2381.84"/>
+<polygon fill="#000000" stroke="#000000" points="329.36,-2385.06 339.94,-2385.49 331.93,-2378.55 329.36,-2385.06"/>
+</g>
+<!-- guiLoader__MainWindow__updatePrediction&#45;&gt;guiLoader__MainWindow____init__ -->
+<g id="edge32" class="edge">
+<title>guiLoader__MainWindow__updatePrediction&#45;&gt;guiLoader__MainWindow____init__</title>
+<path fill="none" stroke="#000000" d="M279.78,-2295.12C290.24,-2294.79 300.85,-2294.45 311.36,-2294.12"/>
+<polygon fill="#000000" stroke="#000000" points="311.33,-2297.62 321.21,-2293.8 311.1,-2290.62 311.33,-2297.62"/>
+</g>
+<!-- libricss__convertTimestampsAudacity -->
+<g id="node25" class="node">
+<title>libricss__convertTimestampsAudacity</title>
+<ellipse fill="#ebfecc" fill-opacity="0.698039" stroke="black" cx="442.06" cy="-2181" rx="125.32" ry="26.74"/>
+<text text-anchor="middle" x="442.06" y="-2184.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">convertTimestampsAudacity</text>
+<text text-anchor="middle" x="442.06" y="-2169.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(libricss.py:6)</text>
+</g>
+<!-- libricss__convertTimestampsRTTM -->
+<g id="node26" class="node">
+<title>libricss__convertTimestampsRTTM</title>
+<ellipse fill="#ebfecc" fill-opacity="0.698039" stroke="black" cx="728.38" cy="-2111" rx="118.17" ry="26.74"/>
+<text text-anchor="middle" x="728.38" y="-2114.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">convertTimestampsRTTM</text>
+<text text-anchor="middle" x="728.38" y="-2099.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(libricss.py:25)</text>
+</g>
+<!-- libricss__main&#45;&gt;libricss__convertTimestampsRTTM -->
+<g id="edge35" class="edge">
+<title>libricss__main&#45;&gt;libricss__convertTimestampsRTTM</title>
+<path fill="none" stroke="#000000" d="M513.34,-2109.49C539.15,-2109.68 569.25,-2109.89 598.58,-2110.09"/>
+<polygon fill="#000000" stroke="#000000" points="598.24,-2113.59 608.26,-2110.16 598.29,-2106.59 598.24,-2113.59"/>
+</g>
+<!-- loader__AudioDataset__AudioDataset -->
+<g id="node28" class="node">
+<title>loader__AudioDataset__AudioDataset</title>
+<ellipse fill="#99ffb8" fill-opacity="0.698039" stroke="black" cx="1301.01" cy="-684" rx="125.32" ry="26.74"/>
+<text text-anchor="middle" x="1301.01" y="-687.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">AudioDataset</text>
+<text text-anchor="middle" x="1301.01" y="-672.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderAudioDataset.py:118)</text>
+</g>
+<!-- loader__AudioDataset__createDataset&#45;&gt;loader__AudioDataset__AudioDataset -->
+<g id="edge4" class="edge">
+<title>loader__AudioDataset__createDataset&#45;&gt;loader__AudioDataset__AudioDataset</title>
+<path fill="none" stroke="#000000" d="M1135.44,-684C1144.93,-684 1154.56,-684 1164.15,-684"/>
+<polygon fill="#000000" stroke="#000000" points="1163.86,-687.5 1173.86,-684 1163.86,-680.5 1163.86,-687.5"/>
+</g>
+<!-- loader__AudioDataset__AudioDataset____init__ -->
+<g id="node36" class="node">
+<title>loader__AudioDataset__AudioDataset____init__</title>
+<ellipse fill="#65ff95" fill-opacity="0.698039" stroke="black" cx="1301.01" cy="-946" rx="125.32" ry="26.74"/>
+<text text-anchor="middle" x="1301.01" y="-949.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">__init__</text>
+<text text-anchor="middle" x="1301.01" y="-934.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderAudioDataset.py:131)</text>
+</g>
+<!-- loader__AudioDataset__createDataset&#45;&gt;loader__AudioDataset__AudioDataset____init__ -->
+<g id="edge5" class="edge">
+<title>loader__AudioDataset__createDataset&#45;&gt;loader__AudioDataset__AudioDataset____init__</title>
+<path fill="none" stroke="#000000" d="M1112.22,-699.99C1122.59,-705.01 1132.15,-711.53 1139.85,-720 1197.67,-783.59 1118.03,-846.41 1175.85,-910 1180.65,-915.29 1186.18,-919.81 1192.18,-923.69"/>
+<polygon fill="#000000" stroke="#000000" points="1190.23,-926.6 1200.65,-928.51 1193.69,-920.52 1190.23,-926.6"/>
+</g>
+<!-- loader__AudioDataset__main&#45;&gt;loader__AudioDataset__collate_batch -->
+<g id="edge18" class="edge">
+<title>loader__AudioDataset__main&#45;&gt;loader__AudioDataset__collate_batch</title>
+<path fill="none" stroke="#000000" d="M854.08,-756C861.9,-756 869.79,-756 877.66,-756"/>
+<polygon fill="#000000" stroke="#000000" points="877.64,-759.5 887.64,-756 877.64,-752.5 877.64,-759.5"/>
+</g>
+<!-- loader__AudioDataset__main&#45;&gt;loader__AudioDataset__createDataset -->
+<g id="edge19" class="edge">
+<title>loader__AudioDataset__main&#45;&gt;loader__AudioDataset__createDataset</title>
+<path fill="none" stroke="#000000" d="M811.83,-735.68C826.05,-732.14 840.69,-728.48 854.46,-725 877.06,-719.29 901.43,-713.05 924.16,-707.21"/>
+<polygon fill="#000000" stroke="#000000" points="924.89,-710.63 933.7,-704.75 923.15,-703.85 924.89,-710.63"/>
+</g>
+<!-- loader__AudioDataset__AudioDataset____augmentAudio -->
+<g id="node33" class="node">
+<title>loader__AudioDataset__AudioDataset____augmentAudio</title>
+<ellipse fill="#65ff95" fill-opacity="0.698039" stroke="black" cx="1014.69" cy="-828" rx="125.32" ry="26.74"/>
+<text text-anchor="middle" x="1014.69" y="-831.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">__augmentAudio</text>
+<text text-anchor="middle" x="1014.69" y="-816.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderAudioDataset.py:175)</text>
+</g>
+<!-- loader__AudioDataset__AudioDataset____getAudio -->
+<g id="node34" class="node">
+<title>loader__AudioDataset__AudioDataset____getAudio</title>
+<ellipse fill="#65ff95" fill-opacity="0.698039" stroke="black" cx="1014.69" cy="-900" rx="125.32" ry="26.74"/>
+<text text-anchor="middle" x="1014.69" y="-903.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">__getAudio</text>
+<text text-anchor="middle" x="1014.69" y="-888.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderAudioDataset.py:205)</text>
+</g>
+<!-- loader__AudioDataset__AudioDataset____getAudio&#45;&gt;loader__AudioDataset__AudioDataset____init__ -->
+<g id="edge16" class="edge">
+<title>loader__AudioDataset__AudioDataset____getAudio&#45;&gt;loader__AudioDataset__AudioDataset____init__</title>
+<path fill="none" stroke="#000000" d="M1115.53,-916.15C1139.15,-919.97 1164.49,-924.07 1188.58,-927.97"/>
+<polygon fill="#000000" stroke="#000000" points="1188,-931.42 1198.43,-929.57 1189.12,-924.51 1188,-931.42"/>
+</g>
+<!-- loader__AudioDataset__AudioDataset____removeDC -->
+<g id="node40" class="node">
+<title>loader__AudioDataset__AudioDataset____removeDC</title>
+<ellipse fill="#65ff95" fill-opacity="0.698039" stroke="black" cx="1301.01" cy="-874" rx="125.32" ry="26.74"/>
+<text text-anchor="middle" x="1301.01" y="-877.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">__removeDC</text>
+<text text-anchor="middle" x="1301.01" y="-862.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderAudioDataset.py:185)</text>
+</g>
+<!-- loader__AudioDataset__AudioDataset____getAudio&#45;&gt;loader__AudioDataset__AudioDataset____removeDC -->
+<g id="edge17" class="edge">
+<title>loader__AudioDataset__AudioDataset____getAudio&#45;&gt;loader__AudioDataset__AudioDataset____removeDC</title>
+<path fill="none" stroke="#000000" d="M1130.51,-889.5C1144.88,-888.19 1159.64,-886.84 1174.16,-885.51"/>
+<polygon fill="#000000" stroke="#000000" points="1174.07,-889.03 1183.71,-884.64 1173.43,-882.06 1174.07,-889.03"/>
+</g>
+<!-- loader__AudioDataset__AudioDataset____getitem__ -->
+<g id="node35" class="node">
+<title>loader__AudioDataset__AudioDataset____getitem__</title>
+<ellipse fill="#65ff95" fill-opacity="0.698039" stroke="black" cx="728.38" cy="-969" rx="125.32" ry="26.74"/>
+<text text-anchor="middle" x="728.38" y="-972.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">__getitem__</text>
+<text text-anchor="middle" x="728.38" y="-957.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderAudioDataset.py:153)</text>
+</g>
+<!-- loader__AudioDataset__AudioDataset____getitem__&#45;&gt;loader__AudioDataset__AudioDataset____augmentAudio -->
+<g id="edge12" class="edge">
+<title>loader__AudioDataset__AudioDataset____getitem__&#45;&gt;loader__AudioDataset__AudioDataset____augmentAudio</title>
+<path fill="none" stroke="#000000" d="M829.59,-952.98C838.54,-949.01 847.02,-944.09 854.46,-938 882.63,-914.96 861.82,-887.59 889.53,-864 895.64,-858.8 902.47,-854.35 909.69,-850.54"/>
+<polygon fill="#000000" stroke="#000000" points="910.87,-853.86 918.38,-846.39 907.85,-847.54 910.87,-853.86"/>
+</g>
+<!-- loader__AudioDataset__AudioDataset____getitem__&#45;&gt;loader__AudioDataset__AudioDataset____getAudio -->
+<g id="edge9" class="edge">
+<title>loader__AudioDataset__AudioDataset____getitem__&#45;&gt;loader__AudioDataset__AudioDataset____getAudio</title>
+<path fill="none" stroke="#000000" d="M812.38,-948.86C845.95,-940.71 884.88,-931.26 919.51,-922.86"/>
+<polygon fill="#000000" stroke="#000000" points="920.22,-926.28 929.12,-920.53 918.57,-919.48 920.22,-926.28"/>
+</g>
+<!-- loader__AudioDataset__AudioDataset____getitem__&#45;&gt;loader__AudioDataset__AudioDataset____init__ -->
+<g id="edge13" class="edge">
+<title>loader__AudioDataset__AudioDataset____getitem__&#45;&gt;loader__AudioDataset__AudioDataset____init__</title>
+<path fill="none" stroke="#000000" d="M844.8,-958.85C859.84,-957.75 875.05,-956.76 889.53,-956 981.15,-951.17 1084.39,-948.67 1164.41,-947.38"/>
+<polygon fill="#000000" stroke="#000000" points="1164.09,-950.88 1174.03,-947.23 1163.98,-943.88 1164.09,-950.88"/>
+</g>
+<!-- loader__AudioDataset__AudioDataset____len__ -->
+<g id="node37" class="node">
+<title>loader__AudioDataset__AudioDataset____len__</title>
+<ellipse fill="#65ff95" fill-opacity="0.698039" stroke="black" cx="1014.69" cy="-992" rx="125.32" ry="26.74"/>
+<text text-anchor="middle" x="1014.69" y="-995.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">__len__</text>
+<text text-anchor="middle" x="1014.69" y="-980.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderAudioDataset.py:150)</text>
+</g>
+<!-- loader__AudioDataset__AudioDataset____getitem__&#45;&gt;loader__AudioDataset__AudioDataset____len__ -->
+<g id="edge8" class="edge">
+<title>loader__AudioDataset__AudioDataset____getitem__&#45;&gt;loader__AudioDataset__AudioDataset____len__</title>
+<path fill="none" stroke="#000000" d="M846.25,-978.45C859.16,-979.5 872.36,-980.57 885.4,-981.62"/>
+<polygon fill="#000000" stroke="#000000" points="885.05,-985.11 895.3,-982.42 885.62,-978.13 885.05,-985.11"/>
+</g>
+<!-- loader__AudioDataset__AudioDataset____merge_audio -->
+<g id="node38" class="node">
+<title>loader__AudioDataset__AudioDataset____merge_audio</title>
+<ellipse fill="#65ff95" fill-opacity="0.698039" stroke="black" cx="1014.69" cy="-1064" rx="125.32" ry="26.74"/>
+<text text-anchor="middle" x="1014.69" y="-1067.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">__merge_audio</text>
+<text text-anchor="middle" x="1014.69" y="-1052.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderAudioDataset.py:198)</text>
+</g>
+<!-- loader__AudioDataset__AudioDataset____getitem__&#45;&gt;loader__AudioDataset__AudioDataset____merge_audio -->
+<g id="edge11" class="edge">
+<title>loader__AudioDataset__AudioDataset____getitem__&#45;&gt;loader__AudioDataset__AudioDataset____merge_audio</title>
+<path fill="none" stroke="#000000" d="M790.24,-992.57C820,-1003.81 856.46,-1017.13 889.53,-1028 901.32,-1031.88 913.81,-1035.76 926.15,-1039.46"/>
+<polygon fill="#000000" stroke="#000000" points="924.9,-1042.74 935.48,-1042.23 926.89,-1036.03 924.9,-1042.74"/>
+</g>
+<!-- loader__AudioDataset__AudioDataset____split -->
+<g id="node41" class="node">
+<title>loader__AudioDataset__AudioDataset____split</title>
+<ellipse fill="#65ff95" fill-opacity="0.698039" stroke="black" cx="1014.69" cy="-1136" rx="125.32" ry="26.74"/>
+<text text-anchor="middle" x="1014.69" y="-1139.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">__split</text>
+<text text-anchor="middle" x="1014.69" y="-1124.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderAudioDataset.py:188)</text>
+</g>
+<!-- loader__AudioDataset__AudioDataset____getitem__&#45;&gt;loader__AudioDataset__AudioDataset____split -->
+<g id="edge10" class="edge">
+<title>loader__AudioDataset__AudioDataset____getitem__&#45;&gt;loader__AudioDataset__AudioDataset____split</title>
+<path fill="none" stroke="#000000" d="M754.73,-995.37C784.46,-1024.85 836.43,-1072.09 889.53,-1100 898.43,-1104.68 908.02,-1108.82 917.78,-1112.47"/>
+<polygon fill="#000000" stroke="#000000" points="916.39,-1115.69 926.99,-1115.74 918.73,-1109.1 916.39,-1115.69"/>
+</g>
+<!-- loader__AudioDataset__AudioDataset____init__&#45;&gt;loader__AudioDataset__Augmentor -->
+<g id="edge7" class="edge">
+<title>loader__AudioDataset__AudioDataset____init__&#45;&gt;loader__AudioDataset__Augmentor</title>
+<path fill="none" stroke="#000000" d="M1426.57,-946C1434.4,-946 1442.28,-946 1450.13,-946"/>
+<polygon fill="#000000" stroke="#000000" points="1450.08,-949.5 1460.08,-946 1450.08,-942.5 1450.08,-949.5"/>
+</g>
+<!-- loader__AudioDataset__Augmentor____init__ -->
+<g id="node42" class="node">
+<title>loader__AudioDataset__Augmentor____init__</title>
+<ellipse fill="#65ff95" fill-opacity="0.698039" stroke="black" cx="1582.37" cy="-853" rx="120.42" ry="26.74"/>
+<text text-anchor="middle" x="1582.37" y="-856.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">__init__</text>
+<text text-anchor="middle" x="1582.37" y="-841.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderAudioDataset.py:26)</text>
+</g>
+<!-- loader__AudioDataset__AudioDataset____init__&#45;&gt;loader__AudioDataset__Augmentor____init__ -->
+<g id="edge6" class="edge">
+<title>loader__AudioDataset__AudioDataset____init__&#45;&gt;loader__AudioDataset__Augmentor____init__</title>
+<path fill="none" stroke="#000000" d="M1396.67,-928.36C1409.88,-923.62 1422.81,-917.61 1434.16,-910 1446.27,-901.88 1441.95,-891.95 1454.16,-884 1460.5,-879.88 1467.34,-876.3 1474.44,-873.2"/>
+<polygon fill="#000000" stroke="#000000" points="1475.6,-876.5 1483.59,-869.55 1473.01,-870 1475.6,-876.5"/>
+</g>
+<!-- loader__AudioDataset__AudioDataset____merge_audio&#45;&gt;loader__AudioDataset__AudioDataset____init__ -->
+<g id="edge15" class="edge">
+<title>loader__AudioDataset__AudioDataset____merge_audio&#45;&gt;loader__AudioDataset__AudioDataset____init__</title>
+<path fill="none" stroke="#000000" d="M1095.6,-1043.28C1110.48,-1038.73 1125.77,-1033.59 1139.85,-1028 1176.37,-1013.51 1215.67,-993.46 1246.2,-976.82"/>
+<polygon fill="#000000" stroke="#000000" points="1247.79,-979.93 1254.87,-972.05 1244.42,-973.8 1247.79,-979.93"/>
+</g>
+<!-- loader__AudioDataset__AudioDataset____normaliseAudio -->
+<g id="node39" class="node">
+<title>loader__AudioDataset__AudioDataset____normaliseAudio</title>
+<ellipse fill="#65ff95" fill-opacity="0.698039" stroke="black" cx="1301.01" cy="-1064" rx="125.32" ry="26.74"/>
+<text text-anchor="middle" x="1301.01" y="-1067.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">__normaliseAudio</text>
+<text text-anchor="middle" x="1301.01" y="-1052.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderAudioDataset.py:194)</text>
+</g>
+<!-- loader__AudioDataset__AudioDataset____merge_audio&#45;&gt;loader__AudioDataset__AudioDataset____normaliseAudio -->
+<g id="edge14" class="edge">
+<title>loader__AudioDataset__AudioDataset____merge_audio&#45;&gt;loader__AudioDataset__AudioDataset____normaliseAudio</title>
+<path fill="none" stroke="#000000" d="M1140.4,-1064C1148.22,-1064 1156.11,-1064 1163.97,-1064"/>
+<polygon fill="#000000" stroke="#000000" points="1163.95,-1067.5 1173.95,-1064 1163.95,-1060.5 1163.95,-1067.5"/>
+</g>
+<!-- loader__AudioDataset__Augmentor__audio_preprocessing -->
+<g id="node43" class="node">
+<title>loader__AudioDataset__Augmentor__audio_preprocessing</title>
+<ellipse fill="#65ff95" fill-opacity="0.698039" stroke="black" cx="1582.37" cy="-781" rx="120.42" ry="26.74"/>
+<text text-anchor="middle" x="1582.37" y="-784.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">audio_preprocessing</text>
+<text text-anchor="middle" x="1582.37" y="-769.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderAudioDataset.py:29)</text>
+</g>
+<!-- loader__AudioDataset__Augmentor__rechannel -->
+<g id="node45" class="node">
+<title>loader__AudioDataset__Augmentor__rechannel</title>
+<ellipse fill="#65ff95" fill-opacity="0.698039" stroke="black" cx="1858.79" cy="-781" rx="120.42" ry="26.74"/>
+<text text-anchor="middle" x="1858.79" y="-784.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">rechannel</text>
+<text text-anchor="middle" x="1858.79" y="-769.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderAudioDataset.py:55)</text>
+</g>
+<!-- loader__AudioDataset__Augmentor__audio_preprocessing&#45;&gt;loader__AudioDataset__Augmentor__rechannel -->
+<g id="edge3" class="edge">
+<title>loader__AudioDataset__Augmentor__audio_preprocessing&#45;&gt;loader__AudioDataset__Augmentor__rechannel</title>
+<path fill="none" stroke="#000000" d="M1702.94,-781C1710.89,-781 1718.92,-781 1726.92,-781"/>
+<polygon fill="#000000" stroke="#000000" points="1726.7,-784.5 1736.7,-781 1726.7,-777.5 1726.7,-784.5"/>
+</g>
+<!-- loader__AudioDataset__Augmentor__resample -->
+<g id="node46" class="node">
+<title>loader__AudioDataset__Augmentor__resample</title>
+<ellipse fill="#65ff95" fill-opacity="0.698039" stroke="black" cx="1858.79" cy="-709" rx="120.42" ry="26.74"/>
+<text text-anchor="middle" x="1858.79" y="-712.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">resample</text>
+<text text-anchor="middle" x="1858.79" y="-697.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderAudioDataset.py:70)</text>
+</g>
+<!-- loader__AudioDataset__Augmentor__audio_preprocessing&#45;&gt;loader__AudioDataset__Augmentor__resample -->
+<g id="edge2" class="edge">
+<title>loader__AudioDataset__Augmentor__audio_preprocessing&#45;&gt;loader__AudioDataset__Augmentor__resample</title>
+<path fill="none" stroke="#000000" d="M1661.64,-760.46C1695.09,-751.69 1734.31,-741.4 1768.85,-732.33"/>
+<polygon fill="#000000" stroke="#000000" points="1769.64,-735.75 1778.43,-729.82 1767.87,-728.98 1769.64,-735.75"/>
+</g>
+<!-- loader__AudioDataset__Augmentor__pad_trunc -->
+<g id="node44" class="node">
+<title>loader__AudioDataset__Augmentor__pad_trunc</title>
+<ellipse fill="#65ff95" fill-opacity="0.698039" stroke="black" cx="1582.37" cy="-709" rx="120.42" ry="26.74"/>
+<text text-anchor="middle" x="1582.37" y="-712.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">pad_trunc</text>
+<text text-anchor="middle" x="1582.37" y="-697.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderAudioDataset.py:32)</text>
+</g>
+<!-- loader__utils__removeHparams -->
+<g id="node50" class="node">
+<title>loader__utils__removeHparams</title>
+<ellipse fill="#99ffe7" fill-opacity="0.698039" stroke="black" cx="1014.69" cy="-367" rx="82.96" ry="26.74"/>
+<text text-anchor="middle" x="1014.69" y="-370.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">removeHparams</text>
+<text text-anchor="middle" x="1014.69" y="-355.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(loaderutils.py:58)</text>
+</g>
+<!-- machineLearning__selectTrainedModel&#45;&gt;machineLearning__selectModel -->
+<g id="edge37" class="edge">
+<title>machineLearning__selectTrainedModel&#45;&gt;machineLearning__selectModel</title>
+<path fill="none" stroke="#000000" d="M1091.51,-2058.8C1128.95,-2049.32 1174.3,-2037.83 1213.14,-2028"/>
+<polygon fill="#000000" stroke="#000000" points="1213.6,-2031.49 1222.44,-2025.64 1211.89,-2024.71 1213.6,-2031.49"/>
+</g>
+<!-- newNet__AudioClassifier -->
+<g id="node57" class="node">
+<title>newNet__AudioClassifier</title>
+<ellipse fill="#d3ccfe" fill-opacity="0.698039" stroke="black" cx="156.45" cy="-2921" rx="72.66" ry="37.45"/>
+<text text-anchor="middle" x="156.45" y="-2932.3" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">AudioClassifier</text>
+<text text-anchor="middle" x="156.45" y="-2917.3" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(model</text>
+<text text-anchor="middle" x="156.45" y="-2902.3" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">ewNet.py:5)</text>
+</g>
+<!-- newNet__AudioClassifier____init__ -->
+<g id="node58" class="node">
+<title>newNet__AudioClassifier____init__</title>
+<ellipse fill="#a899ff" fill-opacity="0.698039" stroke="black" cx="156.45" cy="-3107" rx="59.29" ry="37.45"/>
+<text text-anchor="middle" x="156.45" y="-3118.3" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">__init__</text>
+<text text-anchor="middle" x="156.45" y="-3103.3" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(model</text>
+<text text-anchor="middle" x="156.45" y="-3088.3" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">ewNet.py:6)</text>
+</g>
+<!-- newNet__AudioClassifier__forward -->
+<g id="node59" class="node">
+<title>newNet__AudioClassifier__forward</title>
+<ellipse fill="#a899ff" fill-opacity="0.698039" stroke="black" cx="156.45" cy="-3014" rx="64.19" ry="37.45"/>
+<text text-anchor="middle" x="156.45" y="-3025.3" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">forward</text>
+<text text-anchor="middle" x="156.45" y="-3010.3" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(model</text>
+<text text-anchor="middle" x="156.45" y="-2995.3" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">ewNet.py:19)</text>
+</g>
+<!-- preprocess__detect_silence -->
+<g id="node60" class="node">
+<title>preprocess__detect_silence</title>
+<ellipse fill="#ebccfe" fill-opacity="0.698039" stroke="black" cx="1014.69" cy="-51" rx="86.03" ry="26.74"/>
+<text text-anchor="middle" x="1014.69" y="-54.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">detect_silence</text>
+<text text-anchor="middle" x="1014.69" y="-39.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(preprocess.py:15)</text>
+</g>
+<!-- preprocess__main&#45;&gt;loader__AudioDataset__Augmentor -->
+<g id="edge58" class="edge">
+<title>preprocess__main&#45;&gt;loader__AudioDataset__Augmentor</title>
+<path fill="none" stroke="#000000" d="M808.12,-133.44C824.38,-138.01 840.71,-144.57 854.46,-154 876.85,-169.35 865.8,-190.82 889.53,-204 892.84,-205.84 1431.52,-231.29 1434.16,-234 1487,-288.21 1406.53,-856.16 1454.16,-915 1457.91,-919.63 1462.23,-923.64 1466.95,-927.1"/>
+<polygon fill="#000000" stroke="#000000" points="1464.89,-929.94 1475.22,-932.3 1468.62,-924.01 1464.89,-929.94"/>
+</g>
+<!-- preprocess__main&#45;&gt;loader__AudioDataset__Augmentor____init__ -->
+<g id="edge60" class="edge">
+<title>preprocess__main&#45;&gt;loader__AudioDataset__Augmentor____init__</title>
+<path fill="none" stroke="#000000" d="M806.72,-134.4C823.24,-138.92 840.03,-145.21 854.46,-154 874.66,-166.3 868.27,-183.65 889.53,-194 944.03,-220.52 1391.77,-180.69 1434.16,-224 1480.28,-271.11 1413.52,-765.1 1454.16,-817 1458.97,-823.13 1464.73,-828.27 1471.12,-832.57"/>
+<polygon fill="#000000" stroke="#000000" points="1469.17,-835.49 1479.57,-837.53 1472.71,-829.45 1469.17,-835.49"/>
+</g>
+<!-- preprocess__main&#45;&gt;loader__AudioDataset__Augmentor__rechannel -->
+<g id="edge62" class="edge">
+<title>preprocess__main&#45;&gt;loader__AudioDataset__Augmentor__rechannel</title>
+<path fill="none" stroke="#000000" d="M798.16,-138.91C816.53,-143.47 836.33,-148.66 854.46,-154 870.27,-158.65 873.37,-162.81 889.53,-166 949.01,-177.75 1382.74,-166.9 1434.16,-199 1639.54,-327.2 1588.76,-459.33 1702.58,-673 1719.4,-704.58 1711.22,-721.95 1738.58,-745 1744.66,-750.12 1751.46,-754.52 1758.63,-758.29"/>
+<polygon fill="#000000" stroke="#000000" points="1756.73,-761.26 1767.26,-762.4 1759.74,-754.94 1756.73,-761.26"/>
+</g>
+<!-- preprocess__main&#45;&gt;loader__AudioDataset__Augmentor__resample -->
+<g id="edge61" class="edge">
+<title>preprocess__main&#45;&gt;loader__AudioDataset__Augmentor__resample</title>
+<path fill="none" stroke="#000000" d="M794.33,-140.55C823.25,-147.6 857.87,-154.99 889.53,-159 934.37,-164.68 1666.8,-156.4 1702.58,-184 1781.73,-245.05 1835.59,-560.19 1852.29,-670.67"/>
+<polygon fill="#000000" stroke="#000000" points="1848.81,-671.04 1853.74,-680.42 1855.73,-670.01 1848.81,-671.04"/>
+</g>
+<!-- preprocess__main&#45;&gt;loader__utils__uniquify -->
+<g id="edge59" class="edge">
+<title>preprocess__main&#45;&gt;loader__utils__uniquify</title>
+<path fill="none" stroke="#000000" d="M812.63,-128.83C828.52,-133.69 843.57,-141.53 854.46,-154 948.92,-262.05 797.22,-365.11 889.53,-475 898.7,-485.92 910.97,-493.63 924.22,-499.06"/>
+<polygon fill="#000000" stroke="#000000" points="923.01,-502.34 933.6,-502.43 925.38,-495.76 923.01,-502.34"/>
+</g>
+<!-- preprocess__main&#45;&gt;preprocess__detect_silence -->
+<g id="edge57" class="edge">
+<title>preprocess__main&#45;&gt;preprocess__detect_silence</title>
+<path fill="none" stroke="#000000" d="M796.03,-106.12C837.95,-95.51 892.19,-81.77 936.05,-70.66"/>
+<polygon fill="#000000" stroke="#000000" points="936.66,-74.12 945.49,-68.27 934.94,-67.33 936.66,-74.12"/>
+</g>
+<!-- preprocess__split_silences -->
+<g id="node62" class="node">
+<title>preprocess__split_silences</title>
+<ellipse fill="#ebccfe" fill-opacity="0.698039" stroke="black" cx="1014.69" cy="-123" rx="86.03" ry="26.74"/>
+<text text-anchor="middle" x="1014.69" y="-126.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">split_silences</text>
+<text text-anchor="middle" x="1014.69" y="-111.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(preprocess.py:53)</text>
+</g>
+<!-- preprocess__main&#45;&gt;preprocess__split_silences -->
+<g id="edge56" class="edge">
+<title>preprocess__main&#45;&gt;preprocess__split_silences</title>
+<path fill="none" stroke="#000000" d="M814.68,-123C847.01,-123 884.04,-123 917.32,-123"/>
+<polygon fill="#000000" stroke="#000000" points="916.93,-126.5 926.93,-123 916.93,-119.5 916.93,-126.5"/>
+</g>
+<!-- testModel__extractModelFeature -->
+<g id="node63" class="node">
+<title>testModel__extractModelFeature</title>
+<ellipse fill="#feccfb" fill-opacity="0.698039" stroke="black" cx="1301.01" cy="-1269" rx="92.76" ry="26.74"/>
+<text text-anchor="middle" x="1301.01" y="-1272.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">extractModelFeature</text>
+<text text-anchor="middle" x="1301.01" y="-1257.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(testModel.py:320)</text>
+</g>
+<!-- testModel__filterEnum -->
+<g id="node64" class="node">
+<title>testModel__filterEnum</title>
+<ellipse fill="#feccfb" fill-opacity="0.698039" stroke="black" cx="1582.37" cy="-1485" rx="86.03" ry="26.74"/>
+<text text-anchor="middle" x="1582.37" y="-1488.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">filterEnum</text>
+<text text-anchor="middle" x="1582.37" y="-1473.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(testModel.py:257)</text>
+</g>
+<!-- testModel__getGroundTruth -->
+<g id="node65" class="node">
+<title>testModel__getGroundTruth</title>
+<ellipse fill="#feccfb" fill-opacity="0.698039" stroke="black" cx="1301.01" cy="-1341" rx="86.03" ry="26.74"/>
+<text text-anchor="middle" x="1301.01" y="-1344.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">getGroundTruth</text>
+<text text-anchor="middle" x="1301.01" y="-1329.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(testModel.py:298)</text>
+</g>
+<!-- testModel__get_percentage_in_window -->
+<g id="node66" class="node">
+<title>testModel__get_percentage_in_window</title>
+<ellipse fill="#feccfb" fill-opacity="0.698039" stroke="black" cx="1301.01" cy="-1413" rx="120.42" ry="26.74"/>
+<text text-anchor="middle" x="1301.01" y="-1416.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">get_percentage_in_window</text>
+<text text-anchor="middle" x="1301.01" y="-1401.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(testModel.py:264)</text>
+</g>
+<!-- testModel__percentageMode -->
+<g id="node67" class="node">
+<title>testModel__percentageMode</title>
+<ellipse fill="#feccfb" fill-opacity="0.698039" stroke="black" cx="1301.01" cy="-1485" rx="86.03" ry="26.74"/>
+<text text-anchor="middle" x="1301.01" y="-1488.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">percentageMode</text>
+<text text-anchor="middle" x="1301.01" y="-1473.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(testModel.py:286)</text>
+</g>
+<!-- testModel__percentageMode&#45;&gt;testModel__filterEnum -->
+<g id="edge84" class="edge">
+<title>testModel__percentageMode&#45;&gt;testModel__filterEnum</title>
+<path fill="none" stroke="#000000" d="M1387.34,-1485C1418.07,-1485 1452.95,-1485 1484.58,-1485"/>
+<polygon fill="#000000" stroke="#000000" points="1484.56,-1488.5 1494.56,-1485 1484.56,-1481.5 1484.56,-1488.5"/>
+</g>
+<!-- testModel__predictFile -->
+<g id="node68" class="node">
+<title>testModel__predictFile</title>
+<ellipse fill="#feccfb" fill-opacity="0.698039" stroke="black" cx="1014.69" cy="-1557" rx="82.05" ry="26.74"/>
+<text text-anchor="middle" x="1014.69" y="-1560.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">predictFile</text>
+<text text-anchor="middle" x="1014.69" y="-1545.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(testModel.py:81)</text>
+</g>
+<!-- testModel__predictFile&#45;&gt;loader__AudioDataset__Augmentor -->
+<g id="edge76" class="edge">
+<title>testModel__predictFile&#45;&gt;loader__AudioDataset__Augmentor</title>
+<path fill="none" stroke="#000000" d="M1038.09,-1531.09C1065.88,-1497.66 1112.88,-1436.68 1139.85,-1377 1167.01,-1316.88 1125.87,-1276.06 1175.85,-1233 1219.54,-1195.36 1385.85,-1239.49 1434.16,-1208 1514.68,-1155.51 1555.55,-1042.89 1572.13,-983.87"/>
+<polygon fill="#000000" stroke="#000000" points="1575.5,-984.84 1574.74,-974.27 1568.74,-983 1575.5,-984.84"/>
+</g>
+<!-- testModel__predictFile&#45;&gt;testModel__extractModelFeature -->
+<g id="edge73" class="edge">
+<title>testModel__predictFile&#45;&gt;testModel__extractModelFeature</title>
+<path fill="none" stroke="#000000" d="M1035.4,-1530.93C1060.96,-1496.59 1106.24,-1433.87 1139.85,-1377 1158.05,-1346.2 1148.36,-1327.9 1175.85,-1305 1185.52,-1296.94 1196.91,-1290.69 1208.8,-1285.83"/>
+<polygon fill="#000000" stroke="#000000" points="1209.77,-1289.21 1217.93,-1282.45 1207.34,-1282.64 1209.77,-1289.21"/>
+</g>
+<!-- testModel__predictFile&#45;&gt;testModel__getGroundTruth -->
+<g id="edge79" class="edge">
+<title>testModel__predictFile&#45;&gt;testModel__getGroundTruth</title>
+<path fill="none" stroke="#000000" d="M1032.18,-1530.43C1057.97,-1491.06 1111.64,-1417.52 1175.85,-1377 1188.1,-1369.27 1202.07,-1363.15 1216.1,-1358.32"/>
+<polygon fill="#000000" stroke="#000000" points="1216.94,-1361.73 1225.38,-1355.33 1214.79,-1355.06 1216.94,-1361.73"/>
+</g>
+<!-- testModel__predictFile&#45;&gt;testModel__get_percentage_in_window -->
+<g id="edge75" class="edge">
+<title>testModel__predictFile&#45;&gt;testModel__get_percentage_in_window</title>
+<path fill="none" stroke="#000000" d="M1046.45,-1531.97C1077.47,-1507.79 1127.55,-1471.6 1175.85,-1449 1185.83,-1444.33 1196.56,-1440.12 1207.37,-1436.38"/>
+<polygon fill="#000000" stroke="#000000" points="1208.37,-1439.73 1216.75,-1433.26 1206.16,-1433.09 1208.37,-1439.73"/>
+</g>
+<!-- testModel__predictFile&#45;&gt;testModel__percentageMode -->
+<g id="edge77" class="edge">
+<title>testModel__predictFile&#45;&gt;testModel__percentageMode</title>
+<path fill="none" stroke="#000000" d="M1080.21,-1540.66C1122.35,-1529.99 1177.62,-1515.99 1222.19,-1504.71"/>
+<polygon fill="#000000" stroke="#000000" points="1222.98,-1508.12 1231.81,-1502.27 1221.26,-1501.33 1222.98,-1508.12"/>
+</g>
+<!-- testModel__specFeatures -->
+<g id="node73" class="node">
+<title>testModel__specFeatures</title>
+<ellipse fill="#feccfb" fill-opacity="0.698039" stroke="black" cx="1301.01" cy="-1557" rx="86.03" ry="26.74"/>
+<text text-anchor="middle" x="1301.01" y="-1560.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">specFeatures</text>
+<text text-anchor="middle" x="1301.01" y="-1545.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(testModel.py:171)</text>
+</g>
+<!-- testModel__predictFile&#45;&gt;testModel__specFeatures -->
+<g id="edge80" class="edge">
+<title>testModel__predictFile&#45;&gt;testModel__specFeatures</title>
+<path fill="none" stroke="#000000" d="M1097.16,-1557C1130.33,-1557 1168.92,-1557 1203.49,-1557"/>
+<polygon fill="#000000" stroke="#000000" points="1203.04,-1560.5 1213.04,-1557 1203.04,-1553.5 1203.04,-1560.5"/>
+</g>
+<!-- testModel__specFeatures____init__ -->
+<g id="node74" class="node">
+<title>testModel__specFeatures____init__</title>
+<ellipse fill="#ff99f7" fill-opacity="0.698039" stroke="black" cx="1301.01" cy="-1701" rx="86.03" ry="26.74"/>
+<text text-anchor="middle" x="1301.01" y="-1704.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">__init__</text>
+<text text-anchor="middle" x="1301.01" y="-1689.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(testModel.py:174)</text>
+</g>
+<!-- testModel__predictFile&#45;&gt;testModel__specFeatures____init__ -->
+<g id="edge74" class="edge">
+<title>testModel__predictFile&#45;&gt;testModel__specFeatures____init__</title>
+<path fill="none" stroke="#000000" d="M1093.22,-1565.23C1109.94,-1569.89 1126.56,-1577.05 1139.85,-1588 1169.01,-1612.02 1147.15,-1640.44 1175.85,-1665 1186.34,-1673.98 1198.97,-1680.72 1212.09,-1685.79"/>
+<polygon fill="#000000" stroke="#000000" points="1210.67,-1689 1221.27,-1689 1212.98,-1682.39 1210.67,-1689"/>
+</g>
+<!-- testModel__specFeatures__addSpec -->
+<g id="node75" class="node">
+<title>testModel__specFeatures__addSpec</title>
+<ellipse fill="#ff99f7" fill-opacity="0.698039" stroke="black" cx="1301.01" cy="-1629" rx="86.03" ry="26.74"/>
+<text text-anchor="middle" x="1301.01" y="-1632.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">addSpec</text>
+<text text-anchor="middle" x="1301.01" y="-1617.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(testModel.py:183)</text>
+</g>
+<!-- testModel__predictFile&#45;&gt;testModel__specFeatures__addSpec -->
+<g id="edge81" class="edge">
+<title>testModel__predictFile&#45;&gt;testModel__specFeatures__addSpec</title>
+<path fill="none" stroke="#000000" d="M1081.18,-1573.01C1100.13,-1577.73 1120.84,-1582.99 1139.85,-1588 1155.91,-1592.23 1159.79,-1593.77 1175.85,-1598 1190.63,-1601.9 1206.43,-1605.94 1221.64,-1609.77"/>
+<polygon fill="#000000" stroke="#000000" points="1220.57,-1613.1 1231.12,-1612.14 1222.27,-1606.31 1220.57,-1613.1"/>
+</g>
+<!-- testModel__specFeatures__plotSpec -->
+<g id="node76" class="node">
+<title>testModel__specFeatures__plotSpec</title>
+<ellipse fill="#ff99f7" fill-opacity="0.698039" stroke="black" cx="1301.01" cy="-1773" rx="86.03" ry="26.74"/>
+<text text-anchor="middle" x="1301.01" y="-1776.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">plotSpec</text>
+<text text-anchor="middle" x="1301.01" y="-1761.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(testModel.py:199)</text>
+</g>
+<!-- testModel__predictFile&#45;&gt;testModel__specFeatures__plotSpec -->
+<g id="edge78" class="edge">
+<title>testModel__predictFile&#45;&gt;testModel__specFeatures__plotSpec</title>
+<path fill="none" stroke="#000000" d="M1094.91,-1563.37C1111.56,-1568.12 1127.72,-1575.78 1139.85,-1588 1187.84,-1636.36 1128.78,-1687.75 1175.85,-1737 1185.33,-1746.92 1197.37,-1754.16 1210.2,-1759.42"/>
+<polygon fill="#000000" stroke="#000000" points="1208.61,-1762.57 1219.2,-1762.72 1211.02,-1756 1208.61,-1762.57"/>
+</g>
+<!-- testModel__predictFolder -->
+<g id="node69" class="node">
+<title>testModel__predictFolder</title>
+<ellipse fill="#feccfb" fill-opacity="0.698039" stroke="black" cx="728.38" cy="-1269" rx="82.05" ry="26.74"/>
+<text text-anchor="middle" x="728.38" y="-1272.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">predictFolder</text>
+<text text-anchor="middle" x="728.38" y="-1257.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(testModel.py:23)</text>
+</g>
+<!-- testModel__predictFolder&#45;&gt;loader__AudioDataset__collate_batch -->
+<g id="edge69" class="edge">
+<title>testModel__predictFolder&#45;&gt;loader__AudioDataset__collate_batch</title>
+<path fill="none" stroke="#000000" d="M787.31,-1250.11C812.15,-1238.96 838.96,-1222.18 854.46,-1198 903.69,-1121.2 830.89,-858.87 889.53,-789 893.15,-784.69 897.26,-780.91 901.73,-777.59"/>
+<polygon fill="#000000" stroke="#000000" points="903.57,-780.58 910.1,-772.24 899.79,-774.68 903.57,-780.58"/>
+</g>
+<!-- testModel__predictFolder&#45;&gt;loader__AudioDataset__createDataset -->
+<g id="edge70" class="edge">
+<title>testModel__predictFolder&#45;&gt;loader__AudioDataset__createDataset</title>
+<path fill="none" stroke="#000000" d="M787.45,-1250.2C812.31,-1239.06 839.11,-1222.27 854.46,-1198 911.39,-1107.98 822.49,-802.76 889.53,-720 894.17,-714.28 899.66,-709.43 905.7,-705.33"/>
+<polygon fill="#000000" stroke="#000000" points="907.48,-708.35 914.31,-700.25 903.92,-702.32 907.48,-708.35"/>
+</g>
+<!-- testModel__predictFolder&#45;&gt;loader__utils__getAudioPaths -->
+<g id="edge67" class="edge">
+<title>testModel__predictFolder&#45;&gt;loader__utils__getAudioPaths</title>
+<path fill="none" stroke="#000000" d="M787.88,-1250.12C812.68,-1239 839.3,-1222.24 854.46,-1198 919.76,-1093.6 821.49,-747.63 889.53,-645 901.44,-627.04 920.18,-614.07 939.52,-604.78"/>
+<polygon fill="#000000" stroke="#000000" points="940.88,-608.01 948.59,-600.74 938.03,-601.61 940.88,-608.01"/>
+</g>
+<!-- testModel__predictFolder&#45;&gt;machineLearning__eval -->
+<g id="edge68" class="edge">
+<title>testModel__predictFolder&#45;&gt;machineLearning__eval</title>
+<path fill="none" stroke="#000000" d="M807.88,-1276.08C825.75,-1281.48 842.86,-1290.4 854.46,-1305 947.21,-1421.73 794.72,-1859.94 889.53,-1975 894.17,-1980.63 899.66,-1985.32 905.7,-1989.23"/>
+<polygon fill="#000000" stroke="#000000" points="903.85,-1992.2 914.29,-1994 907.25,-1986.08 903.85,-1992.2"/>
+</g>
+<!-- testModel__predictLabeledFolders&#45;&gt;loader__utils__uniquify -->
+<g id="edge71" class="edge">
+<title>testModel__predictLabeledFolders&#45;&gt;loader__utils__uniquify</title>
+<path fill="none" stroke="#000000" d="M754.99,-1530.75C785.15,-1497.92 833.76,-1438.49 854.46,-1377 883.92,-1289.52 832.55,-619.61 889.53,-547 898.48,-535.6 910.8,-527.67 924.24,-522.17"/>
+<polygon fill="#000000" stroke="#000000" points="925.03,-525.6 933.27,-518.93 922.67,-519.01 925.03,-525.6"/>
+</g>
+<!-- testModel__predictLabeledFolders&#45;&gt;testModel__predictFile -->
+<g id="edge72" class="edge">
+<title>testModel__predictLabeledFolders&#45;&gt;testModel__predictFile</title>
+<path fill="none" stroke="#000000" d="M830.01,-1557C859.63,-1557 891.88,-1557 920.97,-1557"/>
+<polygon fill="#000000" stroke="#000000" points="920.87,-1560.5 930.87,-1557 920.87,-1553.5 920.87,-1560.5"/>
+</g>
+<!-- testModel__predictLive -->
+<g id="node71" class="node">
+<title>testModel__predictLive</title>
+<ellipse fill="#feccfb" fill-opacity="0.698039" stroke="black" cx="728.38" cy="-1341" rx="86.03" ry="26.74"/>
+<text text-anchor="middle" x="728.38" y="-1344.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">predictLive</text>
+<text text-anchor="middle" x="728.38" y="-1329.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(testModel.py:225)</text>
+</g>
+<!-- testModel__predictLive&#45;&gt;loader__AudioDataset__Augmentor -->
+<g id="edge82" class="edge">
+<title>testModel__predictLive&#45;&gt;loader__AudioDataset__Augmentor</title>
+<path fill="none" stroke="#000000" d="M792.74,-1322.94C812.52,-1317.25 834.41,-1310.91 854.46,-1305 997.58,-1262.81 1028.7,-1232.64 1175.85,-1208 1204.18,-1203.26 1409.53,-1212.78 1434.16,-1198 1513.8,-1150.22 1554.86,-1041.69 1571.76,-983.88"/>
+<polygon fill="#000000" stroke="#000000" points="1575.07,-985.06 1574.41,-974.49 1568.33,-983.16 1575.07,-985.06"/>
+</g>
+<!-- testModel__selectMicrophone -->
+<g id="node72" class="node">
+<title>testModel__selectMicrophone</title>
+<ellipse fill="#feccfb" fill-opacity="0.698039" stroke="black" cx="1014.69" cy="-1341" rx="86.03" ry="26.74"/>
+<text text-anchor="middle" x="1014.69" y="-1344.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">selectMicrophone</text>
+<text text-anchor="middle" x="1014.69" y="-1329.8" font-family="Times New Roman,serif" font-size="14.00" fill="#000000">(testModel.py:204)</text>
+</g>
+<!-- testModel__predictLive&#45;&gt;testModel__selectMicrophone -->
+<g id="edge83" class="edge">
+<title>testModel__predictLive&#45;&gt;testModel__selectMicrophone</title>
+<path fill="none" stroke="#000000" d="M814.68,-1341C847.01,-1341 884.04,-1341 917.32,-1341"/>
+<polygon fill="#000000" stroke="#000000" points="916.93,-1344.5 926.93,-1341 916.93,-1337.5 916.93,-1344.5"/>
+</g>
+</g>
+</svg>
+`,
+                    ready: function() {
+                        var gv = this
+                        gv.nodes().click(function () {
+                            var $set = $()
+                            $set.push(this)
+                            $set = $set.add(gv.linkedFrom(this, true))
+                            $set = $set.add(gv.linkedTo(this, true))
+                            gv.highlight($set, true)
+                            gv.bringToFront($set)
+                        })
+                        $(document).keydown(function (evt) {
+                            if (evt.keyCode == 27) {
+                                gv.highlight()
+                            }
+                        })
+                    }
+                });
+            });
+		</script>
+	</body>
+</html>

@@ -10,7 +10,6 @@ import torchaudio
 config = ConfigParser()
 config.read('config.ini')
 
-
 class CNNNetwork_mel(nn.Module):
     def __init__(self, nfft, augmentations=None):
         super(CNNNetwork_mel, self).__init__()

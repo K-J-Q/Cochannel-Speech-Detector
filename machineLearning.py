@@ -52,7 +52,7 @@ def selectTrainedModel(setCPU=False, modelIndex=None):
         return model, device, 0
     else:
         path = model_paths[int(modelIndex)]
-        model = torch.load(path)
+        model = torch.load(path, map_location=device)
         epoch = path.split('epoch', 1)[1][:-3]
         try:
             epoch = int(epoch)
