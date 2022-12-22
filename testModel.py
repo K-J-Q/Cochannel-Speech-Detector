@@ -4,6 +4,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sn
+import torch
+import torchaudio.functional
 import torchmetrics
 from torchvision.models.feature_extraction import get_graph_node_names, create_feature_extractor
 
@@ -97,6 +99,8 @@ def predictFile(model, device, filePath, plotPredicton=True):
         if plotPredicton:
             specData = specFeatures(model, device, wav, sr, windowLength)
         wav = torchaudio.functional.dcshift(wav, -wav.mean())
+        # bandreject filter
+        wav = torchaudio.functional.highpass_biquad(wav, sr, 50)
         sampleLength = windowLength * sr
         wav = wav[0]
         batch_length = batch_size * sampleLength
@@ -106,7 +110,6 @@ def predictFile(model, device, filePath, plotPredicton=True):
                 trimmed_audio = wav[j:j + sampleLength]
                 # print(splitIndex, ' ', len(trimmed_audio))
                 if len(trimmed_audio) == sampleLength:
-                    trimmed_audio /= torch.max(torch.abs(trimmed_audio))
                     data_tensor[splitIndex][0] = trimmed_audio
                 else:
                     # end of audio file
@@ -178,6 +181,7 @@ class specFeatures:
             torch.unsqueeze(wav[:, 0:sr * windowLength], dim=0).to(device))
         self.windowOutputShape = modelOut['spec'].shape
         self.audioLength = len(wav[0]) / sr
+
         self.spec = torch.zeros(
             [self.windowOutputShape[2], int(self.windowOutputShape[3] * self.audioLength / windowLength)])
 
@@ -200,7 +204,7 @@ class specFeatures:
     def plotSpec(self):
         plt.imshow(self.spec, origin='lower',
                    aspect='auto', extent=[0, self.audioLength, 0, self.windowOutputShape[2]])
-
+        self.specIndex = 0
 
 def selectMicrophone():
     import subprocess
@@ -224,7 +228,9 @@ def selectMicrophone():
 
 
 def predictLive(model, device):
+    model = extractModelFeature(model)
     augmentor = Augmentor()
+    plotSpec = specFeatures(model, device, torch.randn(1, 16000), 8000, 2)
 
     from torchaudio.io import StreamReader
 
@@ -245,14 +251,17 @@ def predictLive(model, device):
             # wav = torch.cat((wav, chunk[:, 0]))
             wav, sr = augmentor.audio_preprocessing([chunk.T, 8000])
             wav = torchaudio.functional.dcshift(wav, -wav.mean())
-            wav /= wav.max()
             pred = model(torch.unsqueeze(wav, dim=0).to(device))
-            pred = sm(pred['out']) if isinstance(pred, dict) else sm(pred)
+            pred = plotSpec.addSpec(pred)
             print(pred)
-            # check if pred is dict
-
-            # sn.barplot(y=class_map, x=pred[0].cpu().numpy())
-            # plt.show()
+            ax1 = plt.subplot(2, 1, 1)
+            plotSpec.plotSpec()
+            ax2 = plt.subplot(2, 1, 2, sharex=ax1)
+            plt.tight_layout()
+            plt.rcParams["figure.figsize"] = (3, 10)
+            sn.barplot(y=class_map, x=pred[0].cpu().numpy())
+            plt.xlim(0,1)
+            plt.show()
 
 
 class filterEnum(enum.Enum):
@@ -335,6 +344,7 @@ def extractModelFeature(model):
 
 
 if __name__ == "__main__":
+    import torch_audiomentations as aug
     model, device, epoch = machineLearning.selectTrainedModel(setCPU=True)
     if epoch == 0:
         model = model(512)
@@ -347,11 +357,11 @@ if __name__ == "__main__":
     print(f'\n---------------------------------------\n')
 
     # filePath = 'testNorm.wav'
-    folderPath = './data/other mic'
+    folderPath = './data/omni mic'
 
     # predictFile(model, device, filePath)
 
-    predictLabeledFolders(model, device, folderPath, 'confMatrix')
+    predictLabeledFolders(model, device, folderPath)
 
     # predictFolder(
     #     model, device, 'E:/Processed Audio/test/' if os.name == 'nt' else '/media/jianquan/Data/Processed Audio/test/')

@@ -34,12 +34,11 @@ class CNNNetwork_mel(nn.Module):
 
     def __normaliseSpec(self, x):
         # x = torch.clamp(x, max=1e2)
-        x = torch.clamp(x, min=1e-10)
-        x = x.log10()
-        # max_val = x.reshape(
-        #     x.shape[0], 1, -1).amin(2).view(x.shape[0], 1, 1, 1)
+        x = torch.clamp(x, min=1e-10).log10()
+        max_val = x.reshape(
+            x.shape[0], 1, -1).amax(2).view(x.shape[0], 1, 1, 1)
 
-        # x = torch.maximum(x, max_val-8)
+        x = torch.maximum(x, max_val-8)
 
         min_val = x.reshape(
             x.shape[0], 1, -1).amin(2).view(x.shape[0], 1, 1, 1)
