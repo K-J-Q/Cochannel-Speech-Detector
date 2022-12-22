@@ -83,7 +83,6 @@ def main(input_path=None, output_path=None, mode=None):
     augmentor = Augmentor()
     for audioIndex, audioPath in tqdm(enumerate(audioPaths), unit='files', total=len(audioPaths)):
         # only used if cut-off halfway
-        print(audioPath)
 
         if audioIndex >= 0:
             _, audioName = os.path.split(audioPath)
@@ -111,4 +110,4 @@ def main(input_path=None, output_path=None, mode=None):
 
 
 if __name__ == '__main__':
-    main(input_path='E:/Original Audio/LibriCSS', output_path='E:/Processed Audio/LibriCSS/recorded', mode='process')
+    main(input_path='E:/Original Audio/IR', output_path='E:/Processed Audio/IR', mode='process')

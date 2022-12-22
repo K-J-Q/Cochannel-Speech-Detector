@@ -127,6 +127,7 @@ class AudioDataset(Dataset):
     windowLength = int(config['augmentations']['duration'])/1000
 
     augment = Compose([RoomSimulator()])
+    add_noise = float(config['augmentations']['augment_noise'])
 
     def __init__(self,
                  audio_paths,
@@ -174,7 +175,7 @@ class AudioDataset(Dataset):
 
     def __augmentAudio(self, wav, augments=[]):
         if 'add_noise' in augments:
-            gain = random.uniform(0, 0.1)*wav.max()
+            gain = random.uniform(0, self.add_noise)
             noise = torch.randn(wav.shape)
             wav = wav + gain * noise
         if 'reverb' in augments: 

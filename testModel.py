@@ -76,7 +76,7 @@ def predictLabeledFolders(model, device, folderPath, saveFigPath=None):
             plt.savefig(utils.uniquify(saveFigPath + '.png'))
             plt.close()
 
-    return cum_folder_acc, confusionMatrix
+    return cum_folder_acc, confusionMatrixNormalised
 
 
 def predictFile(model, device, filePath, plotPredicton=True):
