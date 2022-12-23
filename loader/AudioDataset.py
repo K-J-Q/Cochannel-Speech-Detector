@@ -54,18 +54,18 @@ class Augmentor():
 
     def rechannel(self, aud, showWarning=True):
         sig, sr = aud
-        if (sig.shape[0] == self.audio_channels):
+        if sig.shape[0] == self.audio_channels:
             # Nothing to do
             return aud
-        elif (self.audio_channels == 1):
+        elif self.audio_channels == 1:
             # Convert from stereo to mono by selecting only the first channel
-            resig = sig[:1, :]
+            resignal = sig[:1, :]
         else:
             # Convert from mono to stereo by duplicating the first channel
-            resig = torch.cat([sig, sig])
+            resignal = torch.cat([sig, sig])
         if showWarning:
             print('rechannel process triggered!')
-        return ((resig, sr))
+        return resignal, sr
 
     def resample(self, aud, showWarning=True):
         sig, sr = aud
@@ -128,6 +128,8 @@ class AudioDataset(Dataset):
 
     augment = Compose([RoomSimulator()])
     add_noise = float(config['augmentations']['augment_noise'])
+    gain_div = float(config['augmentations']['gain_div'])
+    samplesPerClass = 3
 
     def __init__(self,
                  audio_paths,
@@ -142,7 +144,6 @@ class AudioDataset(Dataset):
             audioTransformList) if audioTransformList else None
         self.env_paths, self.speech_paths = audio_paths
         self.Augmentor = Augmentor()
-        self.samplesPerClass = 3
         self.outputAudio = outputAudio
         self.dataShape = torch.Size([1, int(self.windowLength * 8000)])
         self.sampleLength = int(self.windowLength*8000)
@@ -173,8 +174,8 @@ class AudioDataset(Dataset):
             # torchaudio.save('test.wav', X[self.samplesPerClass*i+2], 8000)
         return [X, Y]
 
-    def __augmentAudio(self, wav, augments=[]):
-        if 'add_noise' in augments:
+    def __augmentAudio(self, wav, augments=['add_noise']):
+        if 'add_noise' in augments and self.add_noise > 0:
             gain = random.uniform(0, self.add_noise)
             noise = torch.randn(wav.shape)
             wav = wav + gain * noise
@@ -197,10 +198,9 @@ class AudioDataset(Dataset):
         return wav
 
     def __merge_audio(self, aud1, aud2):
-        gain_div = 0.2
         aud1 = self.__normaliseAudio(aud1)
         aud2 = self.__normaliseAudio(aud2)
-        gain = random.uniform(0, gain_div)
+        gain = random.uniform(0, self.gain_div)
         return aud1*(0.5-gain) + aud2*(0.5+gain)
 
     def __getAudio(self, audioPath):

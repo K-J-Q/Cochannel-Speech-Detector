@@ -98,9 +98,10 @@ def predictFile(model, device, filePath, plotPredicton=True):
             augmentor.rechannel(torchaudio.load(filePath)))
         if plotPredicton:
             specData = specFeatures(model, device, wav, sr, windowLength)
+
         wav = torchaudio.functional.dcshift(wav, -wav.mean())
         # bandreject filter
-        wav = torchaudio.functional.highpass_biquad(wav, sr, 50)
+        # wav = torchaudio.functional.highpass_biquad(wav, sr, 50)
         sampleLength = windowLength * sr
         wav = wav[0]
         batch_length = batch_size * sampleLength
@@ -108,6 +109,7 @@ def predictFile(model, device, filePath, plotPredicton=True):
             data_tensor = torch.zeros([batch_size, 1, 8000 * windowLength])
             for splitIndex, j in enumerate(range(batch, batch + batch_length, sampleLength)):
                 trimmed_audio = wav[j:j + sampleLength]
+                trimmed_audio = trimmed_audio / trimmed_audio.abs().max()
                 # print(splitIndex, ' ', len(trimmed_audio))
                 if len(trimmed_audio) == sampleLength:
                     data_tensor[splitIndex][0] = trimmed_audio
@@ -126,9 +128,11 @@ def predictFile(model, device, filePath, plotPredicton=True):
                 pred = pred.argmax(dim=1)
                 pred_graph += list(pred.cpu().numpy())
 
+
     predLength = len(pred_graph)
 
     if plotPredicton:
+        filename = filePath.split('\\')[-1]
         ax1 = plt.subplot(2, 1, 1)
         specData.plotSpec()
         plt.title(filePath)
@@ -171,7 +175,6 @@ def predictFile(model, device, filePath, plotPredicton=True):
         plt.show()
     return 0
 
-
 class specFeatures:
     specIndex = 0
 
@@ -184,11 +187,10 @@ class specFeatures:
 
         self.spec = torch.zeros(
             [self.windowOutputShape[2], int(self.windowOutputShape[3] * self.audioLength / windowLength)])
-
     def addSpec(self, modelOutput):
         if isinstance(modelOutput, dict):
             for layers in modelOutput:
-                if layers != 'out':
+                if layers == 'spec':
                     batchFeatures = modelOutput[layers]
                     for i, feature in enumerate(batchFeatures):
                         self.spec[:, self.specIndex: self.specIndex +
@@ -214,7 +216,6 @@ def selectMicrophone():
         command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     stdout, stderr = out.communicate()
     s = stdout.decode("utf-8")
-    print(s)
 
     k = s.split(']')
     for i, device in enumerate(k):
@@ -240,17 +241,16 @@ def predictLive(model, device):
     )
 
     streamer.add_basic_audio_stream(
-        frames_per_chunk=8000 * 2, sample_rate=8000)
+        frames_per_chunk=44100 * 2, sample_rate=44100)
 
     stream_iterator = streamer.stream()
-    wav = torch.Tensor([])
 
     with torch.no_grad():
         while True:
             (chunk,) = next(stream_iterator)
-            # wav = torch.cat((wav, chunk[:, 0]))
-            wav, sr = augmentor.audio_preprocessing([chunk.T, 8000])
+            wav, sr = augmentor.audio_preprocessing([chunk.T, 44100])
             wav = torchaudio.functional.dcshift(wav, -wav.mean())
+            wav = wav/wav.abs().max()
             pred = model(torch.unsqueeze(wav, dim=0).to(device))
             pred = plotSpec.addSpec(pred)
             print(pred)
@@ -259,8 +259,8 @@ def predictLive(model, device):
             ax2 = plt.subplot(2, 1, 2, sharex=ax1)
             plt.tight_layout()
             plt.rcParams["figure.figsize"] = (3, 10)
-            sn.barplot(y=class_map, x=pred[0].cpu().numpy())
-            plt.xlim(0,1)
+            sn.barplot(y=class_map, x=pred[0].cpu().numpy()*2)
+            plt.xlim(0, 2)
             plt.show()
 
 
@@ -331,7 +331,6 @@ def extractModelFeature(model):
     nodes = get_graph_node_names(model)[1]
     spec_index = nodes.index('conv1') - 1
     return_nodes = {
-        # node_name: user-specified key for output dict
         nodes[spec_index]: 'spec',
         # 'elu': 'conv1',
         # 'elu_1': 'conv2',
@@ -359,11 +358,21 @@ if __name__ == "__main__":
     # filePath = 'testNorm.wav'
     folderPath = './data/omni mic'
 
-    # predictFile(model, device, filePath)
+    while True:
+        print('Select Function:')
+        print('1. Predict Live')
+        print('2. Predict Labeled Folders')
+        print('3. Predict Folder')
+        print('4. Exit')
+        function = input('> ')
 
-    predictLabeledFolders(model, device, folderPath)
+        if function == '1':
+            predictLive(model, device)
+        elif function == '2':
+            predictLabeledFolders(model, device, folderPath)
+        elif function == '3':
+            predictFolder(model, device, folderPath)
+        elif function == '4':
+            break
 
-    # predictFolder(
-    #     model, device, 'E:/Processed Audio/test/' if os.name == 'nt' else '/media/jianquan/Data/Processed Audio/test/')
-
-    # predictLive(model, device)
+        print(f'\n---------------------------------------\n')

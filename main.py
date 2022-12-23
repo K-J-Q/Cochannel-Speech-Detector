@@ -81,7 +81,7 @@ if __name__ == '__main__':
         startEpoch = modelEpoch if startEpoch == 0 else startEpoch
     else:
         model = machineLearning.selectModel()
-        model = model(512, augmentations).to(device)
+        model = model(int(config['data']['n_fft']), augmentations).to(device)
 
     model.eval()
     lr = float(config['model']['learning_rate'])
