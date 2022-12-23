@@ -87,8 +87,8 @@ def main(input_path=None, output_path=None, mode=None):
         if audioIndex >= 0:
             _, audioName = os.path.split(audioPath)
             aud = torchaudio.load(audioPath)
-            aud = augmentor.resample(augmentor.rechannel(aud), False)
-
+            # aud = augmentor.resample(augmentor.rechannel(aud), False)
+            print(torch.mean(aud[0]))
             if mode == 'split':
                 threshold = torch.median(aud[0][aud[0] > 0])
 
@@ -110,4 +110,4 @@ def main(input_path=None, output_path=None, mode=None):
 
 
 if __name__ == '__main__':
-    main(input_path='E:/Original Audio/IR', output_path='E:/Processed Audio/IR', mode='process')
+    main(input_path='C:/Users/Jian Quan/Desktop/0speaker_1.wav', output_path='E:/Processed Audio/backgroundNoise', mode='review')

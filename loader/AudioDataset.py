@@ -174,7 +174,9 @@ class AudioDataset(Dataset):
             # torchaudio.save('test.wav', X[self.samplesPerClass*i+2], 8000)
         return [X, Y]
 
-    def __augmentAudio(self, wav, augments=['add_noise']):
+    def __augmentAudio(self, wav, augments=['removedc','add_noise']):
+        if 'removedc' in augments:
+            wav = torchaudio.functional.dcshift(wav, -wav.mean())
         if 'add_noise' in augments and self.add_noise > 0:
             gain = random.uniform(0, self.add_noise)
             noise = torch.randn(wav.shape)

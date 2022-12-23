@@ -23,7 +23,7 @@ augmentations = aug.Compose(
         # aug.PitchShift(sample_rate=8000),
         # aug.AddColoredNoise(p=1, min_snr_in_db=0, max_snr_in_db=5),
         # aug.ApplyImpulseResponse(ir_paths='E:/Processed Audio/IR'),
-        # aug.AddBackgroundNoise(background_paths='E:/Processed Audio/background/Noise'),
+        aug.AddBackgroundNoise(p=1, background_paths='E:/Processed Audio/backgroundNoise', min_snr_in_db=-3,max_snr_in_db=0)
     ]
 )
 

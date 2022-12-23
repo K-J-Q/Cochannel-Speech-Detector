@@ -100,8 +100,7 @@ def predictFile(model, device, filePath, plotPredicton=True):
             specData = specFeatures(model, device, wav, sr, windowLength)
 
         wav = torchaudio.functional.dcshift(wav, -wav.mean())
-        # bandreject filter
-        # wav = torchaudio.functional.highpass_biquad(wav, sr, 50)
+        wav = torchaudio.functional.highpass_biquad(wav, sr, 50)
         sampleLength = windowLength * sr
         wav = wav[0]
         batch_length = batch_size * sampleLength
@@ -344,7 +343,7 @@ def extractModelFeature(model):
 
 if __name__ == "__main__":
     import torch_audiomentations as aug
-    model, device, epoch = machineLearning.selectTrainedModel(setCPU=True)
+    model, device, epoch = machineLearning.selectTrainedModel(setCPU=False)
     if epoch == 0:
         model = model(512)
 
@@ -363,16 +362,16 @@ if __name__ == "__main__":
         print('1. Predict Live')
         print('2. Predict Labeled Folders')
         print('3. Predict Folder')
-        print('4. Exit')
         function = input('> ')
 
         if function == '1':
             predictLive(model, device)
+            break
         elif function == '2':
             predictLabeledFolders(model, device, folderPath)
+            break
         elif function == '3':
             predictFolder(model, device, folderPath)
-        elif function == '4':
             break
 
         print(f'\n---------------------------------------\n')
