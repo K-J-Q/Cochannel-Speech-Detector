@@ -87,8 +87,8 @@ def main(input_path=None, output_path=None, mode=None):
         if audioIndex >= 0:
             _, audioName = os.path.split(audioPath)
             aud = torchaudio.load(audioPath)
-            # aud = augmentor.resample(augmentor.rechannel(aud), False)
-            print(torch.mean(aud[0]))
+            aud = augmentor.resample(augmentor.rechannel(aud), False)
+
             if mode == 'split':
                 threshold = torch.median(aud[0][aud[0] > 0])
 
@@ -105,9 +105,24 @@ def main(input_path=None, output_path=None, mode=None):
                                 aud_noise[0], aud_noise[1])
                 torchaudio.save(utils.uniquify(f'{output_path}/SPEECH/{audioName}'),
                                 aud_speech[0], aud_speech[1])
+
             if mode == 'process':
                 torchaudio.save(utils.uniquify(f'{output_path}/{audioName}'), aud[0], aud[1])
 
+            if mode == 'trim':
+#                 split audio file into 30 minute chunks
+                sr = aud[1]
+                audio = aud[0]
+                audioLength = audio.shape[1]
+                chunkLength = 30 * 60 * sr
+                numChunks = audioLength // chunkLength
+
+                if audioLength > chunkLength:
+                    for i in range(numChunks):
+                        start = i * chunkLength
+                        end = (i + 1) * chunkLength
+                        torchaudio.save(utils.uniquify(f'{output_path}/{audioName[:-4]}_{i}.wav'),
+                                        audio[:, start:end], sr)
 
 if __name__ == '__main__':
     main(input_path='C:/Users/Jian Quan/Desktop/0speaker_1.wav', output_path='E:/Processed Audio/backgroundNoise', mode='review')
