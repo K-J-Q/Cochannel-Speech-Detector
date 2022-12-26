@@ -118,11 +118,17 @@ def main(input_path=None, output_path=None, mode=None):
                 numChunks = audioLength // chunkLength
 
                 if audioLength > chunkLength:
+                    print(f'File trimmed: {audioName}')
                     for i in range(numChunks):
                         start = i * chunkLength
                         end = (i + 1) * chunkLength
-                        torchaudio.save(utils.uniquify(f'{output_path}/{audioName[:-4]}_{i}.wav'),
+                        torchaudio.save(f'{output_path}/{audioName[:-4]}_{i}.wav',
+                                        audio[:, start:end], sr)
+                    start = numChunks * chunkLength
+                    end = audioLength
+                    if start != end:
+                        torchaudio.save(f'{output_path}/{audioName[:-4]}_{numChunks}.wav',
                                         audio[:, start:end], sr)
 
 if __name__ == '__main__':
-    main(input_path='C:/Users/Jian Quan/Desktop/0speaker_1.wav', output_path='E:/Processed Audio/backgroundNoise', mode='review')
+    main(input_path='data/omni mic', output_path='data/omni mic', mode='trim')
