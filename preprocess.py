@@ -29,10 +29,9 @@ def detect_silence(path, threshold, duration=0.5):
     stdout, stderr = out.communicate()
     s = stdout.decode("utf-8")
     k = s.split('[silencedetect @')
-    
-    if len(k) == 1:
-        # print(stderr)
-        return None
+
+    if len(k) < 1:
+        return []
 
     start, end = [], []
     for i in range(1, len(k)):
@@ -83,6 +82,7 @@ def main(input_path=None, output_path=None, mode=None):
 
     for folder in folderPaths:
         import itertools
+        
         if '[training]' not in str(folder):
             folder = (pathlib.Path(folder).glob("**/*.wav"))
             top100 = itertools.islice(iter(folder), 10)
