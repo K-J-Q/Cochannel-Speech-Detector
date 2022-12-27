@@ -13,8 +13,8 @@ import machineLearning
 import testModel
 from loader.AudioDataset import createDataset, collate_batch
 
-testPath = './data/omni mic'
-trainPath = 'E:/Processed Audio/train/' if os.name == 'nt' else '/media/jianquan/Data/Processed Audio/train/'
+testPath = './data/omni mic/real'
+trainPath = 'E:/Processed Audio/train' if os.name == 'nt' else '/media/jianquan/Data/Processed Audio/train/'
 
 startEpoch = 0
 
@@ -23,7 +23,7 @@ augmentations = aug.Compose(
         # aug.PitchShift(sample_rate=8000),
         # aug.AddColoredNoise(p=1, min_snr_in_db=0, max_snr_in_db=5),
         # aug.ApplyImpulseResponse(ir_paths='E:/Processed Audio/IR'),
-        aug.AddBackgroundNoise(p=1, background_paths='E:/Processed Audio/backgroundNoise', min_snr_in_db=-3,max_snr_in_db=0)
+        # aug.AddBackgroundNoise(p=1, background_paths='E:/Processed Audio/backgroundNoise', min_snr_in_db=-3,max_snr_in_db=0)
     ]
 )
 
@@ -32,10 +32,9 @@ augmentations = None
 if __name__ == '__main__':
     config = ConfigParser()
     config.read('config.ini')
-
     utils.clearUselesslogs(minFiles=3)
 
-    audio_train_paths, audio_val_paths = utils.getAudioPaths(trainPath, percent=float(config['data']['train_percent']))
+    audio_train_paths, audio_val_paths = utils.getAudioPaths(trainPath, recordedDataset=False, percent=float(config['data']['train_percent']))
 
     # create dataset with transforms (as required)
     audio_train_dataset = createDataset(audio_train_paths, transformParams=utils.getTransforms(

@@ -28,8 +28,8 @@ def detect_silence(path, threshold, duration=0.5):
         command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     stdout, stderr = out.communicate()
     s = stdout.decode("utf-8")
-
     k = s.split('[silencedetect @')
+    
     if len(k) == 1:
         # print(stderr)
         return None
@@ -78,39 +78,53 @@ def main(input_path=None, output_path=None, mode=None):
         mode = args.mode
 
     discarded = 0
-    audioPaths = list(pathlib.Path(input_path).glob('**/*.wav'))
+    folderPaths = list(pathlib.Path(input_path).glob('*'))
+    audioPaths = []
+
+    for folder in folderPaths:
+        import itertools
+        if '[training]' not in str(folder):
+            folder = (pathlib.Path(folder).glob("**/*.wav"))
+            top100 = itertools.islice(iter(folder), 10)
+            audioPaths+=top100
 
     augmentor = Augmentor()
+
     for audioIndex, audioPath in tqdm(enumerate(audioPaths), unit='files', total=len(audioPaths)):
         # only used if cut-off halfway
-
         if audioIndex >= 0:
             _, audioName = os.path.split(audioPath)
             aud = torchaudio.load(audioPath)
             aud = augmentor.resample(augmentor.rechannel(aud), False)
 
             if mode == 'split':
-                threshold = torch.median(aud[0][aud[0] > 0])
+                # get the length of audio in seconds
+                audioLength = aud[0].shape[1] / aud[1]
+                if audioLength > 10:                
+                    threshold = torch.median(aud[0][aud[0] > 0])
 
-                silence_cutoff = threshold * 5
-                speech_cutoff = threshold * 10
+                    silence_cutoff = threshold * 5
+                    speech_cutoff = threshold * 10
 
-                silence_time = detect_silence(audioPath, silence_cutoff)
-                speech_time = detect_silence(
-                    audioPath, speech_cutoff if speech_cutoff > 0.03 else 0.05)
+                    silence_time = detect_silence(audioPath, silence_cutoff)
+                    speech_time = detect_silence(
+                        audioPath, speech_cutoff if speech_cutoff > 0.03 else 0.05)
 
-                aud_noise, _ = split_silences(aud, silence_time)
-                _, aud_speech = split_silences(aud, speech_time)
-                torchaudio.save(utils.uniquify(f'{output_path}/ENV/{audioName}'),
-                                aud_noise[0], aud_noise[1])
-                torchaudio.save(utils.uniquify(f'{output_path}/SPEECH/{audioName}'),
-                                aud_speech[0], aud_speech[1])
+                    aud_noise, _ = split_silences(aud, silence_time)
+                    _, aud_speech = split_silences(aud, speech_time)
+                    torchaudio.save(utils.uniquify(f'{output_path}/ENV/{audioName}'),
+                                    aud_noise[0], aud_noise[1])
+                    torchaudio.save(utils.uniquify(f'{output_path}/SPEECH/{audioName}'),
+                                    aud_speech[0], aud_speech[1])
+                else:
+                    print(f'Assuming speech: {audioName}')
+                    torchaudio.save(utils.uniquify(f'{output_path}/SPEECH/{audioName}'), aud[0], aud[1])
 
             if mode == 'process':
-                torchaudio.save(utils.uniquify(f'{output_path}/{audioName}'), aud[0], aud[1])
+                torchaudio.save(utils.uniquify(
+                    f'{output_path}/{audioName}'), aud[0], aud[1])
 
             if mode == 'trim':
-#                 split audio file into 30 minute chunks
                 sr = aud[1]
                 audio = aud[0]
                 audioLength = audio.shape[1]
@@ -130,5 +144,7 @@ def main(input_path=None, output_path=None, mode=None):
                         torchaudio.save(f'{output_path}/{audioName[:-4]}_{numChunks}.wav',
                                         audio[:, start:end], sr)
 
+
 if __name__ == '__main__':
-    main(input_path='data/omni mic', output_path='data/omni mic', mode='trim')
+    main(input_path='E:/Original Audio/Singapore Speech Corpus',
+         output_path='E:/Processed Audio/test', mode='split')
