@@ -43,18 +43,21 @@ class CNNNetwork_mel(nn.Module):
         x = torch.maximum(x, max_val - 8)
 
         # normalisation method 2: min 0, max 1
-        min_val = x.reshape(
-            x.shape[0], 1, -1).amin(2).view(x.shape[0], 1, 1, 1)
-        x -= min_val
-        max_val = x.reshape(
-            x.shape[0], 1, -1).amax(2).view(x.shape[0], 1, 1, 1)
-        x /= max_val
+        # min_val = x.reshape(
+        #     x.shape[0], 1, -1).amin(2).view(x.shape[0], 1, 1, 1)
+        # x -= min_val
+        # max_val = x.reshape(
+        #     x.shape[0], 1, -1).amax(2).view(x.shape[0], 1, 1, 1)
+        # x /= max_val
 
         # normalisation method 3: mean 0, std 1
-        x = (x - x.mean()) / x.std()
+        # x = (x - x.mean()) / x.std()
+
+        # normalisation method 4: median
+        # x = x/(x+10*x.median()+1e-12)
         return x
 
-        # return x/(x+10*x.median()+1e-12)
+        # return 
 
     def __audioNormalisation(self, wav):
         if isinstance(wav, torch.Tensor):
