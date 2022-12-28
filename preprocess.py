@@ -108,7 +108,7 @@ def main(input_path=None, output_path=None, mode=None):
 
                     silence_time = detect_silence(audioPath, silence_cutoff)
                     speech_time = detect_silence(
-                        audioPath, speech_cutoff if speech_cutoff > 0.03 else 0.05)
+                        audioPath, speech_cutoff)
 
                     aud_noise, _ = split_silences(aud, silence_time)
                     _, aud_speech = split_silences(aud, speech_time)

@@ -12,7 +12,7 @@ config = ConfigParser()
 config.read('config.ini')
 
 batch_size = int((config['data']['batch_size']))
-num_classes = 3
+num_classes = int(config['augmentations']['num_merge']) +1
 
 
 def selectModel():

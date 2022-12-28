@@ -22,15 +22,14 @@ class_map = ['0', '1', '2']
 sm = torch.nn.Softmax(dim=1)
 
 
-def predictFolder(model, device, folderPath):
+def predictFolder(model, device, folderPath, saveFigPath=None):
     audio_paths, _ = utils.getAudioPaths(folderPath, percent=1)
-    audio_test_dataset = createDataset(audio_paths, outputAudio=True)
+    audio_test_dataset = AudioDataset(audio_paths, outputAudio=True, isTraining=False)
 
     test_dataloader = torch.utils.data.DataLoader(
         audio_test_dataset,
         batch_size=1,
         num_workers=0,
-        shuffle=True,
         collate_fn=collate_batch
     )
 
@@ -38,15 +37,22 @@ def predictFolder(model, device, folderPath):
         model, test_dataloader, torch.nn.CrossEntropyLoss(), device)
 
     print(f'Test set  | Loss: {test_loss} Accuracy: {test_acc}% \n')
+    confusion_matrix_normalised = confusion_matrix/torch.sum(confusion_matrix, dim=1)
 
-    sn.heatmap(confusion_matrix.cpu(), annot=True,
-               xticklabels=class_map, yticklabels=class_map)
+    sn.heatmap(confusion_matrix_normalised.cpu(), annot=True,
+               xticklabels=class_map, yticklabels=class_map, cmap="Blues")
 
     plt.ylabel('Actual')
     plt.xlabel('Predicted')
     plt.title('Singapore Speech Corpus test set')
-    plt.show()
+    
+    if __name__ == '__main__':
+        plt.show()
+    elif saveFigPath:
+        plt.savefig(utils.uniquify(saveFigPath + '.png'))
+        plt.close()
 
+    return test_acc, confusion_matrix_normalised
 
 def predictLabeledFolders(model, device, folderPath, saveFigPath=None):
     folderPath = list(Path(folderPath).glob('**/'))
@@ -148,7 +154,7 @@ def predictFile(model, device, filePath, plotPredicton=True):
     if os.path.exists(labelPath):
         confusion_matrix = torchmetrics.classification.MulticlassConfusionMatrix(
             3)
-        ground_truth = getGroundTruth(labelPath)
+        ground_truth = getGroundTruth(labelPath, maxPred = maxPred)
         gt_vec = torch.zeros(predLength)
 
         pred_graph = torch.tensor(pred_graph)
@@ -304,7 +310,7 @@ def percentageMode(occupancy_label, mode=filterEnum.Occupancy):
         return target_class if classOccurance else int(occupancy_label.argmax())
 
 
-def getGroundTruth(file):
+def getGroundTruth(file, maxPred):
     # time(x), label(y)
     gt_x, gt_y = [0], [0]
 
@@ -321,7 +327,7 @@ def getGroundTruth(file):
                 gt_y.append(1)
 
             gt_x.append(endTime)
-            gt_y.append(num_speaker)
+            gt_y.append(num_speaker if num_speaker <= maxPred else maxPred)
 
     return gt_x, gt_y
 
@@ -340,7 +346,7 @@ def extractModelFeature(model):
 
     return create_feature_extractor(model, return_nodes=return_nodes) if __name__ == "__main__" else model
 
-
+maxPred = 2
 if __name__ == "__main__":
     import torch_audiomentations as aug
     model, device, epoch = machineLearning.selectTrainedModel(setCPU=False)
@@ -355,7 +361,8 @@ if __name__ == "__main__":
     print(f'\n---------------------------------------\n')
 
     # filePath = 'testNorm.wav'
-    folderPath = './data/omni mic'
+    folderPath = 'E:/Processed Audio/test'
+    labeledFolderPath = './data/other mic'
 
     while True:
         print('Select Function:')
@@ -368,7 +375,7 @@ if __name__ == "__main__":
             predictLive(model, device)
             break
         elif function == '2':
-            predictLabeledFolders(model, device, folderPath)
+            predictLabeledFolders(model, device, labeledFolderPath)
             break
         elif function == '3':
             predictFolder(model, device, folderPath)

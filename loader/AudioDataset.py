@@ -80,136 +80,88 @@ class Augmentor():
         return ((resig, self.audio_sampling))
 
 
-def createDataset(audio_paths, transformParams=[{}], outputAudio=False):
-    combinedDataset = AudioDataset(
-        audio_paths,
-        outputAudio,
-        specTransformList=transformParams[0]['spectrogram'] if 'spectrogram' in transformParams[0] else [
-        ],
-        audioTransformList=transformParams[0]['audio'] if 'audio' in transformParams[0] else [
-        ],
-        beforeCochannelListSox=transformParams[0]['before_cochannel_sox'] if 'before_cochannel_sox' in transformParams[
-            0] else [
-        ]
-    )
-
-    if transformParams:
-        for transform in transformParams[1:]:
-            audio_train_dataset = AudioDataset(
-                audio_paths,
-                outputAudio,
-                specTransformList=transform['spectrogram']
-                if 'spectrogram' in transform else [],
-                audioTransformList=transform['audio']
-                if 'audio' in transform else [],
-                beforeCochannelListSox=transform['before_cochannel_sox']
-                if 'before_cochannel' in transform else []
-            )
-
-            combinedDataset = torch.utils.data.ConcatDataset(
-                [combinedDataset, audio_train_dataset])
-
-    return combinedDataset
-
-
 n_fft = int(config['data']['n_fft'])
 
 
 # TODO: Remove outputAudio from AudioDataset (deprecated)
 
-class AudioDataset(Dataset):
-    """
-    A custom dataset that fetches the audio path, load as waveform, perform augmentation audioTransformList and specTransformList and outputs the spectrogram
-    audio_paths: List of .wav paths for dataset
-    audioTransformList: audiomentations transforms
-    specTransformList: pyTorch spectrogram masking options
-    """
-
+class AudioDataset(Dataset):    
     class_size = int(config['data']['class_size'])
     windowLength = int(config['augmentations']['duration']) / 1000
 
     augment = Compose([RoomSimulator()])
     add_noise = float(config['augmentations']['augment_noise'])
     gain_div = float(config['augmentations']['gain_div'])
-    samplesPerClass = 3
 
     def __init__(self,
                  audio_paths,
                  outputAudio,
-                 specTransformList=None,
-                 audioTransformList=None,
-                 beforeCochannelListSox=None):
+                 isTraining,
+                 num_merge = 2):
 
-        self.specTransformList = specTransformList
-        self.beforeCochannelAugmentSox = beforeCochannelListSox
-        self.audioAugment = Compose(
-            audioTransformList) if audioTransformList else None
-        if len(audio_paths) == 2:
-            self.audioMode = 'mix'
-            self.env_paths, self.speech_paths = audio_paths
-            self.datasetLen = min(len(self.env_paths), len(self.speech_paths))
-        else:
-            self.audioMode = 'recorded'
-            self.audio_paths = audio_paths[0] + audio_paths[1] + audio_paths[2]
-            self.datasetLen = len(self.audio_paths)
+        self.isTraining = isTraining
+        if not isTraining:
+            self.class_size = 25
+            
+        self.env_paths, self.speech_paths = audio_paths
+
         self.Augmentor = Augmentor()
+        self.samplesPerClass = num_merge + 1
+
         self.outputAudio = outputAudio
         self.dataShape = torch.Size([1, int(self.windowLength * 8000)])
         self.sampleLength = int(self.windowLength * 8000)
+
     def __len__(self):
-        return self.datasetLen
+        return min(len(self.env_paths), len(self.speech_paths))
 
     def __getitem__(self, idx):
-        if self.audioMode == 'mix':
-            speech0_aud = self.__getAudio(self.env_paths[idx])
-            speech1_aud = self.__getAudio(self.speech_paths[idx])
-            speech2_aud = self.__getAudio(
-                self.speech_paths[random.randint(0, self.__len__()) - 1])
+        speech0_aud = self.__getAudio(self.env_paths[idx])
+        speech1_aud = self.__getAudio(self.speech_paths[idx])
+        speech2_aud = self.__getAudio(self.speech_paths[random.randint(0, self.__len__()) - 1])
+        if self.samplesPerClass == 4:
+            speech3_aud = self.__getAudio(self.speech_paths[random.randint(0, self.__len__()) - 1])
+        
+        X = torch.empty(
+            [self.class_size * self.samplesPerClass] + list(self.dataShape))
+        Y = torch.tensor(list(range(self.samplesPerClass))).repeat(self.class_size)
+        for i in range(self.class_size):
+            env = self.__split(speech0_aud)
+            aud1 = self.__split(speech1_aud)
+            aud2 = self.__split(speech2_aud)
+            merged_aud = self.__merge_audio(aud1, aud2)
+            X[self.samplesPerClass * i][0] = self.__augmentAudio(env)
+            X[self.samplesPerClass * i + 1][0] = self.__augmentAudio(aud1)
+            X[self.samplesPerClass * i + 2][0] = self.__augmentAudio(merged_aud)
+            if self.samplesPerClass == 4:
+                aud3 = self.__split(speech3_aud)
+                merged_aud = self.__merge_audio(aud1, aud2, aud3)
+                X[self.samplesPerClass * i + 3][0] = self.__augmentAudio(merged_aud)
 
-            X = torch.empty(
-                [self.class_size * self.samplesPerClass] + list(self.dataShape))
-            Y = torch.tensor([0, 1, 2]).repeat(self.class_size)
+            # torchaudio.save('test.wav', X[self.samplesPerClass*i+2], 8000)
 
-            for i in range(self.class_size):
-                env = self.__split(speech0_aud)
-                aud1 = self.__split(speech1_aud)
-                aud2 = self.__split(speech2_aud)
-                merged_aud = self.__merge_audio(aud1, aud2)
-
-                X[self.samplesPerClass * i][0] = self.__augmentAudio(env)
-                X[self.samplesPerClass * i + 1][0] = self.__augmentAudio(aud1)
-                X[self.samplesPerClass * i + 2][0] = self.__augmentAudio(merged_aud)
- 
-                # torchaudio.save('test.wav', X[self.samplesPerClass*i+2], 8000)
- 
-        elif self.audioMode == 'recorded':
-            wav = self.__getAudio(self.audio_paths[idx])
-            import os
-            label = int(os.path.basename(self.audio_paths[idx])[0])
-            X = torch.empty([self.class_size] + list(self.dataShape))
-            Y = torch.ones([self.class_size]) * label
-            for i in range(self.class_size):
-                aud_sample = self.__split(wav)
-                X[i][0] = self.__augmentAudio(aud_sample)
         return [X, Y]
 
-    def __augmentAudio(self, wav, augments=['removedc']):
-        sampleRate = 8000
-        if 'removedc' in augments:
-            wav = torchaudio.functional.dcshift(wav, -wav.mean())
-        if 'highpass' in augments:
-            wav = torchaudio.functional.highpass_biquad(wav, sampleRate, 50)
-        if 'add_noise' in augments and self.add_noise > 0:
-            gain = random.uniform(0, self.add_noise)
-            noise = torch.randn(wav.shape)
-            wav = wav + gain * noise
-        if 'reverb' in augments:
-            wav = torchaudio.sox_effects.apply_effects_tensor(wav, sample_rate=sampleRate,
-                                                              effects=[["reverb", "70"], ['channels', '1']])[0]
+    def __augmentAudio(self, wav, augments=[]):
+        if self.isTraining:
+            sampleRate = 8000
+            if 'highpass' in augments:
+                wav = torchaudio.functional.highpass_biquad(wav, sampleRate, 50)
+            if 'add_noise' in augments and self.add_noise > 0:
+                gain = random.uniform(0, self.add_noise)
+                noise = torch.randn(wav.shape)
+                wav = wav + gain * noise
+            if 'reverb' in augments:
+                wav = torchaudio.sox_effects.apply_effects_tensor(wav, sample_rate=sampleRate,
+                                                                effects=[["reverb", "70"], ['channels', '1']])[0]
         return wav
 
     def __removeDC(self, wav):
         return wav - wav.mean()
+    
+    def __normaliseAudio(self, wav):
+        wav /= torch.max(torch.abs(wav))
+        return wav
 
     def __split(self, audio):
         wav, sr = audio
@@ -217,21 +169,18 @@ class AudioDataset(Dataset):
         audio = wav[:, start_idx: start_idx + self.sampleLength]
         return audio
 
-    def __normaliseAudio(self, wav):
-        wav /= torch.max(torch.abs(wav))
-        return wav
 
-    def __merge_audio(self, aud1, aud2):
-        aud1 = self.__normaliseAudio(aud1)
-        aud2 = self.__normaliseAudio(aud2)
-        gain = random.uniform(0, self.gain_div)
-        return aud1 * (0.5 - gain) + aud2 * (0.5 + gain)
+    def __merge_audio(self, *auds):
+        merged_aud = torch.zeros(auds[0].shape)
+        for i, aud in enumerate(auds):
+            gain = random.uniform(-self.gain_div, self.gain_div)
+            # torchaudio.save(f'aud{i}.wav', self.__normaliseAudio(aud), 8000)
+            merged_aud += self.__normaliseAudio(aud) * gain
+        # torchaudio.save('merged.wav', merged_aud, 8000)
+        return merged_aud
 
     def __getAudio(self, audioPath):
         waveform, sample_rate = torchaudio.load(audioPath)
-        # if self.beforeCochannelAugmentSox:
-        #     audio, _ = torchaudio.sox_effects.apply_effects_tensor(
-        #         torch.unsqueeze(audio, 0), 8000, self.beforeCochannelAugmentSox)
         waveform = self.__removeDC(waveform)
         return waveform, sample_rate
 
@@ -259,7 +208,8 @@ def main():
 
     audio_path = utils.getAudioPaths(
         'E:/Processed Audio/train/' if os.name == 'nt' else '/media/jianquan/Data/Processed Audio/train/')[0]
-    dataset = createDataset(audio_path, utils.getTransforms(False), outputAudio=True)
+    
+    dataset = AudioDataset(audio_path, outputAudio=True, isTraining=True)
 
     dataloader = DataLoader(
         dataset,

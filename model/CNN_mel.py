@@ -12,7 +12,7 @@ config.read('config.ini')
 
 
 class CNNNetwork_mel(nn.Module):
-    def __init__(self, nfft, augmentations=None):
+    def __init__(self, nfft, augmentations=None, outputClasses=3):
         super(CNNNetwork_mel, self).__init__()
 
         self.audioNorm = aug.PeakNormalization(p=1)
@@ -27,13 +27,13 @@ class CNNNetwork_mel(nn.Module):
         self.conv1 = nn.Conv2d(1, 16, 5, stride=2)
         self.conv2 = nn.Conv2d(16, 32, 5, stride=2)
         self.conv3 = nn.Conv2d(32, 64, 5, stride=3)
-        self.conv4 = nn.Conv2d(64, 128, 5, stride=3)
+        self.conv4 = nn.Conv2d(64, 128, 3, stride=1)
         self.conv5 = nn.Conv2d(128, 256, 5, stride=3)
         self.pool1 = nn.MaxPool2d(2, stride=2)
         self.drp = nn.Dropout2d(0)
         self.bn1 = nn.BatchNorm1d(120)
         self.fc1 = nn.LazyLinear(out_features=120, bias=False)
-        self.fc2 = nn.Linear(120, 3, bias=False)
+        self.fc2 = nn.Linear(120, outputClasses, bias=False)
 
     def __normaliseSpec(self, x):
         # normalisation method 1: whisper
@@ -43,6 +43,7 @@ class CNNNetwork_mel(nn.Module):
         x = torch.maximum(x, max_val - 8)
 
         # normalisation method 2: min 0, max 1
+        # x = x.log10()
         # min_val = x.reshape(
         #     x.shape[0], 1, -1).amin(2).view(x.shape[0], 1, 1, 1)
         # x -= min_val
@@ -57,7 +58,7 @@ class CNNNetwork_mel(nn.Module):
         # x = x/(x+10*x.median()+1e-12)
         return x
 
-        # return 
+        # return
 
     def __audioNormalisation(self, wav):
         if isinstance(wav, torch.Tensor):
@@ -77,7 +78,7 @@ class CNNNetwork_mel(nn.Module):
         x = self.drp(F.elu(self.conv1(x)))
         x = self.drp(F.elu(self.conv2(x)))
         x = self.drp(F.elu(self.conv3(x)))
-        # x = self.drp(F.elu(self.conv4(x)))
+        x = self.drp(F.elu(self.conv4(x)))
         # x = self.drp(F.elu(self.conv5(x)))
         x = x.view(x.shape[0], -1)
         x = self.bn1(F.elu(self.fc1(x)))
