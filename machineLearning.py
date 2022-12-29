@@ -97,6 +97,7 @@ def train(model, dataloader, cost, optimizer, device):
 
 def eval(model, dataloader, cost, device):
     acc_metric = torchmetrics.Accuracy().to(device)
+    num_classes = model.fc2.out_features
     confusion_matrix = torchmetrics.classification.MulticlassConfusionMatrix(
         num_classes).to(device)
     matrix = torch.zeros([num_classes, num_classes], device=device)

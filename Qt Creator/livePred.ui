@@ -41,7 +41,7 @@
        </font>
       </property>
       <property name="text">
-       <string>Microphone</string>
+       <string>Input Source</string>
       </property>
       <property name="alignment">
        <set>Qt::AlignCenter</set>

@@ -145,7 +145,7 @@ def predictFile(model, device, filePath, plotPredicton=True):
     if plotPredicton:
         filename = filePath.split('\\')[-1]
         ax1 = plt.subplot(2, 1, 1)
-        specData.plotSpec()
+        specData.plotSpec(ax1)
         plt.title(filePath)
         ax2 = plt.subplot(2, 1, 2, sharex=ax1)
         plt.tight_layout()
@@ -216,8 +216,8 @@ class specFeatures:
         else:
             return sm(modelOutput)
 
-    def plotSpec(self):
-        plt.imshow(self.spec, origin='lower',
+    def plotSpec(self, axes):
+        axes.imshow(self.spec, origin='lower',
                    aspect='auto', extent=[0, self.audioLength, 0, self.windowOutputShape[2]])
         self.specIndex = 0
 
@@ -245,7 +245,7 @@ def selectMicrophone():
 def predictLive(model, device):
     model = extractModelFeature(model)
     augmentor = Augmentor()
-    plotSpec = specFeatures(model, device, torch.randn(1, 16000), 8000, 2)
+    specData = specFeatures(model, device, torch.randn(1, 16000), 8000, 2)
 
     from torchaudio.io import StreamReader
 
@@ -255,28 +255,31 @@ def predictLive(model, device):
     )
 
     streamer.add_basic_audio_stream(
-        frames_per_chunk=44100 * 2, sample_rate=44100)
+        frames_per_chunk=8000 * 2, sample_rate=8000)
 
     stream_iterator = streamer.stream()
     class_map = list(range(0, model.fc2.out_features))
+    ax1 = plt.subplot(2, 1, 1)
+    ax2 = plt.subplot(2, 1, 2, sharex=ax1)
+    plt.tight_layout()
+    plt.rcParams["figure.figsize"] = (3, 10)
+    plt.xlim(0, 2)
     with torch.no_grad():
         while True:
             (chunk,) = next(stream_iterator)
-            wav, sr = augmentor.audio_preprocessing([chunk.T, 44100])
+            wav, sr = augmentor.audio_preprocessing([chunk.T, 8000])
             wav = torchaudio.functional.dcshift(wav, -wav.mean())
             wav = wav/wav.abs().max()
             pred = model(torch.unsqueeze(wav, dim=0).to(device))
-            pred = plotSpec.addSpec(pred)
+            pred = specData.addSpec(pred)
             print(pred)
-            ax1 = plt.subplot(2, 1, 1)
-            plotSpec.plotSpec()
-            ax2 = plt.subplot(2, 1, 2, sharex=ax1)
-            plt.tight_layout()
-            plt.rcParams["figure.figsize"] = (3, 10)
-
-            sn.barplot(y=class_map, x=pred[0].cpu().numpy()*2)
-            plt.xlim(0, 2)
-            plt.show()
+            ax1.clear()
+            ax2.clear()
+            # plt.close()
+            specData.plotSpec(ax1)
+            sn.barplot(y=class_map, x=pred[0].cpu().numpy()*2, orient='h', ax=ax2)            
+            plt.show(block=False)
+            plt.pause(1)
 
 
 class filterEnum(enum.Enum):
