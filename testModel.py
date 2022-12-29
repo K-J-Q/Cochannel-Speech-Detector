@@ -117,6 +117,7 @@ def predictFile(model, device, filePath, plotPredicton=True):
         sampleLength = windowLength * sr
         wav = wav[0]
         batch_length = batch_size * sampleLength
+
         for batch in range(0, len(wav) - sampleLength, batch_length):
             data_tensor = torch.zeros([batch_size, 1, 8000 * windowLength])
             for splitIndex, j in enumerate(range(batch, batch + batch_length, sampleLength)):
@@ -295,6 +296,7 @@ def get_percentage_in_window(groundTruth, startTime, endTime):
     gt_x, gt_y = np.array(gt_x), np.array(gt_y)
     overlap = np.logical_and([gt_x > startTime], [gt_x <= endTime])
     overlapIndex = overlap.nonzero()[1]
+    
 
     if len(overlapIndex):
         lastTime = startTime
@@ -366,7 +368,14 @@ if __name__ == "__main__":
     model, device, epoch = machineLearning.selectTrainedModel(setCPU=True)
 
     if epoch == 0:
-        model = model(256, outputClasses=4)
+        from configparser import ConfigParser
+
+        config = ConfigParser()
+        config.read('config.ini')
+        nfft = int(config['data']['n_fft'])
+        outputClasses = int(config['augmentations']['num_merge'])+1
+        print(f'Using nfft: {nfft}, outputClasses: {outputClasses}')
+        model = model(nfft, outputClasses)
 
     model = model.to(device)
     model.eval()

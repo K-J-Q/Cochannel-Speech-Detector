@@ -17,9 +17,9 @@ class CNNNetwork_mel(nn.Module):
 
         self.audioNorm = aug.PeakNormalization(p=1)
         self.augmentor = augmentations
-
+        # make n_mels scale with nfft given that when nfft=512, n_mels=128
         self.generateSpec = torchaudio.transforms.MelSpectrogram(
-            sample_rate=8000, n_fft=nfft)
+            sample_rate=8000, n_fft=nfft, n_mels=int(nfft / 4))
 
         # self.augmentSpec = nn.Sequential(torchaudio.transforms.FrequencyMasking(
         #     30, True), torchaudio.transforms.TimeMasking(20, True))
@@ -78,7 +78,7 @@ class CNNNetwork_mel(nn.Module):
         x = self.drp(F.elu(self.conv1(x)))
         x = self.drp(F.elu(self.conv2(x)))
         x = self.drp(F.elu(self.conv3(x)))
-        x = self.drp(F.elu(self.conv4(x)))
+        # x = self.drp(F.elu(self.conv4(x)))
         # x = self.drp(F.elu(self.conv5(x)))
         x = x.view(x.shape[0], -1)
         x = self.bn1(F.elu(self.fc1(x)))
@@ -87,7 +87,7 @@ class CNNNetwork_mel(nn.Module):
 
 
 if __name__ == "__main__":
-    cnn = CNNNetwork_mel(512)
+    cnn = CNNNetwork_mel(1024)
 
     summary(cnn, (1, 16000), device="cpu")
     # print(cnn)

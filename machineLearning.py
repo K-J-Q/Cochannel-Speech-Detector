@@ -96,8 +96,9 @@ def train(model, dataloader, cost, optimizer, device):
 
 
 def eval(model, dataloader, cost, device):
+    model.eval()
     acc_metric = torchmetrics.Accuracy().to(device)
-    num_classes = model.fc2.out_features
+    num_classes = model(next(iter(dataloader))[0].to(device)).shape[1]
     confusion_matrix = torchmetrics.classification.MulticlassConfusionMatrix(
         num_classes).to(device)
     matrix = torch.zeros([num_classes, num_classes], device=device)
@@ -105,8 +106,7 @@ def eval(model, dataloader, cost, device):
     val_size = len(dataloader.dataset)
     total_batch = len(dataloader)
 
-    val_loss, val_accuracy = 0, 0
-    model.eval()
+    val_loss, val_accuracy = 0, 0    
 
     with torch.no_grad():
         for batch, (X, Y) in tqdm(enumerate(dataloader), unit='batch', total=total_batch):

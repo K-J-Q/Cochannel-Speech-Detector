@@ -187,12 +187,15 @@ class AudioDataset(Dataset):
 
 def collate_batch(batches):
     numBatch = len(batches)
+    # get a single sample
+    audioLength = len(batches[0][0][0][0])
+
     if (numBatch == 1):
         return batches[0][0], torch.Tensor(batches[0][1]).type(torch.LongTensor)
 
     samplesPerBatch = len(batches[0][0])
 
-    X = torch.empty([samplesPerBatch * numBatch, 1, 16000])
+    X = torch.empty([samplesPerBatch * numBatch, 1, audioLength])
     Y = torch.empty([samplesPerBatch * numBatch])
 
     for i, (x, y) in enumerate(batches):
