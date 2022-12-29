@@ -17,14 +17,14 @@ from loader.AudioDataset import *
 random.seed(0)
 torch.manual_seed(0)
 
-class_map = ['0', '1', '2']
 
 sm = torch.nn.Softmax(dim=1)
 
 
 def predictFolder(model, device, folderPath, saveFigPath=None):
     audio_paths, _ = utils.getAudioPaths(folderPath, percent=1)
-    audio_test_dataset = AudioDataset(audio_paths, outputAudio=True, isTraining=False)
+    audio_test_dataset = AudioDataset(
+        audio_paths, outputAudio=True, isTraining=False, num_merge=model.fc2.out_features-1)
 
     test_dataloader = torch.utils.data.DataLoader(
         audio_test_dataset,
@@ -37,15 +37,18 @@ def predictFolder(model, device, folderPath, saveFigPath=None):
         model, test_dataloader, torch.nn.CrossEntropyLoss(), device)
 
     print(f'Test set  | Loss: {test_loss} Accuracy: {test_acc}% \n')
-    confusion_matrix_normalised = confusion_matrix/torch.sum(confusion_matrix, dim=1)
 
+    confusion_matrix_normalised = confusion_matrix / \
+        torch.sum(confusion_matrix, dim=1)
+
+    class_map = list(range(0, model.fc2.out_features))
     sn.heatmap(confusion_matrix_normalised.cpu(), annot=True,
                xticklabels=class_map, yticklabels=class_map, cmap="Blues")
 
     plt.ylabel('Actual')
     plt.xlabel('Predicted')
     plt.title('Singapore Speech Corpus test set')
-    
+
     if __name__ == '__main__':
         plt.show()
     elif saveFigPath:
@@ -54,6 +57,7 @@ def predictFolder(model, device, folderPath, saveFigPath=None):
 
     return test_acc, confusion_matrix_normalised
 
+
 def predictLabeledFolders(model, device, folderPath, saveFigPath=None):
     folderPath = list(Path(folderPath).glob('**/'))
     assert len(folderPath) > 0
@@ -61,15 +65,18 @@ def predictLabeledFolders(model, device, folderPath, saveFigPath=None):
     for folder in folderPath:
         print(f'\n---------------{folder}---------------')
         filepaths = list(Path(folder).glob('*.wav'))
-        confusionMatrix = torch.zeros([3, 3])
+        confusionMatrix = torch.zeros(
+            [model.fc2.out_features, model.fc2.out_features])
         for path in filepaths:
             confusionMatrix += predictFile(model, device, str(path),
                                            plotPredicton=True if __name__ == '__main__' else False)
-        cum_acc = torch.sum(torch.eye(3) * confusionMatrix) / \
-                  torch.sum(confusionMatrix) * 100
+        cum_acc = torch.sum(torch.eye(model.fc2.out_features) * confusionMatrix) / \
+            torch.sum(confusionMatrix) * 100
         cum_folder_acc += cum_acc
         print(f'Cumulative accuracy: {cum_acc}%')
-        confusionMatrixNormalised = confusionMatrix/torch.sum(confusionMatrix, dim=1).unsqueeze(1)
+        confusionMatrixNormalised = confusionMatrix / \
+            torch.sum(confusionMatrix, dim=1)
+        class_map = list(range(0, model.fc2.out_features))
         sn.heatmap(confusionMatrixNormalised, annot=True, fmt='.4f',
                    xticklabels=class_map, yticklabels=class_map)
         datasetStats = torch.sum(confusionMatrix, 1)
@@ -133,7 +140,6 @@ def predictFile(model, device, filePath, plotPredicton=True):
                 pred = pred.argmax(dim=1)
                 pred_graph += list(pred.cpu().numpy())
 
-
     predLength = len(pred_graph)
 
     if plotPredicton:
@@ -153,14 +159,14 @@ def predictFile(model, device, filePath, plotPredicton=True):
 
     if os.path.exists(labelPath):
         confusion_matrix = torchmetrics.classification.MulticlassConfusionMatrix(
-            3)
-        ground_truth = getGroundTruth(labelPath, maxPred = maxPred)
+            model.fc2.out_features)
+        ground_truth = getGroundTruth(labelPath, maxPred=maxPred)
         gt_vec = torch.zeros(predLength)
 
         pred_graph = torch.tensor(pred_graph)
         for i, startTime in enumerate(range(0, (predLength) * windowLength, windowLength)):
             gt_vec[i] = percentageMode(get_percentage_in_window(
-                ground_truth, startTime, startTime + windowLength), mode=pred_graph[i])
+                ground_truth, startTime, startTime + windowLength))
 
         num_correct_pred = torch.sum(gt_vec == pred_graph)
 
@@ -180,6 +186,7 @@ def predictFile(model, device, filePath, plotPredicton=True):
         plt.show()
     return 0
 
+
 class specFeatures:
     specIndex = 0
 
@@ -192,6 +199,7 @@ class specFeatures:
 
         self.spec = torch.zeros(
             [self.windowOutputShape[2], int(self.windowOutputShape[3] * self.audioLength / windowLength)])
+
     def addSpec(self, modelOutput):
         if isinstance(modelOutput, dict):
             for layers in modelOutput:
@@ -199,7 +207,7 @@ class specFeatures:
                     batchFeatures = modelOutput[layers]
                     for i, feature in enumerate(batchFeatures):
                         self.spec[:, self.specIndex: self.specIndex +
-                                                     self.windowOutputShape[3]] = feature[0]
+                                  self.windowOutputShape[3]] = feature[0]
                         self.specIndex += self.windowOutputShape[3]
                         # plt.title(f'{layers} ({i})')
                         # plt.imshow(feature[0].cpu())
@@ -212,6 +220,7 @@ class specFeatures:
         plt.imshow(self.spec, origin='lower',
                    aspect='auto', extent=[0, self.audioLength, 0, self.windowOutputShape[2]])
         self.specIndex = 0
+
 
 def selectMicrophone():
     import subprocess
@@ -249,7 +258,7 @@ def predictLive(model, device):
         frames_per_chunk=44100 * 2, sample_rate=44100)
 
     stream_iterator = streamer.stream()
-
+    class_map = list(range(0, model.fc2.out_features))
     with torch.no_grad():
         while True:
             (chunk,) = next(stream_iterator)
@@ -264,6 +273,7 @@ def predictLive(model, device):
             ax2 = plt.subplot(2, 1, 2, sharex=ax1)
             plt.tight_layout()
             plt.rcParams["figure.figsize"] = (3, 10)
+
             sn.barplot(y=class_map, x=pred[0].cpu().numpy()*2)
             plt.xlim(0, 2)
             plt.show()
@@ -346,14 +356,14 @@ def extractModelFeature(model):
 
     return create_feature_extractor(model, return_nodes=return_nodes) if __name__ == "__main__" else model
 
+
 maxPred = 2
 if __name__ == "__main__":
     import torch_audiomentations as aug
-    model, device, epoch = machineLearning.selectTrainedModel(setCPU=False)
-    if epoch == 0:
-        model = model(512)
+    model, device, epoch = machineLearning.selectTrainedModel(setCPU=True)
 
-    print(model)
+    if epoch == 0:
+        model = model(256, outputClasses=4)
 
     model = model.to(device)
     model.eval()
