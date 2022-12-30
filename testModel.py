@@ -43,7 +43,7 @@ def predictFolder(model, device, folderPath, saveFigPath=None):
 
     class_map = list(range(0, model.fc2.out_features))
     sn.heatmap(confusion_matrix_normalised.cpu(), annot=True,
-               xticklabels=class_map, yticklabels=class_map, cmap="Blues")
+               xticklabels=class_map, yticklabels=class_map, cmap="Blues", vmin=0, vmax=1)
 
     plt.ylabel('Actual')
     plt.xlabel('Predicted')
