@@ -12,6 +12,7 @@ import loader.utils as utils
 import machineLearning
 import testModel
 from loader.AudioDataset import AudioDataset, collate_batch
+import torchaudio
 
 testPath = './data/omni mic/real'
 trainPath = 'E:/Processed Audio/train' if os.name == 'nt' else '/media/jianquan/Data/Processed Audio/train/'
@@ -20,7 +21,8 @@ startEpoch = 0
 
 augmentations = aug.Compose(
     transforms=[
-        # aug.PitchShift(sample_rate=8000),
+        aug.TimeInversion(),
+        # torchaudio.transforms.PitchShift(8000, 2)
         # aug.AddColoredNoise(p=1, min_snr_in_db=0, max_snr_in_db=5),
         # aug.ApplyImpulseResponse(ir_paths='E:/Processed Audio/IR'),
         # aug.AddBackgroundNoise(p=1, background_paths='E:/Processed Audio/backgroundNoise', min_snr_in_db=-3,max_snr_in_db=0)
@@ -155,12 +157,11 @@ if __name__ == '__main__':
         # scheduler.step(val_loss)
 
     test_acc, _ = testModel.predictFolder(
-        model, device, 'E:/Processed Audio/test')
+        model, device, 'E:/Processed Audio/test', f'records/{title}({modelIndex})_epoch{epoch}_acc({val_accuracy})')
 
     if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) != 0:
         writer.add_hparams({'Learning Rate': lr, 'Batch Size': bsize, 'class_size': int(config['data']['class_size']),
-                            'Epochs': int(epoch), 'Weight Decay': decay, 'Dropout': float(
-            config['model']['dropout'])}, {'Accuracy': val_accuracy, 'Loss': val_loss, 'Test Accuracy': test_acc})
+                            'Epochs': int(epoch), 'Weight Decay': decay, 'Dropout': float(Jconfig['model']['dropout'])}, {'Accuracy': val_accuracy, 'Loss': val_loss, 'Test Accuracy': test_acc})
 
     # delete models starting with title variable using glob
     for file in glob.glob(f'saved_model/{title} ({modelIndex})*'):

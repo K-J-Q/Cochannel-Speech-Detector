@@ -21,14 +21,13 @@ class CNNNetwork_mel(nn.Module):
         self.generateSpec = torchaudio.transforms.MelSpectrogram(
             sample_rate=8000, n_fft=nfft, n_mels=int(nfft / 4))
 
-        # self.augmentSpec = nn.Sequential(torchaudio.transforms.FrequencyMasking(
-        #     30, True), torchaudio.transforms.TimeMasking(20, True))
+        self.augmentSpec = nn.Sequential(torchaudio.transforms.FrequencyMasking(
+            30, True), torchaudio.transforms.TimeMasking(20, True))
 
-        self.conv1 = nn.Conv2d(1, 16, 5, stride=2)
-        self.conv2 = nn.Conv2d(16, 32, 5, stride=2)
-        self.conv3 = nn.Conv2d(32, 64, 5, stride=3)
-        self.conv4 = nn.Conv2d(64, 128, 3, stride=1)
-        self.conv5 = nn.Conv2d(128, 256, 5, stride=3)
+        self.conv1 = nn.Conv2d(1, 32, 5, stride=2)
+        self.conv2 = nn.Conv2d(32, 64, 5, stride=2)
+        self.conv3 = nn.Conv2d(64, 128, 5, stride=3)
+        self.conv4 = nn.Conv2d(128, 256, 3, stride=1)
         self.pool1 = nn.MaxPool2d(2, stride=2)
         self.drp = nn.Dropout2d(0)
         self.bn1 = nn.BatchNorm1d(120)
@@ -72,13 +71,13 @@ class CNNNetwork_mel(nn.Module):
         x = self.generateSpec(wav)
         x = self.__normaliseSpec(x)
 
-        # if self.training:
-        #     x = self.augmentSpec(x)
+        if self.training:
+            x = self.augmentSpec(x)
 
         x = self.drp(F.elu(self.conv1(x)))
         x = self.drp(F.elu(self.conv2(x)))
         x = self.drp(F.elu(self.conv3(x)))
-        # x = self.drp(F.elu(self.conv4(x)))
+        x = self.drp(F.elu(self.conv4(x)))
         # x = self.drp(F.elu(self.conv5(x)))
         x = x.view(x.shape[0], -1)
         x = self.bn1(F.elu(self.fc1(x)))
@@ -87,9 +86,9 @@ class CNNNetwork_mel(nn.Module):
 
 
 if __name__ == "__main__":
-    cnn = CNNNetwork_mel(1024)
+    cnn = CNNNetwork_mel(256)
 
-    summary(cnn, (1, 16000), device="cpu")
+    summary(cnn, (1, 8000), device="cpu")
     # print(cnn)
     print(cnn(torch.randn(2, 1, 16000)).shape)
     cnn.eval()

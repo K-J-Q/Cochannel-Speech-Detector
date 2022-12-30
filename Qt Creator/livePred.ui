@@ -47,7 +47,11 @@
        <set>Qt::AlignCenter</set>
       </property>
      </widget>
-     <widget class="QComboBox" name="mic_comboBox"/>
+     <widget class="QComboBox" name="mic_selector">
+      <property name="editable">
+       <bool>true</bool>
+      </property>
+     </widget>
     </widget>
     <widget class="QLabel" name="model_output">
      <property name="font">
@@ -65,9 +69,9 @@
     <widget class="QWidget" name="verticalLayoutWidget">
      <layout class="QVBoxLayout" name="verticalLayout">
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <layout class="QHBoxLayout" name="probability">
         <item>
-         <widget class="QLabel" name="label_5">
+         <widget class="QLabel" name="class0">
           <property name="font">
            <font>
             <bold>false</bold>
@@ -82,7 +86,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QLabel" name="label_6">
+         <widget class="QLabel" name="class1">
           <property name="font">
            <font>
             <bold>false</bold>
@@ -97,7 +101,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QLabel" name="label_7">
+         <widget class="QLabel" name="class2">
           <property name="font">
            <font>
             <bold>false</bold>
@@ -114,9 +118,9 @@
        </layout>
       </item>
       <item>
-       <layout class="QHBoxLayout" name="horizontalLayout">
+       <layout class="QHBoxLayout" name="probability_labels">
         <item>
-         <widget class="QLabel" name="label_3">
+         <widget class="QLabel" name="label_class0">
           <property name="font">
            <font>
             <bold>true</bold>
@@ -131,7 +135,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QLabel" name="label_2">
+         <widget class="QLabel" name="label_class1">
           <property name="font">
            <font>
             <bold>true</bold>
@@ -146,7 +150,7 @@
          </widget>
         </item>
         <item>
-         <widget class="QLabel" name="label_4">
+         <widget class="QLabel" name="label_class2">
           <property name="font">
            <font>
             <bold>true</bold>
@@ -167,6 +171,17 @@
     <widget class="QPushButton" name="startStopButton">
      <property name="text">
       <string>Start</string>
+     </property>
+    </widget>
+    <widget class="QProgressBar" name="progressBar">
+     <property name="accessibleName">
+      <string/>
+     </property>
+     <property name="value">
+      <number>24</number>
+     </property>
+     <property name="textVisible">
+      <bool>false</bool>
      </property>
     </widget>
    </widget>

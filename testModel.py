@@ -104,7 +104,7 @@ def predictFile(model, device, filePath, plotPredicton=True):
 
     # config
     batch_size = 20
-    windowLength = 2
+    
 
     with torch.no_grad():
         wav, sr = augmentor.resample(
@@ -195,6 +195,7 @@ class specFeatures:
         assert wav.shape[0] == 1
         modelOut = model(
             torch.unsqueeze(wav[:, 0:sr * windowLength], dim=0).to(device))
+    
         self.windowOutputShape = modelOut['spec'].shape
         self.audioLength = len(wav[0]) / sr
 
@@ -223,9 +224,10 @@ class specFeatures:
         self.specIndex = 0
 
 
-def selectMicrophone():
+def selectMicrophone(returnType='device'):
     import subprocess
     micID = []
+    micName = []
     command = ["ffmpeg", "-f", 'dshow', "-list_devices", 'true', "-i", "dummy"]
     out = subprocess.Popen(
         command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -237,8 +239,10 @@ def selectMicrophone():
         if 'Alternative name ' in device:
             device_name = k[i - 1].split('\n')[0]
             print(f"[{len(micID)}] {device_name}")
+            micName.append(device_name)
             micID.append(device.split('"')[1])
-
+    if returnType == 'all':
+        return micName, micID
     device = micID[int(input('Select Microphone Device > '))]
     return device
 
@@ -246,7 +250,7 @@ def selectMicrophone():
 def predictLive(model, device):
     model = extractModelFeature(model)
     augmentor = Augmentor()
-    specData = specFeatures(model, device, torch.randn(1, 16000), 8000, 2)
+    specData = specFeatures(model, device, torch.randn(1, windowLength*8000), 8000, 2)
 
     from torchaudio.io import StreamReader
 
@@ -256,7 +260,7 @@ def predictLive(model, device):
     )
 
     streamer.add_basic_audio_stream(
-        frames_per_chunk=8000 * 2, sample_rate=8000)
+        frames_per_chunk=8000 * windowLength, sample_rate=8000)
 
     stream_iterator = streamer.stream()
     class_map = list(range(0, model.fc2.out_features))
@@ -363,6 +367,8 @@ def extractModelFeature(model):
 
 
 maxPred = 2
+windowLength = 2
+
 if __name__ == "__main__":
     import torch_audiomentations as aug
     model, device, epoch = machineLearning.selectTrainedModel(setCPU=True)
