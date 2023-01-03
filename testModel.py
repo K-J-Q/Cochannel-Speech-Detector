@@ -23,6 +23,7 @@ sm = torch.nn.Softmax(dim=1)
 
 def predictFolder(model, device, folderPath, saveFigPath=None):
     audio_paths, _ = utils.getAudioPaths(folderPath, percent=1)
+    
     audio_test_dataset = AudioDataset(
         audio_paths, outputAudio=True, isTraining=False, num_merge=model.fc2.out_features-1)
 
@@ -367,7 +368,7 @@ def extractModelFeature(model):
 
 
 maxPred = 2
-windowLength = 2
+windowLength = 0.5
 
 if __name__ == "__main__":
     import torch_audiomentations as aug

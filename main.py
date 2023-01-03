@@ -21,7 +21,7 @@ startEpoch = 0
 
 augmentations = aug.Compose(
     transforms=[
-        aug.TimeInversion(),
+        # aug.TimeInversion(),
         # torchaudio.transforms.PitchShift(8000, 2)
         # aug.AddColoredNoise(p=1, min_snr_in_db=0, max_snr_in_db=5),
         # aug.ApplyImpulseResponse(ir_paths='E:/Processed Audio/IR'),
@@ -29,12 +29,14 @@ augmentations = aug.Compose(
     ]
 )
 
-augmentations = None
+# augmentations = None
 
 if __name__ == '__main__':
     config = ConfigParser()
     config.read('config.ini')
+
     utils.clearUselesslogs(minFiles=3)
+
     num_merge = int(config['augmentations']['num_merge'])
 
     audio_train_paths, audio_val_paths = utils.getAudioPaths(
