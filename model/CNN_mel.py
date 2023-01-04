@@ -21,8 +21,8 @@ class CNNNetwork_mel(nn.Module):
         self.generateSpec = torchaudio.transforms.MelSpectrogram(
             sample_rate=8000, n_fft=nfft, n_mels=int(nfft / 4))
 
-        self.augmentSpec = nn.Sequential(torchaudio.transforms.FrequencyMasking(
-            30, True), torchaudio.transforms.TimeMasking(20, True))
+        # self.augmentSpec = nn.Sequential(torchaudio.transforms.FrequencyMasking(
+        #     30, True), torchaudio.transforms.TimeMasking(20, True))
 
         self.conv1 = nn.Conv2d(1, 32, 4, stride=2)
         self.conv2 = nn.Conv2d(32, 64, 3, stride=2)
@@ -73,10 +73,12 @@ class CNNNetwork_mel(nn.Module):
         wav = self.__audioNormalisation(wav)
         x = self.generateSpec(wav)
         x = self.__normaliseSpec(x)
+        if not self.training:
+            spec = x
 
-        if self.training:
-            x = self.augmentSpec(x)
-
+        # if self.training:
+        #     x = self.augmentSpec(x)
+            
         x = self.drp(F.elu(self.conv1(x)))
         if x.shape[-1] >= 3 and x.shape[-2] >= 3:
             x = self.drp(F.elu(self.conv2(x)))
@@ -93,7 +95,7 @@ class CNNNetwork_mel(nn.Module):
         x = x.view(x.shape[0], -1)
         x = self.bn1(F.elu(self.fc1(x)))
         x = self.fc2(x)
-        return x
+        return x if self.training else x, spec
 
 def testModel():
     for nfft in [128, 256, 512]:

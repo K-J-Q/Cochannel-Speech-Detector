@@ -206,18 +206,26 @@
     <property name="text">
      <string/>
     </property>
+    <property name="icon">
+     <iconset>
+      <normaloff>resources/refreshIcon.png</normaloff>resources/refreshIcon.png</iconset>
+    </property>
    </widget>
-   <widget class="QToolButton" name="onTopButton">
+   <widget class="QPushButton" name="onTopButton">
     <property name="geometry">
      <rect>
-      <x>310</x>
-      <y>100</y>
-      <width>21</width>
-      <height>22</height>
+      <x>280</x>
+      <y>90</y>
+      <width>31</width>
+      <height>31</height>
      </rect>
     </property>
     <property name="text">
      <string/>
+    </property>
+    <property name="icon">
+     <iconset>
+      <normaloff>resources/windowIcon.png</normaloff>resources/windowIcon.png</iconset>
     </property>
    </widget>
   </widget>

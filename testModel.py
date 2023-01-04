@@ -96,7 +96,8 @@ def predictLabeledFolders(model, device, folderPath, saveFigPath=None):
 
 
 def predictFile(model, device, filePath, plotPredicton=True):
-    model = extractModelFeature(model)
+    # if __name__ == "__main__":
+    #     model = extractModelFeature(model)
     augmentor = Augmentor()
     labelPath = filePath[0:-3] + 'txt'
 
@@ -195,29 +196,21 @@ class specFeatures:
     def __init__(self, model, device, wav, sr, windowLength):
         assert wav.shape[0] == 1
         modelOut = model(
-            torch.unsqueeze(wav[:, 0:sr * windowLength], dim=0).to(device))
+            torch.unsqueeze(wav[:, 0:int(sr * windowLength)], dim=0).to(device))
     
-        self.windowOutputShape = modelOut['spec'].shape
+        self.windowOutputShape = modelOut[1].shape
         self.audioLength = len(wav[0]) / sr
 
         self.spec = torch.zeros(
             [self.windowOutputShape[2], int(self.windowOutputShape[3] * self.audioLength / windowLength)])
 
     def addSpec(self, modelOutput):
-        if isinstance(modelOutput, dict):
-            for layers in modelOutput:
-                if layers == 'spec':
-                    batchFeatures = modelOutput[layers]
-                    for i, feature in enumerate(batchFeatures):
-                        self.spec[:, self.specIndex: self.specIndex +
-                                  self.windowOutputShape[3]] = feature[0]
-                        self.specIndex += self.windowOutputShape[3]
-                        # plt.title(f'{layers} ({i})')
-                        # plt.imshow(feature[0].cpu())
-                        # plt.show()
-            return sm(modelOutput['out'])
-        else:
-            return sm(modelOutput)
+            batchFeatures = modelOutput[1]
+            for i, feature in enumerate(batchFeatures):
+                self.spec[:, self.specIndex: self.specIndex +
+                          self.windowOutputShape[3]] = feature[0]
+                self.specIndex += self.windowOutputShape[3]
+            return sm(modelOutput[0])
 
     def plotSpec(self, axes):
         axes.imshow(self.spec, origin='lower',
@@ -249,7 +242,8 @@ def selectMicrophone(returnType='device'):
 
 
 def predictLive(model, device):
-    model = extractModelFeature(model)
+    if __name__ == "__main__":
+        model = extractModelFeature(model)
     augmentor = Augmentor()
     specData = specFeatures(model, device, torch.randn(1, windowLength*8000), 8000, 2)
 
@@ -364,11 +358,10 @@ def extractModelFeature(model):
         nodes[-1]: 'out'
     }
 
-    return create_feature_extractor(model, return_nodes=return_nodes) if __name__ == "__main__" else model
-
+    return create_feature_extractor(model, return_nodes=return_nodes)
 
 maxPred = 2
-windowLength = 0.5
+windowLength = 1
 
 if __name__ == "__main__":
     import torch_audiomentations as aug

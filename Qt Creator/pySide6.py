@@ -4,7 +4,7 @@ from PySide6.QtCore import QFile, QObject, QThread, Signal, Qt
 from ui_livePred import Ui_MainWindow
 import time, random
 
-from pyqtgraph import BarGraphItem, ImageItem
+from pyqtgraph import BarGraphItem, ImageItem, QtGui
 
 # from torchaudio.io import StreamReader
 import torchaudio
@@ -28,9 +28,9 @@ class Worker(QThread):
     def run(self):
         print("Thread start")
         # while not self.isInterruptionRequested():
-        #     preds = torch.rand([3])
+        #     pred = torch.rand([3])
         #     spec = torch.rand([100, 23])
-        #     self.updatePrediction.emit(preds, spec)
+        #     self.updatePrediction.emit(pred, spec)
         #     time.sleep(1)
         # stream_iterator = streamer.stream()
         while not self.isInterruptionRequested():
@@ -40,13 +40,15 @@ class Worker(QThread):
             wav, sr = self.augmentor.audio_preprocessing([wav, 8000])
             wav = torchaudio.functional.dcshift(wav, -wav.mean())
             wav = wav/wav.abs().max()
-            pred = self.model(torch.unsqueeze(wav, dim=0).to(self.device))
+            pred, spec = self.model(torch.unsqueeze(wav, dim=0).to(self.device))
             time.sleep(1)
-            pred = self.sm(pred['out']) if isinstance(
-                pred, dict) else self.sm(pred)
+
+            pred = self.sm(pred)
             pred = torch.round(pred[0])
-            print(pred)
-            self.updatePrediction.emit(pred, torch.rand([100, 23]))
+            
+            spec = spec.reshape(spec.shape[-2:])
+            
+            self.updatePrediction.emit(pred, spec)
         print("Thread complete")
 
 
@@ -73,33 +75,38 @@ class MainWindow(QMainWindow):
         super(MainWindow, self).__init__()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
+
+        # connect buttons
         self.ui.startStopButton.clicked.connect(self.buttonPressed)
         self.ui.mic_selector.currentIndexChanged.connect(self.getMicrophone)
         self.ui.refreshButton.clicked.connect(self.updateMicrophones)
         self.ui.onTopButton.clicked.connect(self.onTop)
+
         self.updateMicrophones()
 
         # Load model
-        self.model, _, _ = machineLearning.selectTrainedModel()
-        self.model.eval()
+        model, _, _ = machineLearning.selectTrainedModel()
+        self.model = model.eval()
 
         # Prediction Graph
         self.predHistory = []
         self.labelGraph = self.ui.labelGraphWidget
+        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255, 0))
 
-        self.labelGraph.setBackground('w')
+        self.labelGraph.setBackground(brush)
         self.labelGraph.setYRange(0, 2.5, padding=0)
         self.labelGraph.setXRange(0, self.historyLength, padding=0)
         self.labelGraph.getAxis('bottom').setTicks([[(i, str(i)) for i in range(self.historyLength + 1)]])
         self.labelGraph.getAxis('left').setTicks([[(i, str(i)) for i in range(3)]])
-
-        # Spectrogram Graph
-        self.specShape = self.SpectrogramShape(width=23,height=100)
         
+        # Spectrogram Graph
+        spectrogramShape = self.model(torch.rand([1, 1, 8000]))[1].shape[-2:]
+        self.specShape = self.SpectrogramShape(height=spectrogramShape[0], width=spectrogramShape[1])
         self.specHistory = torch.zeros((self.specShape.height, self.specShape.width*10))
+
         self.specGraph = self.ui.spectrogramGraphWidget
 
-        self.specGraph.setBackground('w')
+        self.specGraph.setBackground(brush)
         self.specGraph.showAxes(False)
         self.specGraph.setXRange(0, self.specShape.width*10, padding=0)
         self.specGraph.setYRange(0, self.specShape.height, padding=0)
@@ -107,8 +114,8 @@ class MainWindow(QMainWindow):
         self.predWindow = PredWindow()
 
     def updateMicrophones(self):
-        self.ui.mic_selector.clear()
         micName, self.micID = testModel.selectMicrophone(returnType='all')
+        self.ui.mic_selector.clear()
         self.ui.mic_selector.addItem("Select microphone")
         self.ui.mic_selector.addItems(micName)
 
@@ -117,9 +124,8 @@ class MainWindow(QMainWindow):
         # streamer = StreamReader(
         #     src="audio=" + mic,
         #     format="dshow",
-        #     buffer_size=8000 * windowLength * 2,
+        #     buffer_size=8000 * windowLength * 2
         # )
-        # sm = torch.nn.Softmax(dim=1)
         # streamer.add_basic_audio_stream(
         #     frames_per_chunk=int(8000 * windowLength), sample_rate=8000)
     
