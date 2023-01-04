@@ -387,6 +387,10 @@ if __name__ == "__main__":
     model = model.to(device)
     model.eval()
 
+    for name, param in model.named_parameters():
+        print(name)
+
+
     print(f'\n---------------------------------------\n')
 
     # filePath = 'testNorm.wav'

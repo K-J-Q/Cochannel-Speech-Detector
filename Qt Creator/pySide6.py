@@ -1,6 +1,6 @@
 import sys
-from PySide6.QtWidgets import QApplication, QMainWindow
-from PySide6.QtCore import QFile, QObject, QThread, Signal
+from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout,QLabel
+from PySide6.QtCore import QFile, QObject, QThread, Signal, Qt
 from ui_livePred import Ui_MainWindow
 import time, random
 
@@ -12,35 +12,62 @@ import torch
 
 sys.path.append('./')
 import machineLearning, testModel
+from loader.AudioDataset import Augmentor
 
 class Worker(QThread):
     updatePrediction = Signal(torch.Tensor, torch.Tensor)
-    
-    def __init__(self):
+    augmentor = Augmentor()
+    sm = torch.nn.Softmax(dim=1)
+    device = torch.device(
+        "cuda" if torch.cuda.is_available() else "cpu")
+
+    def __init__(self, model):
         super(Worker, self).__init__()
+        self.model = model.to(self.device)
 
     def run(self):
         print("Thread start")
-        while not self.isInterruptionRequested():
-            preds = torch.rand([3])
-            spec = torch.rand([100, 23])
-            self.updatePrediction.emit(preds, spec)
-            time.sleep(1)
-        # stream_iterator = streamer.stream()
         # while not self.isInterruptionRequested():
+        #     preds = torch.rand([3])
+        #     spec = torch.rand([100, 23])
+        #     self.updatePrediction.emit(preds, spec)
+        #     time.sleep(1)
+        # stream_iterator = streamer.stream()
+        while not self.isInterruptionRequested():
         #     (chunk,) = next(stream_iterator)
-
-        #     wav, sr = augmentor.audio_preprocessing([wav, 8000])
-        #     wav = torchaudio.functional.dcshift(wav, -wav.mean())
-        #     wav = wav/wav.abs().max()
-        #     pred = model(torch.unsqueeze(wav, dim=0).to(device))
-        #     pred = sm(pred['out']) if isinstance(pred, dict) else sm(pred)
-        #     self.updatePrediction.emit(pred)
+        #     wav = torch.from_numpy(chunk).float()
+            wav = torch.rand([1, 8000])
+            wav, sr = self.augmentor.audio_preprocessing([wav, 8000])
+            wav = torchaudio.functional.dcshift(wav, -wav.mean())
+            wav = wav/wav.abs().max()
+            pred = self.model(torch.unsqueeze(wav, dim=0).to(self.device))
+            time.sleep(1)
+            pred = self.sm(pred['out']) if isinstance(
+                pred, dict) else self.sm(pred)
+            pred = torch.round(pred[0])
+            print(pred)
+            self.updatePrediction.emit(pred, torch.rand([100, 23]))
         print("Thread complete")
 
 
+class PredWindow(QWidget):
+    def __init__(self):
+        super().__init__()
+        layout = QVBoxLayout()
+        self.label = QLabel("")
+        self.label.setAlignment(Qt.AlignCenter)
+        self.label.setStyleSheet("font-size: 80px;")
+        layout.addWidget(self.label)
+        self.setLayout(layout)
+
 class MainWindow(QMainWindow):
     historyLength= 10
+
+    class SpectrogramShape:
+        def __init__(self, width:int, height:int):
+            self.width = width
+            self.height = height
+            
 
     def __init__(self):
         super(MainWindow, self).__init__()
@@ -48,7 +75,13 @@ class MainWindow(QMainWindow):
         self.ui.setupUi(self)
         self.ui.startStopButton.clicked.connect(self.buttonPressed)
         self.ui.mic_selector.currentIndexChanged.connect(self.getMicrophone)
+        self.ui.refreshButton.clicked.connect(self.updateMicrophones)
+        self.ui.onTopButton.clicked.connect(self.onTop)
         self.updateMicrophones()
+
+        # Load model
+        self.model, _, _ = machineLearning.selectTrainedModel()
+        self.model.eval()
 
         # Prediction Graph
         self.predHistory = []
@@ -61,14 +94,17 @@ class MainWindow(QMainWindow):
         self.labelGraph.getAxis('left').setTicks([[(i, str(i)) for i in range(3)]])
 
         # Spectrogram Graph
-        self.specHistory = torch.zeros((100, 23*10))
+        self.specShape = self.SpectrogramShape(width=23,height=100)
+        
+        self.specHistory = torch.zeros((self.specShape.height, self.specShape.width*10))
         self.specGraph = self.ui.spectrogramGraphWidget
 
         self.specGraph.setBackground('w')
         self.specGraph.showAxes(False)
-        self.specGraph.setXRange(0, 23*10, padding=0)
-        self.specGraph.setYRange(0, 100, padding=0)
+        self.specGraph.setXRange(0, self.specShape.width*10, padding=0)
+        self.specGraph.setYRange(0, self.specShape.height, padding=0)
         
+        self.predWindow = PredWindow()
 
     def updateMicrophones(self):
         self.ui.mic_selector.clear()
@@ -95,11 +131,17 @@ class MainWindow(QMainWindow):
         self.predHistory.append(argmax)
         self.appendSpectralData(spectrogram)
         self.ui.model_output.setText(f"{argmax}")
+        self.predWindow.label.setText(f"{argmax}")
+
         self.updateGraph()
+
+    def onTop(self):              
+        self.predWindow.setWindowFlags(self.predWindow.windowFlags() | Qt.WindowStaysOnTopHint)
+        self.predWindow.show()
 
     def appendSpectralData(self, spec):
         self.specHistory = torch.cat((spec, self.specHistory), dim=1)
-        self.specHistory = self.specHistory[:, :-23]
+        self.specHistory = self.specHistory[:, :-self.specShape.width]
 
     def updateGraph(self):
         x = list(range(len(self.predHistory), 0, -1))
@@ -121,7 +163,7 @@ class MainWindow(QMainWindow):
     def buttonPressed(self):
         if self.ui.startStopButton.text() == "Start":
             self.ui.startStopButton.setText("Stop")
-            self.worker = Worker()
+            self.worker = Worker(self.model)
             self.worker.updatePrediction.connect(self.updatePrediction)
             self.worker.start()
 

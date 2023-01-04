@@ -17,7 +17,8 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
     QPalette, QPixmap, QRadialGradient, QTransform)
 from PySide6.QtWidgets import (QApplication, QComboBox, QHBoxLayout, QLabel,
     QMainWindow, QMenuBar, QPushButton, QSizePolicy,
-    QSplitter, QStatusBar, QVBoxLayout, QWidget)
+    QSplitter, QStatusBar, QToolButton, QVBoxLayout,
+    QWidget)
 
 from pyqtgraph import PlotWidget
 
@@ -31,7 +32,7 @@ class Ui_MainWindow(object):
         self.centralwidget.setObjectName(u"centralwidget")
         self.splitter = QSplitter(self.centralwidget)
         self.splitter.setObjectName(u"splitter")
-        self.splitter.setGeometry(QRect(30, 20, 371, 391))
+        self.splitter.setGeometry(QRect(30, 20, 321, 391))
         self.splitter.setOrientation(Qt.Vertical)
         self.mic_selection = QSplitter(self.splitter)
         self.mic_selection.setObjectName(u"mic_selection")
@@ -123,10 +124,16 @@ class Ui_MainWindow(object):
         self.splitter.addWidget(self.startStopButton)
         self.spectrogramGraphWidget = PlotWidget(self.centralwidget)
         self.spectrogramGraphWidget.setObjectName(u"spectrogramGraphWidget")
-        self.spectrogramGraphWidget.setGeometry(QRect(450, 20, 481, 291))
+        self.spectrogramGraphWidget.setGeometry(QRect(390, 20, 541, 291))
         self.labelGraphWidget = PlotWidget(self.centralwidget)
         self.labelGraphWidget.setObjectName(u"labelGraphWidget")
-        self.labelGraphWidget.setGeometry(QRect(450, 310, 481, 80))
+        self.labelGraphWidget.setGeometry(QRect(390, 310, 541, 91))
+        self.refreshButton = QToolButton(self.centralwidget)
+        self.refreshButton.setObjectName(u"refreshButton")
+        self.refreshButton.setGeometry(QRect(320, 25, 22, 22))
+        self.onTopButton = QToolButton(self.centralwidget)
+        self.onTopButton.setObjectName(u"onTopButton")
+        self.onTopButton.setGeometry(QRect(310, 100, 21, 22))
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
@@ -152,5 +159,7 @@ class Ui_MainWindow(object):
         self.label_class1.setText(QCoreApplication.translate("MainWindow", u"Class 1", None))
         self.label_class2.setText(QCoreApplication.translate("MainWindow", u"Class 2", None))
         self.startStopButton.setText(QCoreApplication.translate("MainWindow", u"Start", None))
+        self.refreshButton.setText("")
+        self.onTopButton.setText("")
     # retranslateUi
 
