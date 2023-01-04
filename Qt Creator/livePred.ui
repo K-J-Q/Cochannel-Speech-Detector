@@ -174,11 +174,21 @@
      </property>
     </widget>
    </widget>
-   <widget class="BarGraphItem" name="graphWidget" native="true">
+   <widget class="PlotWidget" name="spectrogramGraphWidget" native="true">
     <property name="geometry">
      <rect>
       <x>450</x>
       <y>20</y>
+      <width>481</width>
+      <height>291</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="PlotWidget" name="labelGraphWidget" native="true">
+    <property name="geometry">
+     <rect>
+      <x>450</x>
+      <y>310</y>
       <width>481</width>
       <height>80</height>
      </rect>
@@ -199,7 +209,7 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>BarGraphItem</class>
+   <class>PlotWidget</class>
    <extends>QWidget</extends>
    <header>pyqtgraph</header>
    <container>1</container>

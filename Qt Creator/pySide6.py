@@ -7,22 +7,24 @@ import time, random
 from pyqtgraph import BarGraphItem, ImageItem
 
 # from torchaudio.io import StreamReader
-# import torchaudio
-# import torch
+import torchaudio
+import torch
 
 sys.path.append('./')
 import machineLearning, testModel
 
 class Worker(QThread):
-    updatePrediction = Signal(list)
-
+    updatePrediction = Signal(torch.Tensor, torch.Tensor)
+    
     def __init__(self):
         super(Worker, self).__init__()
 
     def run(self):
         print("Thread start")
         while not self.isInterruptionRequested():
-            self.updatePrediction.emit([random.random(), random.random(), random.random()])
+            preds = torch.rand([3])
+            spec = torch.rand([100, 23])
+            self.updatePrediction.emit(preds, spec)
             time.sleep(1)
         # stream_iterator = streamer.stream()
         # while not self.isInterruptionRequested():
@@ -38,8 +40,6 @@ class Worker(QThread):
 
 
 class MainWindow(QMainWindow):
-    specHistory = torch
-    predHistory = []
     historyLength= 10
 
     def __init__(self):
@@ -49,14 +49,26 @@ class MainWindow(QMainWindow):
         self.ui.startStopButton.clicked.connect(self.buttonPressed)
         self.ui.mic_selector.currentIndexChanged.connect(self.getMicrophone)
         self.updateMicrophones()
-        self.ui.graphWidget.setBackground('w')
-        self.ui.graphWidget.setYRange(0, 2.5, padding=0)
-        self.ui.graphWidget.setXRange(0, self.historyLength, padding=0)
-        self.ui.graphWidget.getAxis('bottom').setTicks([[(i, str(i)) for i in range(self.historyLength + 1)]])
-        self.ui.graphWidget.getAxis('left').setTicks([[(i, str(i)) for i in range(3)]])
 
-        # make it a bar graph
-        self.ui.graphWidget.addItem(BarGraphItem(x=[0], height=[0], width=1, brush='r'))
+        # Prediction Graph
+        self.predHistory = []
+        self.labelGraph = self.ui.labelGraphWidget
+
+        self.labelGraph.setBackground('w')
+        self.labelGraph.setYRange(0, 2.5, padding=0)
+        self.labelGraph.setXRange(0, self.historyLength, padding=0)
+        self.labelGraph.getAxis('bottom').setTicks([[(i, str(i)) for i in range(self.historyLength + 1)]])
+        self.labelGraph.getAxis('left').setTicks([[(i, str(i)) for i in range(3)]])
+
+        # Spectrogram Graph
+        self.specHistory = torch.zeros((100, 23*10))
+        self.specGraph = self.ui.spectrogramGraphWidget
+
+        self.specGraph.setBackground('w')
+        self.specGraph.showAxes(False)
+        self.specGraph.setXRange(0, 23*10, padding=0)
+        self.specGraph.setYRange(0, 100, padding=0)
+        
 
     def updateMicrophones(self):
         self.ui.mic_selector.clear()
@@ -75,23 +87,36 @@ class MainWindow(QMainWindow):
         # streamer.add_basic_audio_stream(
         #     frames_per_chunk=int(8000 * windowLength), sample_rate=8000)
     
-    def updatePrediction(self, predictions):
-        argmax = predictions.index(max(predictions))
-        self.ui.class0.setText(f"{predictions[0]:.2f}")
-        self.ui.class1.setText(f"{predictions[1]:.2f}")
-        self.ui.class2.setText(f"{predictions[2]:.2f}")        
+    def updatePrediction(self, predictions, spectrogram):
+        argmax = predictions.argmax().item()
+        self.ui.class0.setText(f"{predictions[0]}")
+        self.ui.class1.setText(f"{predictions[1]}")
+        self.ui.class2.setText(f"{predictions[2]}")        
         self.predHistory.append(argmax)
+        self.appendSpectralData(spectrogram)
         self.ui.model_output.setText(f"{argmax}")
         self.updateGraph()
+
+    def appendSpectralData(self, spec):
+        self.specHistory = torch.cat((spec, self.specHistory), dim=1)
+        self.specHistory = self.specHistory[:, :-23]
 
     def updateGraph(self):
         x = list(range(len(self.predHistory), 0, -1))
         if len(self.predHistory) > self.historyLength:
             self.predHistory = self.predHistory[-self.historyLength:]
             x = x[-self.historyLength:]
-        self.ui.graphWidget.clear()
-        self.ui.graphWidget.addItem(BarGraphItem(x=x, height=self.predHistory, width=1, brush='r', pen='r'))
-        self.ui.spectrogramGraphWidget.clear()
+
+        self.labelGraph.clear()
+        self.labelGraph.addItem(BarGraphItem(
+            x=x, height=self.predHistory, width=1, brush='r', pen='r'))
+
+        
+        spec = ImageItem(self.specHistory.T.numpy())
+        spec.setColorMap('viridis')
+        self.specGraph.clear()
+        self.specGraph.addItem(spec)
+
 
     def buttonPressed(self):
         if self.ui.startStopButton.text() == "Start":
