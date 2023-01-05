@@ -138,7 +138,7 @@ class AudioDataset(Dataset):
                 merged_aud = self.__merge_audio(aud1, aud2, aud3)
                 X[self.samplesPerClass * i + 3][0] = self.__augmentAudio(merged_aud)
 
-            # torchaudio.save('test.wav', X[self.samplesPerClass*i+2], 8000)
+            # torchaudio.save('test.wav', X[self.samplesPerClass*i+3], 8000)
 
         return [X, Y]
 

@@ -1,4 +1,4 @@
-import glob
+cheimport glob
 import os
 from configparser import ConfigParser
 from datetime import datetime
@@ -32,18 +32,35 @@ augmentations = aug.Compose(
 
 augmentations = None
 
-
+def create_data():
+    pass
 
 if __name__ == '__main__':
     config = ConfigParser()
     config.read('config.ini')
 
+    lr = float(config['model']['learning_rate'])
+    epochs = int(config['model']['num_epochs'])
+    decay = float(config['model']['weight_decay'])
+    bsize = int(config['data']['batch_size'])
+    workers = int(config['model']['num_workers'])
+    num_merge = int(config['augmentations']['num_merge'])
+    percent=float(config['data']['train_percent'])
+    nfft = int(config['data']['n_fft'])
+    load_pretrained = bool(config['model']['load_pretrained'])
+    title = config['model']['title'] if config['model'][
+        'title'] else datetime.now().strftime("%Y-%m-%d,%H-%M-%S")
+    log_graph = bool(config['logger']['log_graph'])
+    checkpoint_interval = int(config['model']['checkpoint'])
+    class_size = int(config['data']['class_size'])
+    dropout = float(config['model']['dropout'])
+
     utils.clearUselesslogs(minFiles=3)
 
-    num_merge = int(config['augmentations']['num_merge'])
+    
 
     audio_train_paths, audio_val_paths = utils.getAudioPaths(
-        trainPath, percent=float(config['data']['train_percent']))
+        trainPath, percent)
 
     # create dataset with transforms (as required)
     audio_train_dataset = AudioDataset(
@@ -57,8 +74,7 @@ if __name__ == '__main__':
 
     print(f'Validation dataset Length: {len(audio_val_dataset)}')
 
-    bsize = int(config['data']['batch_size'])
-    workers = int(config['model']['num_workers'])
+    
 
     # create dataloader for model
     train_dataloader = DataLoader(
@@ -84,52 +100,42 @@ if __name__ == '__main__':
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(device)
 
-    if config['model'].getboolean('load_pretrained'):
+    if load_pretrained:
         model, _, modelEpoch = machineLearning.selectTrainedModel()
         startEpoch = modelEpoch if startEpoch == 0 else startEpoch
     else:
         model = machineLearning.selectModel()
-        model = model(int(config['data']['n_fft']),
-                      augmentations, outputClasses=num_merge+1).to(device)
+        model = model(nfft, augmentations, outputClasses=num_merge+1).to(device)
 
     model.eval()
-    lr = float(config['model']['learning_rate'])
-    epochs = int(config['model']['num_epochs'])
-    decay = float(config['model']['weight_decay'])
+    
 
     lossFn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr, weight_decay=decay)
     # optimizer = torch.optim.SGD(model.parameters(), lr, 1, weight_decay=decay)
 
-    title = config['model']['title'] if config['model'][
-        'title'] else datetime.now().strftime("%Y-%m-%d,%H-%M-%S")
+    
     logTitle, modelIndex = utils.uniquify(f'./logs/{title}', True)
-    # TensorBoard logging (as required)
-    if config['logger'].getboolean('master_logger'):
-        writer = SummaryWriter(logTitle)
-        if config['logger'].getboolean('log_graph'):
-            data = next(iter(val_dataloader))[0].to(device)
-            model(data)  # to initialise lazy params
-            writer.add_graph(model, data)
-        writer.close()
-    else:
-        for i in config['logger']:
-            config['logger'][i] = 'false'
+    
+    writer = SummaryWriter(logTitle)
+
+    if log_graph:
+        data = next(iter(val_dataloader))[0].to(device)
+        model(data)
+        writer.add_graph(model, data)
+
+    writer.close()
 
     testModel.predictFolder(model, device, 'E:/Processed Audio/test',
                             f'records/{title}({modelIndex})_epoch0')
 
-    # scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-    #     optimizer, patience=2, verbose=True)
-
-    #  train model
     for epoch in range(startEpoch + 1, epochs + 1):
         print(f'Epoch {epoch}/{epochs}\n-------------------------------')
         if epoch == 1:
             start = datetime.now()
         train_loss, train_accuracy = machineLearning.train(
             model, train_dataloader, lossFn, optimizer, device)
-        if config['model'].getboolean('save_model_checkpoint') and epoch % int(config['model']['checkpoint']) == 0:
+        if epoch % checkpoint_interval == 0:
             torch.save(model, utils.uniquify(
                 f'saved_model/{title} ({modelIndex})_epoch{epoch}.pt'))
             test_acc, _ = testModel.predictFolder(
@@ -138,17 +144,15 @@ if __name__ == '__main__':
         val_loss, val_accuracy, _ = machineLearning.eval(
             model, val_dataloader, lossFn, device)
 
-        if config['logger'].getboolean('log_model_params'):
-            if epoch % int(config['model']['checkpoint']) == 0:
-                writer.add_hparams(
-                    {'Learning Rate': lr, 'Batch Size': bsize, 'class_size': int(config['data']['class_size']),
-                     'Epochs': epoch, 'Weight Decay': decay, 'Dropout': float(
-                        config['model']['dropout'])},
-                    {'Accuracy': val_accuracy, 'Loss': val_loss, 'Test Accuracy': test_acc})
-            else:
-                machineLearning.tensorBoardLogging(writer, train_loss,
-                                                   train_accuracy, val_loss,
-                                                   val_accuracy, epoch)
+        if epoch % checkpoint_interval == 0:
+            writer.add_hparams(
+                {'Learning Rate': lr, 'Batch Size': bsize, 'class_size': class_size,
+                 'Epochs': epoch, 'Weight Decay': decay, 'Dropout': dropout},
+                {'Accuracy': val_accuracy, 'Loss': val_loss, 'Test Accuracy': test_acc})
+
+        machineLearning.tensorBoardLogging(writer, train_loss,
+                                           train_accuracy, val_loss,
+                                           val_accuracy, epoch)
 
         print(
             f'\nTraining    | Loss: {train_loss} Accuracy: {train_accuracy}%')
@@ -164,9 +168,10 @@ if __name__ == '__main__':
     test_acc, _ = testModel.predictFolder(
         model, device, 'E:/Processed Audio/test', f'records/{title}({modelIndex})_epoch{epoch}_acc({val_accuracy})')
 
-    if config['logger'].getboolean('log_model_params') and epoch % int(config['model']['checkpoint']) != 0:
-        writer.add_hparams({'Learning Rate': lr, 'Batch Size': bsize, 'class_size': int(config['data']['class_size']),
-                            'Epochs': int(epoch), 'Weight Decay': decay, 'Dropout': float(Jconfig['model']['dropout'])}, {'Accuracy': val_accuracy, 'Loss': val_loss, 'Test Accuracy': test_acc})
+    if epoch % checkpoint_interval != 0:
+        writer.add_hparams({'Learning Rate': lr, 'Batch Size': bsize, 'class_size': class_size,
+                            'Epochs': int(epoch), 'Weight Decay': decay, 'Dropout': dropout}, 
+                            {'Accuracy': val_accuracy, 'Loss': val_loss, 'Test Accuracy': test_acc})
 
     # delete models starting with title variable using glob
     for file in glob.glob(f'saved_model/{title} ({modelIndex})*'):
