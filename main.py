@@ -1,4 +1,4 @@
-cheimport glob
+import glob
 import os
 from configparser import ConfigParser
 from datetime import datetime
@@ -32,8 +32,53 @@ augmentations = aug.Compose(
 
 augmentations = None
 
-def create_data():
-    pass
+
+def create_data(audio_path, train_test_split, num_merge, batch_size, workers):
+    audio_train_paths, audio_val_paths = utils.getAudioPaths(audio_path, train_test_split)
+
+    audio_train_dataset = AudioDataset(
+        audio_train_paths, outputAudio=True, isTraining=True, num_merge=num_merge)
+    audio_val_dataset = AudioDataset(
+        audio_val_paths, outputAudio=True, isTraining=False, num_merge=num_merge)
+
+
+    train_dataloader = DataLoader(
+        audio_train_dataset,
+        batch_size=batch_size,
+        num_workers=workers,
+        shuffle=True,
+        pin_memory=True,
+        collate_fn=collate_batch,
+        persistent_workers=True
+    )
+
+    val_dataloader = DataLoader(
+        audio_val_dataset,
+        batch_size=batch_size,
+        num_workers=int(workers / 2),
+        shuffle=False,
+        pin_memory=True,
+        collate_fn=collate_batch,
+        persistent_workers=True
+    )
+
+    return train_dataloader, val_dataloader
+
+
+def initiateModel(load_pretrained, nfft, augmentations, num_merge):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(device)
+
+    if load_pretrained:
+        model, _, modelEpoch = machineLearning.selectTrainedModel()
+        startEpoch = modelEpoch if startEpoch == 0 else startEpoch
+    else:
+        model = machineLearning.selectModel()
+        model = model(nfft, augmentations, outputClasses=num_merge + 1).to(device)
+
+    model.eval()
+
+    return model, device
 
 if __name__ == '__main__':
     config = ConfigParser()
@@ -45,78 +90,23 @@ if __name__ == '__main__':
     bsize = int(config['data']['batch_size'])
     workers = int(config['model']['num_workers'])
     num_merge = int(config['augmentations']['num_merge'])
-    percent=float(config['data']['train_percent'])
+    percent = float(config['data']['train_percent'])
     nfft = int(config['data']['n_fft'])
-    load_pretrained = bool(config['model']['load_pretrained'])
+    load_pretrained = config['model'].getboolean('load_pretrained')
     title = config['model']['title'] if config['model'][
         'title'] else datetime.now().strftime("%Y-%m-%d,%H-%M-%S")
-    log_graph = bool(config['logger']['log_graph'])
+    log_graph = config['logger'].getboolean('log_graph')
     checkpoint_interval = int(config['model']['checkpoint'])
     class_size = int(config['data']['class_size'])
     dropout = float(config['model']['dropout'])
 
     utils.clearUselesslogs(minFiles=3)
 
-    
+    train_dataloader, val_dataloader = create_data(trainPath, percent, num_merge, bsize, workers)
+    model, device = initiateModel(load_pretrained, nfft, augmentations, num_merge)
 
-    audio_train_paths, audio_val_paths = utils.getAudioPaths(
-        trainPath, percent)
-
-    # create dataset with transforms (as required)
-    audio_train_dataset = AudioDataset(
-        audio_train_paths, outputAudio=True, isTraining=True, num_merge=num_merge)
-    audio_val_dataset = AudioDataset(
-        audio_val_paths, outputAudio=True, isTraining=False, num_merge=num_merge)
-
-    print(
-        f'Train dataset Length: {len(audio_train_dataset)} ({len(audio_train_paths[0])} before augmentation)'
-    )
-
-    print(f'Validation dataset Length: {len(audio_val_dataset)}')
-
-    
-
-    # create dataloader for model
-    train_dataloader = DataLoader(
-        audio_train_dataset,
-        batch_size=bsize,
-        num_workers=workers,
-        shuffle=True,
-        pin_memory=True,
-        collate_fn=collate_batch,
-        persistent_workers=True
-    )
-
-    val_dataloader = DataLoader(
-        audio_val_dataset,
-        batch_size=bsize,
-        num_workers=int(workers / 2),
-        shuffle=False,
-        pin_memory=True,
-        collate_fn=collate_batch,
-        persistent_workers=True
-    )
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(device)
-
-    if load_pretrained:
-        model, _, modelEpoch = machineLearning.selectTrainedModel()
-        startEpoch = modelEpoch if startEpoch == 0 else startEpoch
-    else:
-        model = machineLearning.selectModel()
-        model = model(nfft, augmentations, outputClasses=num_merge+1).to(device)
-
-    model.eval()
-    
-
-    lossFn = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.AdamW(model.parameters(), lr, weight_decay=decay)
-    # optimizer = torch.optim.SGD(model.parameters(), lr, 1, weight_decay=decay)
-
-    
     logTitle, modelIndex = utils.uniquify(f'./logs/{title}', True)
-    
+
     writer = SummaryWriter(logTitle)
 
     if log_graph:
@@ -128,6 +118,9 @@ if __name__ == '__main__':
 
     testModel.predictFolder(model, device, 'E:/Processed Audio/test',
                             f'records/{title}({modelIndex})_epoch0')
+
+    lossFn = torch.nn.CrossEntropyLoss()
+    optimizer = torch.optim.AdamW(model.parameters(), lr, weight_decay=decay)
 
     for epoch in range(startEpoch + 1, epochs + 1):
         print(f'Epoch {epoch}/{epochs}\n-------------------------------')
@@ -170,8 +163,8 @@ if __name__ == '__main__':
 
     if epoch % checkpoint_interval != 0:
         writer.add_hparams({'Learning Rate': lr, 'Batch Size': bsize, 'class_size': class_size,
-                            'Epochs': int(epoch), 'Weight Decay': decay, 'Dropout': dropout}, 
-                            {'Accuracy': val_accuracy, 'Loss': val_loss, 'Test Accuracy': test_acc})
+                            'Epochs': int(epoch), 'Weight Decay': decay, 'Dropout': dropout},
+                           {'Accuracy': val_accuracy, 'Loss': val_loss, 'Test Accuracy': test_acc})
 
     # delete models starting with title variable using glob
     for file in glob.glob(f'saved_model/{title} ({modelIndex})*'):
