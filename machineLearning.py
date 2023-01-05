@@ -98,7 +98,7 @@ def train(model, dataloader, cost, optimizer, device):
 def eval(model, dataloader, cost, device):
     model.eval()
     acc_metric = torchmetrics.Accuracy().to(device)
-    num_classes = model(next(iter(dataloader))[0].to(device)).shape[1]
+    num_classes = model(next(iter(dataloader))[0].to(device))[0].shape[1]
     confusion_matrix = torchmetrics.classification.MulticlassConfusionMatrix(
         num_classes).to(device)
     matrix = torch.zeros([num_classes, num_classes], device=device)

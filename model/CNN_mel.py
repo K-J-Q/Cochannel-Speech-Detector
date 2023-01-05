@@ -95,7 +95,11 @@ class CNNNetwork_mel(nn.Module):
         x = x.view(x.shape[0], -1)
         x = self.bn1(F.elu(self.fc1(x)))
         x = self.fc2(x)
-        return x if self.training else x, spec
+        
+        if self.training:
+            return x
+            
+        return x, spec
 
 def testModel():
     for nfft in [128, 256, 512]:
