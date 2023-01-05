@@ -13,6 +13,7 @@ import machineLearning
 import testModel
 from loader.AudioDataset import AudioDataset, collate_batch
 import torchaudio
+import optuna
 
 testPath = './data/omni mic/real'
 trainPath = 'E:/Processed Audio/train' if os.name == 'nt' else '/media/jianquan/Data/Processed Audio/train/'
@@ -29,7 +30,9 @@ augmentations = aug.Compose(
     ]
 )
 
-# augmentations = None
+augmentations = None
+
+
 
 if __name__ == '__main__':
     config = ConfigParser()
