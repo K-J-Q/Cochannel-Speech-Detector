@@ -33,13 +33,13 @@ augmentations = aug.Compose(
 augmentations = None
 
 
-def create_data(audio_path, train_test_split, num_merge, batch_size, workers):
+def create_data(audio_path, train_test_split, num_merge, batch_size, workers, addNoise, gainDiv):
     audio_train_paths, audio_val_paths = utils.getAudioPaths(audio_path, train_test_split)
 
     audio_train_dataset = AudioDataset(
-        audio_train_paths, outputAudio=True, isTraining=True, num_merge=num_merge)
+        audio_train_paths, outputAudio=True, isTraining=True, num_merge=num_merge, add_noise=addNoise, gain_div=gainDiv)
     audio_val_dataset = AudioDataset(
-        audio_val_paths, outputAudio=True, isTraining=False, num_merge=num_merge)
+        audio_val_paths, outputAudio=True, isTraining=False, num_merge=num_merge, add_noise=addNoise, gain_div=gainDiv)
 
 
     train_dataloader = DataLoader(
@@ -65,20 +65,20 @@ def create_data(audio_path, train_test_split, num_merge, batch_size, workers):
     return train_dataloader, val_dataloader
 
 
-def initiateModel(load_pretrained, nfft, augmentations, num_merge):
+def initiateModel(load_pretrained, nfft=None, augmentations=None, num_merge=None, dropout=None, normParam=None):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(device)
+
 
     if load_pretrained:
         model, _, modelEpoch = machineLearning.selectTrainedModel()
-        startEpoch = modelEpoch if startEpoch == 0 else startEpoch
+        startEpoch = modelEpoch
     else:
         model = machineLearning.selectModel()
-        model = model(nfft, augmentations, outputClasses=num_merge + 1).to(device)
+        model = model(nfft, augmentations, num_merge + 1, dropout, normParam).to(device)
 
     model.eval()
 
-    return model, device
+    return model, device, startEpoch
 
 if __name__ == '__main__':
     config = ConfigParser()
@@ -103,7 +103,7 @@ if __name__ == '__main__':
     utils.clearUselesslogs(minFiles=3)
 
     train_dataloader, val_dataloader = create_data(trainPath, percent, num_merge, bsize, workers)
-    model, device = initiateModel(load_pretrained, nfft, augmentations, num_merge)
+    model, device, startEpoch = initiateModel(load_pretrained, nfft, augmentations, num_merge, dropout, 8)
 
     logTitle, modelIndex = utils.uniquify(f'./logs/{title}', True)
 
@@ -147,8 +147,7 @@ if __name__ == '__main__':
                                            train_accuracy, val_loss,
                                            val_accuracy, epoch)
 
-        print(
-            f'\nTraining    | Loss: {train_loss} Accuracy: {train_accuracy}%')
+        print(f'\nTraining    | Loss: {train_loss} Accuracy: {train_accuracy}%')
         print(f'Validating  | Loss: {val_loss} Accuracy: {val_accuracy}% \n')
 
         if epoch == 1:

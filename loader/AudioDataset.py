@@ -20,8 +20,6 @@ class Augmentor():
     audio_duration = int(config['augmentations']['duration'])
     audio_channels = int(config['augmentations']['num_channels'])
     audio_sampling = int(config['augmentations']['sample_rate'])
-    noise_multiplier = float(config['augmentations']
-                             ['pad_trunc_noise_multiplier'])
 
     def __init__(self):
         pass
@@ -41,16 +39,15 @@ class Augmentor():
             sig = sig[:, start_len:start_len + target_len]
             assert (sig.shape[1] == target_len)
 
-        elif (sig_len < target_len and not reduce_only):
+        elif sig_len < target_len and not reduce_only:
             # Length of padding to add at the beginning and end of the signal
             pad_begin_len = random.randint(0, target_len - sig_len)
             pad_end_len = target_len - sig_len - pad_begin_len
 
-            pad_begin = torch.rand(
-                (num_rows, pad_begin_len)) * self.noise_multiplier
-            pad_end = torch.rand((num_rows, pad_end_len)) * self.noise_multiplier
+            pad_begin = torch.zeros((num_rows, pad_begin_len))
+            pad_end = torch.zeros((num_rows, pad_end_len))
             sig = torch.cat((pad_begin, sig, pad_end), 1)
-        return (sig, sr)
+        return sig, sr
 
     def rechannel(self, aud, showWarning=True):
         sig, sr = aud
@@ -85,11 +82,10 @@ n_fft = int(config['data']['n_fft'])
 
 # TODO: Remove outputAudio from AudioDataset (deprecated)
 
-class AudioDataset(Dataset):    
+class AudioDataset(Dataset):
     class_size = int(config['data']['class_size'])
     windowLength = int(config['augmentations']['duration']) / 1000
 
-    augment = Compose([RoomSimulator()])
     add_noise = float(config['augmentations']['augment_noise'])
     gain_div = float(config['augmentations']['gain_div'])
 
@@ -97,12 +93,14 @@ class AudioDataset(Dataset):
                  audio_paths,
                  outputAudio,
                  isTraining,
-                 num_merge = 2):
+                 add_noise=0,
+                 gain_div=0,
+                 num_merge=2):
 
         self.isTraining = isTraining
         if not isTraining:
             self.class_size = 25
-            
+
         self.env_paths, self.speech_paths = audio_paths
 
         self.Augmentor = Augmentor()
@@ -111,6 +109,9 @@ class AudioDataset(Dataset):
         self.outputAudio = outputAudio
         self.dataShape = torch.Size([1, int(self.windowLength * 8000)])
         self.sampleLength = int(self.windowLength * 8000)
+        self.add_noise = add_noise
+        self.gain_div = gain_div
+
 
     def __len__(self):
         return min(len(self.env_paths), len(self.speech_paths))
@@ -121,7 +122,7 @@ class AudioDataset(Dataset):
         speech2_aud = self.__getAudio(self.speech_paths[random.randint(0, self.__len__()) - 1])
         if self.samplesPerClass == 4:
             speech3_aud = self.__getAudio(self.speech_paths[random.randint(0, self.__len__()) - 1])
-        
+
         X = torch.empty(
             [self.class_size * self.samplesPerClass] + list(self.dataShape))
         Y = torch.tensor(list(range(self.samplesPerClass))).repeat(self.class_size)
@@ -153,12 +154,12 @@ class AudioDataset(Dataset):
                 wav = wav + gain * noise
             if 'reverb' in augments:
                 wav = torchaudio.sox_effects.apply_effects_tensor(wav, sample_rate=sampleRate,
-                                                                effects=[["reverb", "70"], ['channels', '1']])[0]
+                                                                  effects=[["reverb", "70"], ['channels', '1']])[0]
         return wav
 
     def __removeDC(self, wav):
         return wav - wav.mean()
-    
+
     def __normaliseAudio(self, wav):
         wav /= torch.max(torch.abs(wav))
         return wav
@@ -168,7 +169,6 @@ class AudioDataset(Dataset):
         start_idx = random.randint(0, len(wav[0]) - self.sampleLength)
         audio = wav[:, start_idx: start_idx + self.sampleLength]
         return audio
-
 
     def __merge_audio(self, *auds):
         merged_aud = torch.zeros(auds[0].shape)
@@ -211,7 +211,7 @@ def main():
 
     audio_path = utils.getAudioPaths(
         'E:/Processed Audio/train/' if os.name == 'nt' else '/media/jianquan/Data/Processed Audio/train/')[0]
-    
+
     dataset = AudioDataset(audio_path, outputAudio=True, isTraining=True)
 
     dataloader = DataLoader(

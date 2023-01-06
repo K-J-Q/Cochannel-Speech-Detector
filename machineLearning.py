@@ -8,13 +8,6 @@ import torch
 import torchmetrics
 from tqdm import tqdm
 
-config = ConfigParser()
-config.read('config.ini')
-
-batch_size = int((config['data']['batch_size']))
-num_classes = int(config['augmentations']['num_merge']) +1
-
-
 def selectModel():
     model_class = None
     files = os.listdir('model')
@@ -86,7 +79,7 @@ def train(model, dataloader, cost, optimizer, device):
         train_loss += batch_loss.item()
         train_accuracy += batch_accuracy.item()
         if percentParam and batch % percentParam == 0:
-            print(f" Loss (per sample): {batch_loss.item() / batch_size}  Accuracy: {batch_accuracy * 100}%")
+            print(f" Loss (per sample): {batch_loss.item() / len(Y)}  Accuracy: {batch_accuracy * 100}%")
         # prof.step()
 
     train_loss /= train_size
