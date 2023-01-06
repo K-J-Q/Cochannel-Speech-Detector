@@ -39,9 +39,6 @@ def objective(trial):
 
         if trial.should_prune():
             raise optuna.exceptions.TrialPruned()
-
-    torch.save(model, utils.uniquify(f'saved_model/optunaTest_epoch{epoch}.pt'))
-
     return val_accuracy
 
 
