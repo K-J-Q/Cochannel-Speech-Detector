@@ -28,7 +28,7 @@ class CNNNetwork_mel(nn.Module):
         self.conv4 = nn.Conv2d(128, 256, 3, stride=1)
         self.conv5 = nn.Conv2d(256, 512, 3, stride=1)
         self.conv6 = nn.Conv2d(512, 1024, 3, stride=1)
-        self.conv7 = nn.Conv2d(512, 1024, 3, stride=1)
+        self.conv7 = nn.Conv2d(1024, 2048, 3, stride=1)
         self.pool1 = nn.MaxPool2d(2, stride=2)
         self.convDropout = nn.Dropout2d(dropout)
         self.bn1 = nn.BatchNorm1d(120)

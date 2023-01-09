@@ -34,7 +34,6 @@ def objective(trial):
 
         print(f'\nTraining    | Loss: {train_loss} Accuracy: {train_accuracy}%')
         print(f'Validating  | Loss: {val_loss} Accuracy: {val_accuracy}% \n')
-
         trial.report(val_accuracy, epoch)
 
         if trial.should_prune():
@@ -46,15 +45,15 @@ if __name__ == '__main__':
     NAME = '2 classes'
 
     lr = 0.001
-    epochs = 1
+    epochs = 10
     workers = 6
     percent = 0.8
     num_merge = 2
-    bsize = 4
-    class_size = 1
+    bsize = 2
+    class_size = 100
 
     study = optuna.create_study(study_name=NAME, direction="maximize")
-    study.optimize(objective, n_trials=10, timeout=600)
+    study.optimize(objective, n_trials=100)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
