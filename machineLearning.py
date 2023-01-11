@@ -54,19 +54,15 @@ def selectTrainedModel(setCPU=False, modelIndex=None):
         return model, device, epoch
 
 
-def train(model, dataloader, cost, optimizer, device):
+def train(model, dataloader, cost, optimizer, device, showProgress=True):
     acc_metric = torchmetrics.Accuracy().to(device)
     total_batch = len(dataloader)
     train_loss, train_accuracy = 0, 0
     train_size = len(dataloader.dataset)
     model.train()
     percentParam = int(total_batch / 10)
-    # with profile(on_trace_ready=torch.profiler.tensorboard_trace_handler(
-    #     './logs/traces'), 
-    #     record_shapes=True,
-    #     profile_memory=True) as prof:
 
-    for batch, (X, Y) in tqdm(enumerate(dataloader), unit='batch', total=total_batch):
+    for batch, (X, Y) in tqdm(enumerate(dataloader), unit='batch', total=total_batch, disable=not showProgress):
         X, Y = X.to(device, non_blocking=True), Y.to(device, non_blocking=True)
         optimizer.zero_grad()
         pred = model(X)
@@ -78,7 +74,7 @@ def train(model, dataloader, cost, optimizer, device):
         optimizer.step()
         train_loss += batch_loss.item()
         train_accuracy += batch_accuracy.item()
-        if percentParam and batch % percentParam == 0:
+        if showProgress and percentParam and batch % percentParam == 0:
             print(f" Loss (per sample): {batch_loss.item() / len(Y)}  Accuracy: {batch_accuracy * 100}%")
         # prof.step()
 
@@ -88,7 +84,7 @@ def train(model, dataloader, cost, optimizer, device):
     return (train_loss, train_accuracy)
 
 
-def eval(model, dataloader, cost, device):
+def eval(model, dataloader, cost, device, showProgress = True):
     model.eval()
     acc_metric = torchmetrics.Accuracy().to(device)
     num_classes = model(next(iter(dataloader))[0].to(device))[0].shape[1]
@@ -102,7 +98,7 @@ def eval(model, dataloader, cost, device):
     val_loss, val_accuracy = 0, 0    
 
     with torch.no_grad():
-        for batch, (X, Y) in tqdm(enumerate(dataloader), unit='batch', total=total_batch):
+        for batch, (X, Y) in tqdm(enumerate(dataloader), unit='batch', total=total_batch, disable=not showProgress):
             X, Y = X.to(device), Y.to(device)
             pred = model(X)
             if type(pred) == tuple:

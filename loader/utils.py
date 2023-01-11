@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 import shutil
 import importlib
@@ -57,6 +58,15 @@ def removeHparams():
 
     if deletedCount:
         print(f'{deletedCount} folders deleted')
+
+class HiddenPrints:
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        sys.stdout = open(os.devnull, 'w')
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout.close()
+        sys.stdout = self._original_stdout
 
 if __name__ == "__main__":
     pass

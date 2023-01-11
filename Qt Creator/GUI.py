@@ -56,8 +56,6 @@ class Worker(QThread):
             pred, spec = self.model(torch.unsqueeze(wav, dim=0).to(self.device))
 
             pred = self.sm(pred)
-            pred = torch.round(pred[0])
-            
             spec = spec.reshape(spec.shape[-2:])
             
             self.updatePrediction.emit(pred, spec)
@@ -79,7 +77,7 @@ class PredWindow(QWidget):
         self.setLayout(layout)
 
 class MainWindow(QMainWindow):
-    historyLength= 10
+    historyLength = 10
 
     class SpectrogramShape:
         def __init__(self, width:int, height:int):
@@ -117,7 +115,8 @@ class MainWindow(QMainWindow):
         
         # Spectrogram Graph
         self.model = self.model.cpu()
-        spectrogramShape = self.model(torch.rand([1, 1, 8000]))[1].shape[-2:]
+        spectrogramShape = self.model(torch.rand([1, 1, 8000 * windowLength]))[1].shape[-2:]
+        print(spectrogramShape)
         self.specShape = self.SpectrogramShape(height=spectrogramShape[0], width=spectrogramShape[1])
         self.specHistory = torch.zeros((self.specShape.height, self.specShape.width*10))
 
@@ -147,9 +146,9 @@ class MainWindow(QMainWindow):
     
     def updatePrediction(self, predictions, spectrogram):
         argmax = predictions.argmax().item()
-        self.ui.class0.setText(f"{predictions[0]}")
-        self.ui.class1.setText(f"{predictions[1]}")
-        self.ui.class2.setText(f"{predictions[2]}")        
+        self.ui.class0.setText(f"{round(predictions[0][0].item(), 2)}")
+        self.ui.class1.setText(f"{round(predictions[0][1].item(), 2)}")
+        self.ui.class2.setText(f"{round(predictions[0][2].item(), 2)}")        
         self.predHistory.append(argmax)
         self.appendSpectralData(spectrogram)
         self.ui.model_output.setText(f"{argmax}")
@@ -178,6 +177,7 @@ class MainWindow(QMainWindow):
         
         spec = ImageItem(self.specHistory.T.numpy())
         spec.setColorMap('viridis')
+
         self.specGraph.clear()
         self.specGraph.addItem(spec)
 

@@ -12,10 +12,8 @@ import loader.utils as utils
 import machineLearning
 import testModel
 from loader.AudioDataset import AudioDataset, collate_batch
-import torchaudio
-import optuna
 
-testPath = './data/omni mic/real'
+testPath = 'E:/Processed Audio/test'
 trainPath = 'E:/Processed Audio/train' if os.name == 'nt' else '/media/jianquan/Data/Processed Audio/train/'
 
 startEpoch = 0
@@ -23,7 +21,7 @@ startEpoch = 0
 augmentations = aug.Compose(
     transforms=[
         # aug.TimeInversion(),
-        # torchaudio.transforms.PitchShift(8000, 2)
+        # torchaudio.transforms.PitchShift4(8000, 2)
         # aug.AddColoredNoise(p=1, min_snr_in_db=0, max_snr_in_db=5),
         # aug.ApplyImpulseResponse(ir_paths='E:/Processed Audio/IR'),
         # aug.AddBackgroundNoise(p=1, background_paths='E:/Processed Audio/backgroundNoise', min_snr_in_db=-3,max_snr_in_db=0)
@@ -35,12 +33,10 @@ augmentations = None
 
 def create_data(audio_path, train_test_split, num_merge, batch_size, workers, addNoise, gainDiv):
     audio_train_paths, audio_val_paths = utils.getAudioPaths(audio_path, train_test_split)
-
     audio_train_dataset = AudioDataset(
         audio_train_paths, outputAudio=True, isTraining=True, num_merge=num_merge, add_noise=addNoise, gain_div=gainDiv)
     audio_val_dataset = AudioDataset(
-        audio_val_paths, outputAudio=True, isTraining=False, num_merge=num_merge, add_noise=addNoise, gain_div=gainDiv)
-
+        audio_val_paths, outputAudio=True, isTraining=False, num_merge=num_merge, add_noise=addNoise, gain_div=0.2)
 
     train_dataloader = DataLoader(
         audio_train_dataset,
@@ -68,13 +64,13 @@ def create_data(audio_path, train_test_split, num_merge, batch_size, workers, ad
 def initiateModel(load_pretrained, nfft=None, augmentations=None, num_merge=None, dropout=None, normParam=None):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
     if load_pretrained:
         model, _, modelEpoch = machineLearning.selectTrainedModel()
         startEpoch = modelEpoch
     else:
         model = machineLearning.selectModel()
         model = model(nfft, augmentations, num_merge + 1, dropout, normParam).to(device)
+        startEpoch = 0
 
     model.eval()
 
@@ -99,11 +95,14 @@ if __name__ == '__main__':
     checkpoint_interval = int(config['model']['checkpoint'])
     class_size = int(config['data']['class_size'])
     dropout = float(config['model']['dropout'])
+    augment_noise = float(config['augmentations']['augment_noise'])
+    gain_div = float(config['augmentations']['gain_div'])
+
 
     utils.clearUselesslogs(minFiles=3)
 
-    train_dataloader, val_dataloader = create_data(trainPath, percent, num_merge, bsize, workers)
-    model, device, startEpoch = initiateModel(load_pretrained, nfft, augmentations, num_merge, dropout, 8)
+    train_dataloader, val_dataloader = create_data(trainPath, percent, num_merge, bsize, workers, augment_noise, gain_div)
+    model, device, startEpoch = initiateModel(load_pretrained, nfft, augmentations, num_merge, dropout, 9)
 
     logTitle, modelIndex = utils.uniquify(f'./logs/{title}', True)
 
@@ -116,7 +115,7 @@ if __name__ == '__main__':
 
     writer.close()
 
-    testModel.predictFolder(model, device, 'E:/Processed Audio/test',
+    testModel.predictFolder(model, device, testPath,
                             f'records/{title}({modelIndex})_epoch0')
 
     lossFn = torch.nn.CrossEntropyLoss()
@@ -132,7 +131,7 @@ if __name__ == '__main__':
             torch.save(model, utils.uniquify(
                 f'saved_model/{title} ({modelIndex})_epoch{epoch}.pt'))
             test_acc, _ = testModel.predictFolder(
-                model, device, 'E:/Processed Audio/test', f'records/{title}({modelIndex})_epoch{epoch}')
+                model, device, testPath,f'records/{title}({modelIndex})_epoch{epoch}')
 
         val_loss, val_accuracy, _ = machineLearning.eval(
             model, val_dataloader, lossFn, device)
@@ -158,7 +157,7 @@ if __name__ == '__main__':
         # scheduler.step(val_loss)
 
     test_acc, _ = testModel.predictFolder(
-        model, device, 'E:/Processed Audio/test', f'records/{title}({modelIndex})_epoch{epoch}_acc({val_accuracy})')
+        model, device, testPath, f'records/{title}({modelIndex})_epoch{epoch}_acc({val_accuracy})')
 
     if epoch % checkpoint_interval != 0:
         writer.add_hparams({'Learning Rate': lr, 'Batch Size': bsize, 'class_size': class_size,

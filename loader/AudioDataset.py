@@ -80,8 +80,6 @@ class Augmentor():
 n_fft = int(config['data']['n_fft'])
 
 
-# TODO: Remove outputAudio from AudioDataset (deprecated)
-
 class AudioDataset(Dataset):
     class_size = int(config['data']['class_size'])
     windowLength = int(config['augmentations']['duration']) / 1000
@@ -173,6 +171,7 @@ class AudioDataset(Dataset):
     def __merge_audio(self, *auds):
         merged_aud = torch.zeros(auds[0].shape)
         for i, aud in enumerate(auds):
+            aud = self.__normaliseAudio(aud)
             gain = random.uniform(-self.gain_div, self.gain_div)
             # torchaudio.save(f'aud{i}.wav', self.__normaliseAudio(aud), 8000)
             merged_aud += self.__normaliseAudio(aud) * gain
