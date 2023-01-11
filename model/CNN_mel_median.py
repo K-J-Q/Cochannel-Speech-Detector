@@ -41,8 +41,6 @@ class CNNNetwork_mel_median(nn.Module):
         x = x/(x+10*median_val+1e-12)
         return x
 
-        # return
-
     def __audioNormalisation(self, wav):
         if isinstance(wav, torch.Tensor):
             wav = self.audioNorm.train()(wav)

@@ -70,18 +70,18 @@ if __name__ == '__main__':
     parser.add_argument('--name', type=str)
     parser.add_argument('--duration', type=int)
     parser.add_argument('--lr', type=float, default=0.001)
-    parser.add_argument('--epochs', type=int, default=10)
+    parser.add_argument('--epochs', type=int, default=1)
     parser.add_argument('--workers', type=int, default=6)
     parser.add_argument('--num_merge', type=int, default=2)
-    parser.add_argument('--bsize', type=int, default=2)
-    parser.add_argument('--class_size', type=int, default=100)
+    parser.add_argument('--bsize', type=int, default=10)
+    parser.add_argument('--class_size', type=int, default=10)
     args = parser.parse_args()
 
+    percent = 0.1
     NAME = args.name
     lr = args.lr
     epochs = args.epochs
     workers = args.workers
-    percent = 0.1
     num_merge = args.num_merge
     bsize = args.bsize
     class_size = args.class_size
