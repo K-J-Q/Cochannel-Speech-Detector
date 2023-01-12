@@ -9,12 +9,12 @@ import sys
 
 
 class CNNNetwork_mel_whisper(nn.Module):
-    def __init__(self, nfft, augmentations=None, outputClasses=3, dropout=0, normParam=8):
+    def __init__(self, nfft, augmentations=None, outputClasses=3, normParam=8):
         super(CNNNetwork_mel_whisper, self).__init__()
 
         self.audioNorm = aug.PeakNormalization(p=1)
         self.augmentor = augmentations
-        # make n_mels scale with nfft given that when nfft=512, n_mels=128
+
         self.generateSpec = torchaudio.transforms.MelSpectrogram(
             sample_rate=8000, n_fft=nfft, n_mels=int(nfft / 4))
 
@@ -40,7 +40,6 @@ class CNNNetwork_mel_whisper(nn.Module):
         self.convBN7 = nn.LazyBatchNorm2d()
 
         self.pool1 = nn.MaxPool2d(2, stride=2)
-        self.convDropout = nn.Dropout2d(dropout)
         self.bn1 = nn.BatchNorm1d(120)
         self.fc1 = nn.LazyLinear(out_features=120, bias=False)
         self.fc2 = nn.Linear(120, outputClasses, bias=False)
@@ -70,6 +69,7 @@ class CNNNetwork_mel_whisper(nn.Module):
         #     x.shape[0], 1, -1).median(2).values.view(x.shape[0], 1, 1, 1)
         # x = x/(x+10*median_val+1e-12)
         # return x
+
 
     def __audioNormalisation(self, wav):
         wav = self.audioNorm.train()(wav)
@@ -116,7 +116,7 @@ def testModel():
     for nfft in [128, 256, 512, 1024, 2048]:
         for duration in [1000]:
             print(f"nfft: {nfft}, duration: {duration}")
-            cnn = CNNNetwork_mel_whisper(nfft)
+            cnn = CNNNetwork_mel_median(nfft)
             sampleLength = int(8000*duration/1000)
             summary(cnn, (1, sampleLength), device="cpu")
 
@@ -130,7 +130,7 @@ if __name__ == "__main__":
     duration = int(config['augmentations']['duration'])
     sampleLength = int(8000*duration/1000)
 
-    cnn = CNNNetwork_mel_whisper(nfft)
+    cnn = CNNNetwork_mel(nfft)
 
     summary(cnn, (1, sampleLength), device="cpu")
     # print(cnn)

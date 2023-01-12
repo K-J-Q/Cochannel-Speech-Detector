@@ -31,12 +31,12 @@ augmentations = aug.Compose(
 augmentations = None
 
 
-def create_data(audio_path, train_test_split, num_merge, batch_size, workers, addNoise, gainDiv):
+def create_data(audio_path, train_test_split, num_merge, batch_size, workers, addNoise, gainDiv, mergePercentage):
     audio_train_paths, audio_val_paths = utils.getAudioPaths(audio_path, train_test_split)
     audio_train_dataset = AudioDataset(
-        audio_train_paths, outputAudio=True, isTraining=True, num_merge=num_merge, add_noise=addNoise, gain_div=gainDiv)
+        audio_train_paths, outputAudio=True, isTraining=True, num_merge=num_merge, add_noise=addNoise, gain_div=gainDiv, mergePercentage=mergePercentage)
     audio_val_dataset = AudioDataset(
-        audio_val_paths, outputAudio=True, isTraining=False, num_merge=num_merge, add_noise=addNoise, gain_div=0.2)
+        audio_val_paths, outputAudio=True, isTraining=False, num_merge=num_merge, add_noise=addNoise, gain_div=0.2, mergePercentage=(0.9, 1))
 
     train_dataloader = DataLoader(
         audio_train_dataset,
@@ -61,7 +61,7 @@ def create_data(audio_path, train_test_split, num_merge, batch_size, workers, ad
     return train_dataloader, val_dataloader
 
 
-def initiateModel(load_pretrained, nfft=None, augmentations=None, num_merge=None, dropout=None, normParam=None):
+def initiateModel(load_pretrained, nfft=None, augmentations=None, num_merge=None, normParam=None):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     if load_pretrained:
@@ -69,7 +69,7 @@ def initiateModel(load_pretrained, nfft=None, augmentations=None, num_merge=None
         startEpoch = modelEpoch
     else:
         model = machineLearning.selectModel()
-        model = model(nfft, augmentations, num_merge + 1, dropout, normParam).to(device)
+        model = model(nfft, augmentations, num_merge + 1, normParam).to(device)
         startEpoch = 0
 
     model.eval()
@@ -94,19 +94,19 @@ if __name__ == '__main__':
     log_graph = config['logger'].getboolean('log_graph')
     checkpoint_interval = int(config['model']['checkpoint'])
     class_size = int(config['data']['class_size'])
-    dropout = float(config['model']['dropout'])
     augment_noise = float(config['augmentations']['augment_noise'])
     gain_div = float(config['augmentations']['gain_div'])
-
 
     utils.clearUselesslogs(minFiles=3)
 
     train_dataloader, val_dataloader = create_data(trainPath, percent, num_merge, bsize, workers, augment_noise, gain_div)
-    model, device, startEpoch = initiateModel(load_pretrained, nfft, augmentations, num_merge, dropout, 9)
+    model, device, startEpoch = initiateModel(load_pretrained, nfft, augmentations, num_merge, 9)
 
     logTitle, modelIndex = utils.uniquify(f'./logs/{title}', True)
 
     writer = SummaryWriter(logTitle)
+
+    model.to(device)
 
     if log_graph:
         data = next(iter(val_dataloader))[0].to(device)
@@ -120,7 +120,7 @@ if __name__ == '__main__':
 
     lossFn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr, weight_decay=decay)
-
+    
     for epoch in range(startEpoch + 1, epochs + 1):
         print(f'Epoch {epoch}/{epochs}\n-------------------------------')
         if epoch == 1:
@@ -139,7 +139,7 @@ if __name__ == '__main__':
         if epoch % checkpoint_interval == 0:
             writer.add_hparams(
                 {'Learning Rate': lr, 'Batch Size': bsize, 'class_size': class_size,
-                 'Epochs': epoch, 'Weight Decay': decay, 'Dropout': dropout},
+                 'Epochs': epoch, 'Weight Decay': decay},
                 {'Accuracy': val_accuracy, 'Loss': val_loss, 'Test Accuracy': test_acc})
 
         machineLearning.tensorBoardLogging(writer, train_loss,
@@ -161,7 +161,7 @@ if __name__ == '__main__':
 
     if epoch % checkpoint_interval != 0:
         writer.add_hparams({'Learning Rate': lr, 'Batch Size': bsize, 'class_size': class_size,
-                            'Epochs': int(epoch), 'Weight Decay': decay, 'Dropout': dropout},
+                            'Epochs': int(epoch), 'Weight Decay': decay},
                            {'Accuracy': val_accuracy, 'Loss': val_loss, 'Test Accuracy': test_acc})
 
     # delete models starting with title variable using glob

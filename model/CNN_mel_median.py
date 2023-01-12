@@ -13,6 +13,7 @@ class CNNNetwork_mel_median(nn.Module):
 
         self.audioNorm = aug.PeakNormalization(p=1)
         self.augmentor = augmentations
+
         self.generateSpec = torchaudio.transforms.MelSpectrogram(sample_rate=8000, n_fft=nfft, n_mels=int(nfft / 4))
 
         self.normParam = normParam
@@ -20,25 +21,21 @@ class CNNNetwork_mel_median(nn.Module):
         # self.augmentSpec = nn.Sequential(torchaudio.transforms.FrequencyMasking(
         #     30, True), torchaudio.transforms.TimeMasking(20, True))
 
-        self.conv = [
-            nn.Conv2d(1, 32, 4, stride=2),
-            nn.Conv2d(32, 64, 3, stride=2),
-            nn.Conv2d(64, 128, 3, stride=2),
-            nn.Conv2d(128, 256, 3, stride=1),
-            nn.Conv2d(256, 512, 3, stride=1),
-            nn.Conv2d(512, 1024, 3, stride=1),
-            nn.Conv2d(1024, 2048, 3, stride=1),
-        ]
+        self.conv1 = nn.Conv2d(1, 32, 4, stride=2)
+        self.conv2 = nn.Conv2d(32, 64, 3, stride=2)
+        self.conv3 = nn.Conv2d(64, 128, 3, stride=2)
+        self.conv4 = nn.Conv2d(128, 256, 3, stride=1)
+        self.conv5 = nn.Conv2d(256, 512, 3, stride=1)
+        self.conv6 = nn.Conv2d(512, 1024, 3, stride=1)
+        self.conv7 = nn.Conv2d(1024, 2048, 3, stride=1)
 
-        self.convBN = [
-            nn.LazyBatchNorm2d(),
-            nn.LazyBatchNorm2d(),
-            nn.LazyBatchNorm2d(),
-            nn.LazyBatchNorm2d(),
-            nn.LazyBatchNorm2d(),
-            nn.LazyBatchNorm2d(),
-            nn.LazyBatchNorm2d(),
-        ]
+        self.convBN1 = nn.LazyBatchNorm2d()
+        self.convBN2 = nn.LazyBatchNorm2d()
+        self.convBN3 = nn.LazyBatchNorm2d()
+        self.convBN4 = nn.LazyBatchNorm2d()
+        self.convBN5 = nn.LazyBatchNorm2d()
+        self.convBN6 = nn.LazyBatchNorm2d()
+        self.convBN7 = nn.LazyBatchNorm2d()
 
         self.pool1 = nn.MaxPool2d(2, stride=2)
         self.bn1 = nn.BatchNorm1d(120)
@@ -66,11 +63,21 @@ class CNNNetwork_mel_median(nn.Module):
 
         # if self.training:
         #     x = self.augmentSpec(x)
-        
-        convLayer = 0
-        while x.shape[-1] >= 3 and x.shape[-2] >= 3:
-            x = self.convBN[convLayer](F.elu(self.conv[convLayer](x)))
-            convLayer+=1
+            
+        x = self.convBN1(F.elu(self.conv1(x)))
+
+        if x.shape[-1] >= 3 and x.shape[-2] >= 3:
+            x = self.convBN2(F.elu(self.conv2(x)))
+        if x.shape[-1] >= 3 and x.shape[-2] >= 3:
+            x = self.convBN3(F.elu(self.conv3(x)))
+        if x.shape[-1] >= 3 and x.shape[-2] >= 3:
+            x = self.convBN4(F.elu(self.conv4(x)))
+        if x.shape[-1] >= 3 and x.shape[-2] >= 3:
+            x = self.convBN5(F.elu(self.conv5(x)))
+        if x.shape[-1] >= 3 and x.shape[-2] >= 3:
+            x = self.convBN6(F.elu(self.conv6(x)))
+        if x.shape[-1] >= 3 and x.shape[-2] >= 3:
+            x = self.convBN7(F.elu(self.conv7(x)))
 
         x = x.view(x.shape[0], -1)
         x = self.bn1(F.elu(self.fc1(x)))
@@ -98,7 +105,7 @@ if __name__ == "__main__":
     duration = int(config['augmentations']['duration'])
     sampleLength = int(8000*duration/1000)
 
-    cnn = CNNNetwork_mel_median(nfft)
+    cnn = CNNNetwork_mel(nfft)
 
     summary(cnn, (1, sampleLength), device="cpu")
     # print(cnn)

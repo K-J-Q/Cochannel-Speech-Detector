@@ -15,32 +15,32 @@ from torch_audiomentations import Compose, Identity, PolarityInversion, BandPass
 def objective(trial):
     wd = trial.suggest_float('decay', 0.0001, 0.1, log=True)
     nfft = trial.suggest_int('nfft', 128, 1024, 128)
-    dropout = 0
     normMethod = trial.suggest_categorical('normMethod', ['whisper', 'median'])
     normParam = trial.suggest_int('whisperParam', 0, 20) if normMethod == 'whisper' else trial.suggest_float('medianParam', 0, 20)
     addNoise = trial.suggest_float('addNoise', 0.0001, 0.5, log=True)
     gainDiv = trial.suggest_float('gainDiv', 0.0001, 0.1, log=True)
     augmentParams = trial.suggest_categorical('augmentation', ['noAugmentation', 'timeInv'])
+    minOverlapPercentage = trial.suggest_float('overlapPercentage', 0.5 , 1)
 
     if augmentParams == 'timeInv':
         transform = [TimeInversion()]
 
     if augmentParams == "noAugmentation":
         augment = None
-
     else:
         augment = Compose(
             transforms=transform
         )
 
     train_dataloader, _ = main.create_data(
-        main.trainPath, percent, num_merge, bsize, workers, addNoise, gainDiv)
+        main.trainPath, percent, num_merge, bsize, workers, addNoise, gainDiv, (minOverlapPercentage, 1))
     val_dataloader, _ = main.create_data(
-        main.testPath, percent, num_merge, bsize, int(workers/2), addNoise, gainDiv)
+        main.testPath, percent, num_merge, bsize, int(workers/2), addNoise, gainDiv, (0.7,1))
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = CNNNetwork_mel_whisper(nfft, augment, outputClasses=num_merge + 1, dropout=dropout, normParam=normParam) if normMethod == 'whisper' else CNNNetwork_mel_median(
-        nfft, augment, outputClasses=num_merge + 1, dropout=dropout, normParam=normParam)
+    model = CNNNetwork_mel_whisper(nfft, augment, outputClasses=num_merge + 1,  normParam=normParam) if normMethod == 'whisper' else CNNNetwork_mel_median(
+        nfft, augment, outputClasses=num_merge + 1, normParam=normParam)
+
     model.to(device)
 
     lossFn = torch.nn.CrossEntropyLoss()
@@ -70,7 +70,7 @@ if __name__ == '__main__':
     parser.add_argument('--workers', type=int, default=6)
     parser.add_argument('--num_merge', type=int, default=2)
     parser.add_argument('--bsize', type=int, default=10)
-    parser.add_argument('--class_size', type=int, default=10)
+    parser.add_argument('--class_size', type=int, default=8)
     args = parser.parse_args()
 
     percent = 1

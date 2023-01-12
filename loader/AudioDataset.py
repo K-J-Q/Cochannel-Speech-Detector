@@ -93,7 +93,8 @@ class AudioDataset(Dataset):
                  isTraining,
                  add_noise=0,
                  gain_div=0,
-                 num_merge=2):
+                 num_merge=2,
+                 mergePercentage=(1, 1)):
 
         self.isTraining = isTraining
         if not isTraining:
@@ -110,6 +111,9 @@ class AudioDataset(Dataset):
         self.add_noise = add_noise
         self.gain_div = gain_div
 
+        self.mergePercentage = mergePercentage if mergePercentage[0] < mergePercentage[1] else None
+
+
 
     def __len__(self):
         return min(len(self.env_paths), len(self.speech_paths))
@@ -121,9 +125,9 @@ class AudioDataset(Dataset):
         if self.samplesPerClass == 4:
             speech3_aud = self.__getAudio(self.speech_paths[random.randint(0, self.__len__()) - 1])
 
-        X = torch.empty(
-            [self.class_size * self.samplesPerClass] + list(self.dataShape))
+        X = torch.empty([self.class_size * self.samplesPerClass] + list(self.dataShape))
         Y = torch.tensor(list(range(self.samplesPerClass))).repeat(self.class_size)
+
         for i in range(self.class_size):
             env = self.__split(speech0_aud)
             aud1 = self.__split(speech1_aud)
@@ -137,7 +141,7 @@ class AudioDataset(Dataset):
                 merged_aud = self.__merge_audio(aud1, aud2, aud3)
                 X[self.samplesPerClass * i + 3][0] = self.__augmentAudio(merged_aud)
 
-            torchaudio.save('test.wav', X[self.samplesPerClass*i+3], 8000)
+            # torchaudio.save('test.wav', X[self.samplesPerClass*i+3], 8000)
 
         return [X, Y]
 
@@ -170,10 +174,15 @@ class AudioDataset(Dataset):
 
     def __merge_audio(self, *auds):
         merged_aud = torch.zeros(auds[0].shape)
+        if self.mergePercentage is None:
+            audioLength = len(auds[0][0])
+        else:
+            audioLength = int(random.uniform(self.mergePercentage[0], self.mergePercentage[1])*len(auds[0][0]))
         for i, aud in enumerate(auds):
-            gain = random.uniform(-self.gain_div, self.gain_div)
+            gain = 1 - random.uniform(-self.gain_div, self.gain_div)
+            aud = aud[:, :audioLength] if i else aud
             # torchaudio.save(f'aud{i}.wav', self.__normaliseAudio(aud), 8000)
-            merged_aud += self.__normaliseAudio(aud) * (1 - gain)
+            merged_aud[:, -len(aud[0]):] += aud * gain
         # torchaudio.save('merged.wav', merged_aud, 8000)
         return merged_aud
 
