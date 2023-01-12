@@ -7,6 +7,7 @@ from configparser import ConfigParser
 import torchaudio
 import sys
 
+
 class CNNNetwork_mel_whisper(nn.Module):
     def __init__(self, nfft, augmentations=None, outputClasses=3, dropout=0, normParam=8):
         super(CNNNetwork_mel_whisper, self).__init__()
@@ -29,6 +30,15 @@ class CNNNetwork_mel_whisper(nn.Module):
         self.conv5 = nn.Conv2d(256, 512, 3, stride=1)
         self.conv6 = nn.Conv2d(512, 1024, 3, stride=1)
         self.conv7 = nn.Conv2d(1024, 2048, 3, stride=1)
+
+        self.convBN1 = nn.LazyBatchNorm2d()
+        self.convBN2 = nn.LazyBatchNorm2d()
+        self.convBN3 = nn.LazyBatchNorm2d()
+        self.convBN4 = nn.LazyBatchNorm2d()
+        self.convBN5 = nn.LazyBatchNorm2d()
+        self.convBN6 = nn.LazyBatchNorm2d()
+        self.convBN7 = nn.LazyBatchNorm2d()
+
         self.pool1 = nn.MaxPool2d(2, stride=2)
         self.convDropout = nn.Dropout2d(dropout)
         self.bn1 = nn.BatchNorm1d(120)
@@ -41,7 +51,7 @@ class CNNNetwork_mel_whisper(nn.Module):
         max_val = x.reshape(
             x.shape[0], -1).amax(1).view(x.shape[0], 1, 1, 1)
         x = torch.maximum(x, max_val - self.normParam)
-        return x    
+        return x
 
         # normalisation method 2: min 0, max 1
         # x = x.log10()
@@ -61,13 +71,10 @@ class CNNNetwork_mel_whisper(nn.Module):
         # x = x/(x+10*median_val+1e-12)
         # return x
 
-        # return
-
     def __audioNormalisation(self, wav):
-        if isinstance(wav, torch.Tensor):
-            wav = self.audioNorm.train()(wav)
-            if self.augmentor is not None:
-                wav = self.augmentor(wav, 8000)
+        wav = self.audioNorm.train()(wav)
+        if self.augmentor is not None:
+            wav = self.augmentor(wav, 8000)
         return wav
 
     def forward(self, wav):
@@ -79,28 +86,31 @@ class CNNNetwork_mel_whisper(nn.Module):
 
         # if self.training:
         #     x = self.augmentSpec(x)
-            
-        x = self.convDropout(F.elu(self.conv1(x)))
+
+        x = self.convBN1(F.elu(self.conv1(x)))
+
         if x.shape[-1] >= 3 and x.shape[-2] >= 3:
-            x = self.convDropout(F.elu(self.conv2(x)))
+            x = self.convBN2(F.elu(self.conv2(x)))
         if x.shape[-1] >= 3 and x.shape[-2] >= 3:
-            x = self.convDropout(F.elu(self.conv3(x)))
+            x = self.convBN3(F.elu(self.conv3(x)))
         if x.shape[-1] >= 3 and x.shape[-2] >= 3:
-            x = self.convDropout(F.elu(self.conv4(x)))
+            x = self.convBN4(F.elu(self.conv4(x)))
         if x.shape[-1] >= 3 and x.shape[-2] >= 3:
-            x = self.convDropout(F.elu(self.conv5(x)))
+            x = self.convBN5(F.elu(self.conv5(x)))
         if x.shape[-1] >= 3 and x.shape[-2] >= 3:
-            x = self.convDropout(F.elu(self.conv6(x)))
+            x = self.convBN6(F.elu(self.conv6(x)))
         if x.shape[-1] >= 3 and x.shape[-2] >= 3:
-            x = self.convDropout(F.elu(self.conv7(x)))
+            x = self.convBN7(F.elu(self.conv7(x)))
+
         x = x.view(x.shape[0], -1)
         x = self.bn1(F.elu(self.fc1(x)))
         x = self.fc2(x)
-        
+
         if self.training:
             return x
-            
+
         return x, spec
+
 
 def testModel():
     for nfft in [128, 256, 512, 1024, 2048]:
@@ -109,6 +119,7 @@ def testModel():
             cnn = CNNNetwork_mel_whisper(nfft)
             sampleLength = int(8000*duration/1000)
             summary(cnn, (1, sampleLength), device="cpu")
+
 
 if __name__ == "__main__":
     testModel()
@@ -119,7 +130,7 @@ if __name__ == "__main__":
     duration = int(config['augmentations']['duration'])
     sampleLength = int(8000*duration/1000)
 
-    cnn = CNNNetwork_mel(nfft)
+    cnn = CNNNetwork_mel_whisper(nfft)
 
     summary(cnn, (1, sampleLength), device="cpu")
     # print(cnn)

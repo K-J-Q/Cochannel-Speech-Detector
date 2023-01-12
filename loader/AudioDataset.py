@@ -137,7 +137,7 @@ class AudioDataset(Dataset):
                 merged_aud = self.__merge_audio(aud1, aud2, aud3)
                 X[self.samplesPerClass * i + 3][0] = self.__augmentAudio(merged_aud)
 
-            # torchaudio.save('test.wav', X[self.samplesPerClass*i+3], 8000)
+            torchaudio.save('test.wav', X[self.samplesPerClass*i+3], 8000)
 
         return [X, Y]
 
@@ -171,10 +171,9 @@ class AudioDataset(Dataset):
     def __merge_audio(self, *auds):
         merged_aud = torch.zeros(auds[0].shape)
         for i, aud in enumerate(auds):
-            aud = self.__normaliseAudio(aud)
             gain = random.uniform(-self.gain_div, self.gain_div)
             # torchaudio.save(f'aud{i}.wav', self.__normaliseAudio(aud), 8000)
-            merged_aud += self.__normaliseAudio(aud) * gain
+            merged_aud += self.__normaliseAudio(aud) * (1 - gain)
         # torchaudio.save('merged.wav', merged_aud, 8000)
         return merged_aud
 

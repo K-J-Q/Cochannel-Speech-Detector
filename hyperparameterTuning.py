@@ -15,18 +15,14 @@ from torch_audiomentations import Compose, Identity, PolarityInversion, BandPass
 def objective(trial):
     wd = trial.suggest_float('decay', 0.0001, 0.1, log=True)
     nfft = trial.suggest_int('nfft', 128, 1024, 128)
-    dropout = trial.suggest_float('dropout', 0.01, 0.5, log=True)
+    dropout = 0
     normMethod = trial.suggest_categorical('normMethod', ['whisper', 'median'])
-    normParam = trial.suggest_int(
-        'whisperParam', 0, 20) if normMethod == 'whisper' else trial.suggest_float('medianParam', 0, 20)
+    normParam = trial.suggest_int('whisperParam', 0, 20) if normMethod == 'whisper' else trial.suggest_float('medianParam', 0, 20)
     addNoise = trial.suggest_float('addNoise', 0.0001, 0.5, log=True)
     gainDiv = trial.suggest_float('gainDiv', 0.0001, 0.1, log=True)
-    augmentParams = trial.suggest_categorical(
-        'augmentation', ['noAugmentation', 'polarityInversion', 'timeInv'])
+    augmentParams = trial.suggest_categorical('augmentation', ['noAugmentation', 'timeInv'])
 
-    if augmentParams == 'polarityInversion':
-        transform = [PolarityInversion()]
-    elif augmentParams == 'timeInv':
+    if augmentParams == 'timeInv':
         transform = [TimeInversion()]
 
     if augmentParams == "noAugmentation":
@@ -70,14 +66,14 @@ if __name__ == '__main__':
     parser.add_argument('--name', type=str)
     parser.add_argument('--duration', type=int)
     parser.add_argument('--lr', type=float, default=0.001)
-    parser.add_argument('--epochs', type=int, default=1)
+    parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--workers', type=int, default=6)
     parser.add_argument('--num_merge', type=int, default=2)
     parser.add_argument('--bsize', type=int, default=10)
     parser.add_argument('--class_size', type=int, default=10)
     args = parser.parse_args()
 
-    percent = 0.1
+    percent = 1
     NAME = args.name
     lr = args.lr
     epochs = args.epochs
