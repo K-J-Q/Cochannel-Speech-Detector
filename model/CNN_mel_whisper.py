@@ -116,7 +116,7 @@ def testModel():
     for nfft in [128, 256, 512, 1024, 2048]:
         for duration in [1000]:
             print(f"nfft: {nfft}, duration: {duration}")
-            cnn = CNNNetwork_mel_median(nfft)
+            cnn = CNNNetwork_mel_whisper(nfft)
             sampleLength = int(8000*duration/1000)
             summary(cnn, (1, sampleLength), device="cpu")
 
