@@ -35,7 +35,7 @@ def objective(trial):
     train_dataloader, _ = main.create_data(
         main.trainPath, percent, num_merge, bsize, workers, addNoise, gainDiv, (minOverlapPercentage, 1))
     val_dataloader, _ = main.create_data(
-        main.testPath, percent, num_merge, bsize, int(workers/2), addNoise, gainDiv, (0.7,1))
+        main.testPath, percent, num_merge, 1, int(workers/2), addNoise, gainDiv, (0.7,1))
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = CNNNetwork_mel_whisper(nfft, augment, outputClasses=num_merge + 1,  normParam=normParam) if normMethod == 'whisper' else CNNNetwork_mel_median(
@@ -69,7 +69,7 @@ if __name__ == '__main__':
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--workers', type=int, default=6)
     parser.add_argument('--num_merge', type=int, default=2)
-    parser.add_argument('--bsize', type=int, default=10)
+    parser.add_argument('--bsize', type=int, default=5)
     parser.add_argument('--class_size', type=int, default=8)
     args = parser.parse_args()
 

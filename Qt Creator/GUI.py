@@ -13,7 +13,7 @@ import torchaudio
 import torch
 
 sys.path.append('./')
-import machineLearning, testModel
+import machineLearning
 from loader.AudioDataset import Augmentor
 
 dirname = os.path.dirname(PySide6.__file__)
@@ -101,27 +101,39 @@ class MainWindow(QMainWindow):
         # Load model
         model,_, _ = machineLearning.selectTrainedModel()
         self.model = model.eval()
+        self.model = self.model.cpu()
+        modelOutput = self.model(torch.rand([1, 1, 8000 * windowLength]))
+
+        # Confidence Graph
+        self.probHistory = []
+        self.confidenceGraph = self.ui.confidenceGraphWidget
+        brush = QtGui.QBrush(QtGui.QColor(255, 255, 255, 0))
+
+        self.confidenceGraph.setBackground(brush)
+        self.confidenceGraph.setYRange(0.1, 1.2, padding=0)
+        self.confidenceGraph.setXRange(1, self.historyLength, padding=0)
+        self.confidenceGraph.getAxis('bottom').setTicks([[(i, str(i)) for i in range(self.historyLength + 1)]])
+        self.confidenceGraph.getAxis('left').setTicks([[(0.33, '0.33'), (0.5, '0.5'), (1, '1')]])
+        
 
         # Prediction Graph
+        self.numClass = len(modelOutput[0][0])
         self.predHistory = []
         self.labelGraph = self.ui.labelGraphWidget
         brush = QtGui.QBrush(QtGui.QColor(255, 255, 255, 0))
 
         self.labelGraph.setBackground(brush)
-        self.labelGraph.setYRange(0, 2.5, padding=0)
+        self.labelGraph.setYRange(0, self.numClass, padding=0)
         self.labelGraph.setXRange(0, self.historyLength, padding=0)
         self.labelGraph.getAxis('bottom').setTicks([[(i, str(i)) for i in range(self.historyLength + 1)]])
-        self.labelGraph.getAxis('left').setTicks([[(i, str(i)) for i in range(3)]])
+        self.labelGraph.getAxis('left').setTicks([[(i, str(i)) for i in range(self.numClass)]])
         
         # Spectrogram Graph
-        self.model = self.model.cpu()
-        spectrogramShape = self.model(torch.rand([1, 1, 8000 * windowLength]))[1].shape[-2:]
-        print(spectrogramShape)
+        spectrogramShape = modelOutput[1].shape[-2:]
+
         self.specShape = self.SpectrogramShape(height=spectrogramShape[0], width=spectrogramShape[1])
         self.specHistory = torch.zeros((self.specShape.height, self.specShape.width*10))
-
         self.specGraph = self.ui.spectrogramGraphWidget
-
         self.specGraph.setBackground(brush)
         self.specGraph.showAxes(False)
         self.specGraph.setXRange(0, self.specShape.width*10, padding=0)
@@ -129,8 +141,29 @@ class MainWindow(QMainWindow):
         
         self.predWindow = PredWindow()
 
+    def __getDevices(self):
+        import subprocess
+        micID = []
+        micName = []
+        command = ["ffmpeg", "-f", 'dshow', "-list_devices", 'true', "-i", "dummy"]
+        out = subprocess.Popen(
+            command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        stdout, stderr = out.communicate()
+        s = stdout.decode("utf-8")
+
+        k = s.split(']')
+        for i, device in enumerate(k):
+            if 'Alternative name ' in device:
+                device_name = k[i - 1].split('\n')[0]
+                print(f"[{len(micID)}] {device_name}")
+                micName.append(device_name)
+                micID.append(device.split('"')[1])
+
+        return micName, micID
+
     def updateMicrophones(self):
-        micName, self.micID = testModel.selectMicrophone(returnType='all')
+        micName, self.micID = self.__getDevices()
+        print(micName)
         self.ui.mic_selector.clear()
         self.ui.mic_selector.addItem("Select microphone")
         self.ui.mic_selector.addItems(micName)
@@ -146,10 +179,14 @@ class MainWindow(QMainWindow):
     
     def updatePrediction(self, predictions, spectrogram):
         argmax = predictions.argmax().item()
+        maxProb = predictions.max().item()
         self.ui.class0.setText(f"{round(predictions[0][0].item(), 2)}")
         self.ui.class1.setText(f"{round(predictions[0][1].item(), 2)}")
-        self.ui.class2.setText(f"{round(predictions[0][2].item(), 2)}")        
-        self.predHistory.append(argmax)
+        self.ui.class2.setText(f"{round(predictions[0][2].item(), 2)}")
+        if self.numClass == 3:
+            self.ui.class3.setText(f"{round(predictions[0][3].item(), 2)}")
+        self.appendProbHistory(maxProb)
+        self.appendPredHistory(argmax)
         self.appendSpectralData(spectrogram)
         self.ui.model_output.setText(f"{argmax}")
         self.predWindow.label.setText(f"{argmax}")
@@ -159,6 +196,17 @@ class MainWindow(QMainWindow):
     def onTop(self):              
         self.predWindow.show()
 
+    def appendProbHistory(self, prob):
+        self.probHistory.append(prob)
+        if len(self.probHistory) > self.historyLength:
+            self.probHistory = self.probHistory[-self.historyLength:]
+
+    def appendPredHistory(self, pred):
+        self.predHistory.append(pred)
+        if len(self.predHistory) > self.historyLength:
+            self.predHistory = self.predHistory[-self.historyLength:]
+
+
     def appendSpectralData(self, spec):
         spec = spec.cpu()
         self.specHistory = torch.cat((spec, self.specHistory), dim=1)
@@ -166,9 +214,9 @@ class MainWindow(QMainWindow):
 
     def updateGraph(self):
         x = list(range(len(self.predHistory), 0, -1))
-        if len(self.predHistory) > self.historyLength:
-            self.predHistory = self.predHistory[-self.historyLength:]
-            x = x[-self.historyLength:]
+        
+        self.confidenceGraph.clear()
+        self.confidenceGraph.plot(x=x, y=self.probHistory, brush = 'b', pen='b')
 
         self.labelGraph.clear()
         self.labelGraph.addItem(BarGraphItem(

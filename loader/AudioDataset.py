@@ -114,7 +114,6 @@ class AudioDataset(Dataset):
         self.mergePercentage = mergePercentage if mergePercentage[0] < mergePercentage[1] else None
 
 
-
     def __len__(self):
         return min(len(self.env_paths), len(self.speech_paths))
 
@@ -178,8 +177,12 @@ class AudioDataset(Dataset):
             audioLength = len(auds[0][0])
         else:
             audioLength = int(random.uniform(self.mergePercentage[0], self.mergePercentage[1])*len(auds[0][0]))
+
         for i, aud in enumerate(auds):
-            gain = 1 - random.uniform(-self.gain_div, self.gain_div)
+            gain = 1
+            aud = self.__normaliseAudio(aud)
+            if self.gain_div:
+                gain = 1 - random.uniform(-self.gain_div, self.gain_div)
             aud = aud[:, :audioLength] if i else aud
             # torchaudio.save(f'aud{i}.wav', self.__normaliseAudio(aud), 8000)
             merged_aud[:, -len(aud[0]):] += aud * gain

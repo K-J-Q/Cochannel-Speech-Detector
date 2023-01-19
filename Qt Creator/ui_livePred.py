@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'livePred.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.4.1
+## Created by: Qt User Interface Compiler version 6.4.0
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -26,7 +26,7 @@ class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
             MainWindow.setObjectName(u"MainWindow")
-        MainWindow.resize(960, 453)
+        MainWindow.resize(960, 454)
         MainWindow.setAutoFillBackground(False)
         self.centralwidget = QWidget(MainWindow)
         self.centralwidget.setObjectName(u"centralwidget")
@@ -87,6 +87,13 @@ class Ui_MainWindow(object):
 
         self.probability.addWidget(self.class2)
 
+        self.class3 = QLabel(self.verticalLayoutWidget)
+        self.class3.setObjectName(u"class3")
+        self.class3.setFont(font2)
+        self.class3.setAlignment(Qt.AlignCenter)
+
+        self.probability.addWidget(self.class3)
+
 
         self.verticalLayout.addLayout(self.probability)
 
@@ -115,6 +122,13 @@ class Ui_MainWindow(object):
 
         self.probability_labels.addWidget(self.label_class2)
 
+        self.label_class3 = QLabel(self.verticalLayoutWidget)
+        self.label_class3.setObjectName(u"label_class3")
+        self.label_class3.setFont(font3)
+        self.label_class3.setAlignment(Qt.AlignCenter)
+
+        self.probability_labels.addWidget(self.label_class3)
+
 
         self.verticalLayout.addLayout(self.probability_labels)
 
@@ -124,10 +138,10 @@ class Ui_MainWindow(object):
         self.splitter.addWidget(self.startStopButton)
         self.spectrogramGraphWidget = PlotWidget(self.centralwidget)
         self.spectrogramGraphWidget.setObjectName(u"spectrogramGraphWidget")
-        self.spectrogramGraphWidget.setGeometry(QRect(390, 20, 541, 291))
+        self.spectrogramGraphWidget.setGeometry(QRect(390, 20, 541, 261))
         self.labelGraphWidget = PlotWidget(self.centralwidget)
         self.labelGraphWidget.setObjectName(u"labelGraphWidget")
-        self.labelGraphWidget.setGeometry(QRect(390, 310, 541, 91))
+        self.labelGraphWidget.setGeometry(QRect(390, 280, 541, 71))
         self.refreshButton = QToolButton(self.centralwidget)
         self.refreshButton.setObjectName(u"refreshButton")
         self.refreshButton.setGeometry(QRect(320, 25, 22, 22))
@@ -138,9 +152,11 @@ class Ui_MainWindow(object):
         self.onTopButton.setObjectName(u"onTopButton")
         self.onTopButton.setGeometry(QRect(280, 90, 31, 31))
         icon1 = QIcon()
-        icon1.addFile(u"Qt Creator/resources/windowIcon.png",
-                      QSize(), QIcon.Normal, QIcon.Off)
+        icon1.addFile(u"Qt Creator/resources/windowIcon.png", QSize(), QIcon.Normal, QIcon.Off)
         self.onTopButton.setIcon(icon1)
+        self.confidenceGraphWidget = PlotWidget(self.centralwidget)
+        self.confidenceGraphWidget.setObjectName(u"confidenceGraphWidget")
+        self.confidenceGraphWidget.setGeometry(QRect(390, 350, 541, 71))
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
@@ -162,9 +178,11 @@ class Ui_MainWindow(object):
         self.class0.setText(QCoreApplication.translate("MainWindow", u"0.12", None))
         self.class1.setText(QCoreApplication.translate("MainWindow", u"0.80", None))
         self.class2.setText(QCoreApplication.translate("MainWindow", u"0.08", None))
+        self.class3.setText(QCoreApplication.translate("MainWindow", u"0", None))
         self.label_class0.setText(QCoreApplication.translate("MainWindow", u"Class 0", None))
         self.label_class1.setText(QCoreApplication.translate("MainWindow", u"Class 1", None))
         self.label_class2.setText(QCoreApplication.translate("MainWindow", u"Class 2", None))
+        self.label_class3.setText(QCoreApplication.translate("MainWindow", u"Class 3", None))
         self.startStopButton.setText(QCoreApplication.translate("MainWindow", u"Start", None))
         self.refreshButton.setText("")
         self.onTopButton.setText("")

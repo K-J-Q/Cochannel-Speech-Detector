@@ -21,10 +21,10 @@ startEpoch = 0
 augmentations = aug.Compose(
     transforms=[
         # aug.TimeInversion(),
-        # torchaudio.transforms.PitchShift4(8000, 2)
+        # torchaudio.transforms.PitchShift(8000, 2)
         # aug.AddColoredNoise(p=1, min_snr_in_db=0, max_snr_in_db=5),
         # aug.ApplyImpulseResponse(ir_paths='E:/Processed Audio/IR'),
-        # aug.AddBackgroundNoise(p=1, background_paths='E:/Processed Audio/backgroundNoise', min_snr_in_db=-3,max_snr_in_db=0)
+        # aug.AddBackgroundNoise(p=1, background_paths='E:/Processed Audio/Musical', min_snr_in_db=-3,max_snr_in_db=0)
     ]
 )
 
@@ -36,7 +36,7 @@ def create_data(audio_path, train_test_split, num_merge, batch_size, workers, ad
     audio_train_dataset = AudioDataset(
         audio_train_paths, outputAudio=True, isTraining=True, num_merge=num_merge, add_noise=addNoise, gain_div=gainDiv, mergePercentage=mergePercentage)
     audio_val_dataset = AudioDataset(
-        audio_val_paths, outputAudio=True, isTraining=False, num_merge=num_merge, add_noise=addNoise, gain_div=0.2, mergePercentage=(0.9, 1))
+        audio_val_paths, outputAudio=True, isTraining=False, num_merge=num_merge, add_noise=addNoise, gain_div=0.2, mergePercentage=(1, 1))
 
     train_dataloader = DataLoader(
         audio_train_dataset,
@@ -99,7 +99,7 @@ if __name__ == '__main__':
 
     utils.clearUselesslogs(minFiles=3)
 
-    train_dataloader, val_dataloader = create_data(trainPath, percent, num_merge, bsize, workers, augment_noise, gain_div)
+    train_dataloader, val_dataloader = create_data(trainPath, percent, num_merge, bsize, workers, augment_noise, gain_div, (1, 1))
     model, device, startEpoch = initiateModel(load_pretrained, nfft, augmentations, num_merge, 9)
 
     logTitle, modelIndex = utils.uniquify(f'./logs/{title}', True)

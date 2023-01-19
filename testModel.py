@@ -388,7 +388,7 @@ if __name__ == "__main__":
 
     # filePath = 'testNorm.wav'
     folderPath = 'E:/Processed Audio/test'
-    labeledFolderPath = './data/other mic'
+    labeledFolderPath = 'C:/Users/Jian Quan/Downloads'
 
     while True:
         print('Select Function:')

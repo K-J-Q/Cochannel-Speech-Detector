@@ -77,16 +77,7 @@ def main(input_path=None, output_path=None, mode=None):
         mode = args.mode
 
     discarded = 0
-    folderPaths = list(pathlib.Path(input_path).glob('*'))
-    audioPaths = []
-
-    for folder in folderPaths:
-        import itertools
-        
-        if '[training]' not in str(folder):
-            folder = (pathlib.Path(folder).glob("**/*.wav"))
-            top100 = itertools.islice(iter(folder), 10)
-            audioPaths+=top100
+    audioPaths = list(pathlib.Path(input_path).glob('*'))
 
     augmentor = Augmentor()
 
@@ -146,5 +137,5 @@ def main(input_path=None, output_path=None, mode=None):
 
 
 if __name__ == '__main__':
-    main(input_path='E:/Original Audio/Singapore Speech Corpus',
-         output_path='E:/Processed Audio/test', mode='split')
+    main(input_path='E:/Original Audio/Musical/',
+         output_path='E:/Processed Audio/Musical', mode='process')

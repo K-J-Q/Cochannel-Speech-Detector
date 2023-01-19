@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>960</width>
-    <height>453</height>
+    <height>454</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -115,6 +115,21 @@
           </property>
          </widget>
         </item>
+        <item>
+         <widget class="QLabel" name="class3">
+          <property name="font">
+           <font>
+            <bold>false</bold>
+           </font>
+          </property>
+          <property name="text">
+           <string>0</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
        </layout>
       </item>
       <item>
@@ -164,6 +179,21 @@
           </property>
          </widget>
         </item>
+        <item>
+         <widget class="QLabel" name="label_class3">
+          <property name="font">
+           <font>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="text">
+           <string>Class 3</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
        </layout>
       </item>
      </layout>
@@ -180,7 +210,7 @@
       <x>390</x>
       <y>20</y>
       <width>541</width>
-      <height>291</height>
+      <height>261</height>
      </rect>
     </property>
    </widget>
@@ -188,9 +218,9 @@
     <property name="geometry">
      <rect>
       <x>390</x>
-      <y>310</y>
+      <y>280</y>
       <width>541</width>
-      <height>91</height>
+      <height>71</height>
      </rect>
     </property>
    </widget>
@@ -226,6 +256,16 @@
     <property name="icon">
      <iconset>
       <normaloff>resources/windowIcon.png</normaloff>resources/windowIcon.png</iconset>
+    </property>
+   </widget>
+   <widget class="PlotWidget" name="confidenceGraphWidget" native="true">
+    <property name="geometry">
+     <rect>
+      <x>390</x>
+      <y>350</y>
+      <width>541</width>
+      <height>71</height>
+     </rect>
     </property>
    </widget>
   </widget>
