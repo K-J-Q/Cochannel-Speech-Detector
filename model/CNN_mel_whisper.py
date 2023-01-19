@@ -9,7 +9,7 @@ import sys
 
 
 class CNNNetwork_mel_whisper(nn.Module):
-    def __init__(self, nfft, augmentations=None, outputClasses=3, normParam=8):
+    def __init__(self, nfft, outputClasses=3, normParam=8, augmentations=None):
         super(CNNNetwork_mel_whisper, self).__init__()
 
         self.audioNorm = aug.PeakNormalization(p=1)
@@ -20,7 +20,7 @@ class CNNNetwork_mel_whisper(nn.Module):
 
         self.normParam = normParam
 
-        # self.augmentSpec = nn.Sequential(torchaudio.transforms.FrequencyMasking(
+        # self.augmentSpec = nn.Sequential(torchaudio.transforms.FrequencyM2asking(
         #     30, True), torchaudio.transforms.TimeMasking(20, True))
 
         self.conv1 = nn.Conv2d(1, 32, 4, stride=2)

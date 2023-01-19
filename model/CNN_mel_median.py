@@ -2,24 +2,29 @@ import torch_audiomentations as aug
 from torch import nn
 import torch.nn.functional as F
 import torch
+import torchvision
 from torchsummary import summary
 from configparser import ConfigParser
 import torchaudio
 import sys
 
+
 class CNNNetwork_mel_median(nn.Module):
-    def __init__(self, nfft, augmentations=None, outputClasses=3, normParam=8):
+    def __init__(self, nfft, outputClasses=3, normParam=8, augmentations=None):
         super(CNNNetwork_mel_median, self).__init__()
 
         self.audioNorm = aug.PeakNormalization(p=1)
         self.augmentor = augmentations
 
-        self.generateSpec = torchaudio.transforms.MelSpectrogram(sample_rate=8000, n_fft=nfft, n_mels=int(nfft / 4))
+        self.generateSpec = torchaudio.transforms.MelSpectrogram(
+            sample_rate=8000, n_fft=nfft, n_mels=int(nfft / 4))
 
         self.normParam = normParam
 
         # self.augmentSpec = nn.Sequential(torchaudio.transforms.FrequencyMasking(
         #     30, True), torchaudio.transforms.TimeMasking(20, True))
+        
+        self.augmentSpec = torchvision.transforms.RandomVerticalFlip()
 
         self.conv1 = nn.Conv2d(1, 32, 4, stride=2)
         self.conv2 = nn.Conv2d(32, 64, 3, stride=2)
@@ -45,8 +50,9 @@ class CNNNetwork_mel_median(nn.Module):
     def __normaliseSpec(self, x):
         median_val = x.reshape(
             x.shape[0], -1).median(1).values.view(x.shape[0], 1, 1, 1)
-        x = x/(x+self.normParam*median_val+1e-12)
+        x = x/(x+self.normParam*median_val+1e-5)
         return x
+
 
     def __audioNormalisation(self, wav):
         wav = self.audioNorm.train()(wav)
@@ -58,12 +64,15 @@ class CNNNetwork_mel_median(nn.Module):
         wav = self.__audioNormalisation(wav)
         x = self.generateSpec(wav)
         x = self.__normaliseSpec(x)
-        if not self.training:
-            spec = x
 
         # if self.training:
         #     x = self.augmentSpec(x)
-            
+
+        if not self.training:
+            spec = x
+
+        
+
         x = self.convBN1(F.elu(self.conv1(x)))
 
         if x.shape[-1] >= 3 and x.shape[-2] >= 3:
@@ -82,19 +91,21 @@ class CNNNetwork_mel_median(nn.Module):
         x = x.view(x.shape[0], -1)
         x = self.bn1(F.elu(self.fc1(x)))
         x = self.fc2(x)
-        
+
         if self.training:
             return x
-            
+
         return x, spec
+
 
 def testModel():
     for nfft in [128, 256, 512, 1024, 2048]:
         for duration in [1000]:
             print(f"nfft: {nfft}, duration: {duration}")
-            cnn = CNNNetwork_mel_median(nfft)
+            cnn = CNNNetwork_mel_whisper(nfft)
             sampleLength = int(8000*duration/1000)
             summary(cnn, (1, sampleLength), device="cpu")
+
 
 if __name__ == "__main__":
     testModel()

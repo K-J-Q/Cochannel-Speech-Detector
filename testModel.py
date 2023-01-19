@@ -124,7 +124,6 @@ def predictFile(model, device, filePath, plotPredicton=True):
             data_tensor = torch.zeros([batch_size, 1, 8000 * windowLength])
             for splitIndex, j in enumerate(range(batch, batch + batch_length, sampleLength)):
                 trimmed_audio = wav[j:j + sampleLength]
-                trimmed_audio = trimmed_audio / trimmed_audio.abs().max()
                 # print(splitIndex, ' ', len(trimmed_audio))
                 if len(trimmed_audio) == sampleLength:
                     data_tensor[splitIndex][0] = trimmed_audio
@@ -153,7 +152,7 @@ def predictFile(model, device, filePath, plotPredicton=True):
         ax2 = plt.subplot(2, 1, 2, sharex=ax1)
         plt.tight_layout()
         plt.bar((torch.arange(predLength + 1) * windowLength) -
-                1, np.insert(pred_graph, 0, 0))
+                1, np.insert(pred_graph, 0, 0), align='edge')
         plt.xlim(0, windowLength * predLength)
         plt.ylim(0, 2.5)
         plt.ylabel('Number of speakers')
@@ -375,7 +374,7 @@ if __name__ == "__main__":
         nfft = int(config['data']['n_fft'])
         outputClasses = int(config['augmentations']['num_merge'])+1
         print(f'Using nfft: {nfft}, outputClasses: {outputClasses}')
-        model = model(nfft, outputClasses)
+        model = model(nfft, outputClasses, 8)
 
     model = model.to(device)
     model.eval()
@@ -388,7 +387,7 @@ if __name__ == "__main__":
 
     # filePath = 'testNorm.wav'
     folderPath = 'E:/Processed Audio/test'
-    labeledFolderPath = 'C:/Users/Jian Quan/Downloads'
+    labeledFolderPath = 'E:\Original Audio\HF spec\LSB_noenh'
 
     while True:
         print('Select Function:')

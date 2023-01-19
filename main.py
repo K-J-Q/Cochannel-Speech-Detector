@@ -69,7 +69,7 @@ def initiateModel(load_pretrained, nfft=None, augmentations=None, num_merge=None
         startEpoch = modelEpoch
     else:
         model = machineLearning.selectModel()
-        model = model(nfft, augmentations, num_merge + 1, normParam).to(device)
+        model = model(nfft, num_merge + 1, normParam, augmentations).to(device)
         startEpoch = 0
 
     model.eval()
@@ -115,8 +115,8 @@ if __name__ == '__main__':
 
     writer.close()
 
-    testModel.predictFolder(model, device, testPath,
-                            f'records/{title}({modelIndex})_epoch0')
+    # testModel.predictFolder(model, device, testPath,
+    #                         f'records/{title}({modelIndex})_epoch0')
 
     lossFn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr, weight_decay=decay)
