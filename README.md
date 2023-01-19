@@ -21,10 +21,8 @@ Clone or download the repository to your local machine.
 
 git clone https://github.com/username/cochannel-speech-detector.git
 
-
 Navigate to the project directory and install the required packages.
 
-Copy code
 # Cochannel Speech Detector using Machine Learning
 
 This project aims to develop a cochannel speech detector using machine learning techniques. The goal is to accurately detect and separate multiple speakers in a noisy environment, such as a crowded room or a busy street.
