@@ -4,13 +4,10 @@ import PySide6
 from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout,QLabel
 from PySide6.QtCore import QFile, QObject, QThread, Signal, Qt
 from ui_livePred import Ui_MainWindow
-import time, random
-
 from pyqtgraph import BarGraphItem, ImageItem, QtGui
-
-from torchaudio.io import StreamReader
 import torchaudio
 import torch
+import sounddevice as sd
 
 sys.path.append('./')
 import machineLearning
@@ -29,38 +26,27 @@ class Worker(QThread):
     sm = torch.nn.Softmax(dim=1)
     device = torch.device(
         "cuda" if torch.cuda.is_available() else "cpu")
-
     def __init__(self, model, mic):
         super(Worker, self).__init__()
         self.model = model.to(self.device)
-
-        self.streamer = StreamReader(
-                src="audio=" + mic,
-                format="dshow",
-                buffer_size=8000 * windowLength,
-        )            
-
-        self.streamer.add_basic_audio_stream(
-            frames_per_chunk=int(8000 * windowLength), sample_rate=8000)
-
+        self.stream = sd.InputStream(device=mic)
+    
     def run(self):
         print("Thread start")
-        stream_iterator = self.streamer.stream()
-
+        self.stream.start()
+        sampleRate =  int(self.stream.samplerate)
         while not self.isInterruptionRequested():
-            (wav,) = next(stream_iterator)
-            wav = wav.T
-            wav, sr = self.augmentor.audio_preprocessing([wav, 8000])
+            wav = torch.Tensor(self.stream.read(sampleRate)[0]).T
+            wav, sr = self.augmentor.audio_preprocessing([wav, sampleRate])
             wav = torchaudio.functional.dcshift(wav, -wav.mean())
             wav = wav/wav.abs().max()
             pred, spec = self.model(torch.unsqueeze(wav, dim=0).to(self.device))
-
             pred = self.sm(pred)
             spec = spec.reshape(spec.shape[-2:])
             
             self.updatePrediction.emit(pred, spec)
 
-        self.streamer.remove_stream(0)
+        self.stream.stop()
         print("Thread complete")
 
 
@@ -142,28 +128,11 @@ class MainWindow(QMainWindow):
         self.predWindow = PredWindow()
 
     def __getDevices(self):
-        import subprocess
-        micID = []
-        micName = []
-        command = ["ffmpeg", "-f", 'dshow', "-list_devices", 'true', "-i", "dummy"]
-        out = subprocess.Popen(
-            command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-        stdout, stderr = out.communicate()
-        s = stdout.decode("utf-8")
-
-        k = s.split(']')
-        for i, device in enumerate(k):
-            if 'Alternative name ' in device:
-                device_name = k[i - 1].split('\n')[0]
-                print(f"[{len(micID)}] {device_name}")
-                micName.append(device_name)
-                micID.append(device.split('"')[1])
-
-        return micName, micID
+        devlst = str(sd.query_devices())
+        return devlst.splitlines()
 
     def updateMicrophones(self):
-        micName, self.micID = self.__getDevices()
-        print(micName)
+        micName = self.__getDevices()
         self.ui.mic_selector.clear()
         self.ui.mic_selector.addItem("Select microphone")
         self.ui.mic_selector.addItems(micName)
@@ -172,7 +141,8 @@ class MainWindow(QMainWindow):
         if self.ui.startStopButton.text == "Stop":
             self.ui.startStopButton.click()
         if self.ui.mic_selector.currentIndex():
-            self.mic = self.micID[self.ui.mic_selector.currentIndex() - 1]
+            self.mic = self.ui.mic_selector.currentIndex() - 1
+            print(f'Current index: {self.mic}')
             self.ui.startStopButton.setEnabled(True)
         else:
             self.ui.startStopButton.setEnabled(False)
