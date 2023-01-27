@@ -66,8 +66,10 @@ def train(model, dataloader, cost, optimizer, device, showProgress=True):
         X, Y = X.to(device, non_blocking=True), Y.to(device, non_blocking=True)
         optimizer.zero_grad()
         pred = model(X)
+
         if type(pred) == tuple:
             pred = pred[0]
+            
         batch_loss = cost(pred, Y)
         batch_accuracy = acc_metric(pred, Y)
         batch_loss.backward()

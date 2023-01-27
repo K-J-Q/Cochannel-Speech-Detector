@@ -19,13 +19,13 @@ class CNNNetwork_mel_median(nn.Module):
         self.generateSpec = torchaudio.transforms.MelSpectrogram(
             sample_rate=8000, n_fft=nfft, n_mels=int(nfft / 4))
 
+        # self.generateSpec = torchaudio.transforms.Spectrogram(n_fft=nfft)
+
         self.normParam = normParam
 
-        # self.augmentSpec = nn.Sequential(torchaudio.transforms.FrequencyMasking(
-        #     30, True), torchaudio.transforms.TimeMasking(20, True))
-        
-        self.augmentSpec = torchvision.transforms.RandomVerticalFlip()
-
+        self.augmentSpec = nn.Sequential(torchaudio.transforms.FrequencyMasking(30, True),
+            torchvision.transforms.RandomVerticalFlip())
+    
         self.conv1 = nn.Conv2d(1, 32, 4, stride=2)
         self.conv2 = nn.Conv2d(32, 64, 3, stride=2)
         self.conv3 = nn.Conv2d(64, 128, 3, stride=2)
@@ -65,13 +65,11 @@ class CNNNetwork_mel_median(nn.Module):
         x = self.generateSpec(wav)
         x = self.__normaliseSpec(x)
 
-        # if self.training:
-        #     x = self.augmentSpec(x)
+        if self.training:
+            x = self.augmentSpec(x)
 
         if not self.training:
             spec = x
-
-        
 
         x = self.convBN1(F.elu(self.conv1(x)))
 

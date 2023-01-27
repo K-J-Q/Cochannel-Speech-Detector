@@ -131,8 +131,8 @@ class AudioDataset(Dataset):
             aud2 = self.__split(speech2_aud)
             merged_aud = self.__merge_audio(aud1, aud2)
             X[self.samplesPerClass * i][0] = self.__augmentAudio(env, augments=['addImpulsiveNoise', 'add_noise'])
-            X[self.samplesPerClass * i + 1][0] = self.__augmentAudio(aud1)
-            X[self.samplesPerClass * i + 2][0] = self.__augmentAudio(merged_aud)
+            X[self.samplesPerClass * i + 1][0] = self.__augmentAudio(aud1, augments=['addImpulsiveNoise', 'add_noise'])
+            X[self.samplesPerClass * i + 2][0] = self.__augmentAudio(merged_aud, augments=['addImpulsiveNoise', 'add_noise'])
             if self.samplesPerClass == 4:
                 aud3 = self.__split(speech3_aud)
                 merged_aud = self.__merge_audio(aud1, aud2, aud3)
@@ -145,19 +145,19 @@ class AudioDataset(Dataset):
     def __augmentAudio(self, wav, augments=['add_noise']):
         if self.isTraining:
             sampleRate = 8000
-            if 'addImpulsiveNoise' in augments:
-                if random.random() < 0.05:
-                    noise = torch.randn(int(random.uniform(1,100)))*max(abs(wav[0]))*random.uniform(0.2, 3)
-                    randomIndex = random.randint(0, wav.shape[1] - noise.shape[0])
-                    wav[:, randomIndex:randomIndex+len(noise)] = noise             
-                    # torchaudio.save(utils.uniquify(f'test.wav'),
-                    #                 wav, 8000)
             if 'highpass' in augments:
                 wav = torchaudio.functional.highpass_biquad(wav, sampleRate, 50)
             if 'add_noise' in augments and self.add_noise > 0:
                 gain = random.uniform(0, self.add_noise)
                 noise = torch.randn(wav.shape)
                 wav = wav + gain * noise * max(abs(noise))
+            if 'addImpulsiveNoise' in augments:
+                for i in range(10):
+                    if random.random() < 0.05:
+                        length = random.randint(20,100)
+                        randomIndex = random.randint(0, wav.shape[1] - length)
+                        wav[:, randomIndex:randomIndex+length]*=random.uniform(2, 10)          
+                    # torchaudio.save(utils.uniquify(f'test.wav'), wav, 8000)
             if 'reverb' in augments:
                 wav = torchaudio.sox_effects.apply_effects_tensor(wav, sample_rate=sampleRate,
                                                                   effects=[["reverb", "70"], ['channels', '1']])[0]

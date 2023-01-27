@@ -64,33 +64,35 @@ def predictLabeledFolders(model, device, folderPath, saveFigPath=None):
     assert len(folderPath) > 0
     cum_folder_acc = 0
     for folder in folderPath:
-        print(f'\n---------------{folder}---------------')
         filepaths = list(Path(folder).glob('*.wav'))
-        confusionMatrix = torch.zeros(
-            [model.fc2.out_features, model.fc2.out_features])
-        for path in filepaths:
-            confusionMatrix += predictFile(model, device, str(path),
-                                           plotPredicton=True if __name__ == '__main__' else False)
-        cum_acc = torch.sum(torch.eye(model.fc2.out_features) * confusionMatrix) / \
-            torch.sum(confusionMatrix) * 100
-        cum_folder_acc += cum_acc
-        print(f'Cumulative accuracy: {cum_acc}%')
-        confusionMatrixNormalised = confusionMatrix / \
-            torch.sum(confusionMatrix, dim=1)
-        class_map = list(range(0, model.fc2.out_features))
-        sn.heatmap(confusionMatrixNormalised, annot=True, fmt='.4f',
-                   xticklabels=class_map, yticklabels=class_map)
-        datasetStats = torch.sum(confusionMatrix, 1)
-        print(
-            f'Dataset | Class 0: {datasetStats[0]} Class 1: {datasetStats[1]}, Class 2: {datasetStats[2]}')
-        plt.ylabel('Actual')
-        plt.xlabel('Predicted')
-        plt.title(folder)
-        if __name__ == '__main__':
-            plt.show()
-        elif saveFigPath:
-            plt.savefig(utils.uniquify(saveFigPath + '.png'))
-            plt.close()
+        if len(filepaths):
+
+            print(f'\n---------------{folder}---------------')
+            confusionMatrix = torch.zeros(
+                [model.fc2.out_features, model.fc2.out_features])
+            for path in filepaths:
+                confusionMatrix += predictFile(model, device, str(path),
+                                            plotPredicton=True if __name__ == '__main__' else False)
+            cum_acc = torch.sum(torch.eye(model.fc2.out_features) * confusionMatrix) / \
+                torch.sum(confusionMatrix) * 100
+            cum_folder_acc += cum_acc
+            print(f'Cumulative accuracy: {cum_acc}%')
+            confusionMatrixNormalised = confusionMatrix / \
+                torch.sum(confusionMatrix, dim=1)
+            class_map = list(range(0, model.fc2.out_features))
+            sn.heatmap(confusionMatrixNormalised, annot=True, fmt='.4f',
+                    xticklabels=class_map, yticklabels=class_map)
+            datasetStats = torch.sum(confusionMatrix, 1)
+            print(
+                f'Dataset | Class 0: {datasetStats[0]} Class 1: {datasetStats[1]}, Class 2: {datasetStats[2]}')
+            plt.ylabel('Actual')
+            plt.xlabel('Predicted')
+            plt.title(folder)
+            if __name__ == '__main__':
+                plt.show()
+            elif saveFigPath:
+                plt.savefig(utils.uniquify(saveFigPath + '.png'))
+                plt.close()
 
     return cum_folder_acc, confusionMatrixNormalised
 
@@ -379,15 +381,13 @@ if __name__ == "__main__":
     model = model.to(device)
     model.eval()
 
-    for name, param in model.named_parameters():
-        print(name)
-
 
     print(f'\n---------------------------------------\n')
 
     # filePath = 'testNorm.wav'
     folderPath = 'E:/Processed Audio/test'
     labeledFolderPath = 'E:\Original Audio\HF spec\LSB_noenh'
+    # labeledFolderPath = './'
 
     while True:
         print('Select Function:')

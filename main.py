@@ -100,7 +100,7 @@ if __name__ == '__main__':
     utils.clearUselesslogs(minFiles=3)
 
     train_dataloader, val_dataloader = create_data(trainPath, percent, num_merge, bsize, workers, augment_noise, gain_div, (1, 1))
-    model, device, startEpoch = initiateModel(load_pretrained, nfft, augmentations, num_merge, 9)
+    model, device, startEpoch = initiateModel(load_pretrained, nfft, augmentations, num_merge, 8)
 
     logTitle, modelIndex = utils.uniquify(f'./logs/{title}', True)
 
