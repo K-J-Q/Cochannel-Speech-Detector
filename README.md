@@ -1,65 +1,44 @@
 # Cochannel Speech Detector using Machine Learning
 
-This project aims to develop a cochannel speech detector using machine learning techniques. The goal is to accurately detect and separate multiple speakers in a noisy environment, such as a crowded room or a busy street.
+This project aims to develop a cochannel speech detector using machine learning techniques. The goal is to accurately count the number of speakers talking.
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
+These instructions will get you a copy of the project up and running on your local machine for *testing*
 
 ### Prerequisites
 
 - Python 3.x
-- TensorFlow 2.x
-- Keras
-- Numpy
-- Matplotlib
-- Scikit-learn
 
 ### Installing
 
-Clone or download the repository to your local machine.
-
+```
 git clone https://github.com/username/cochannel-speech-detector.git
-
-Navigate to the project directory and install the required packages.
-
-# Cochannel Speech Detector using Machine Learning
-
-This project aims to develop a cochannel speech detector using machine learning techniques. The goal is to accurately detect and separate multiple speakers in a noisy environment, such as a crowded room or a busy street.
-
-## Getting Started
-
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
-
-### Prerequisites
-
-- Python 3.x
-- TensorFlow 2.x
-- Keras
-- Numpy
-- Matplotlib
-- Scikit-learn
-
-### Installing
-
-Clone or download the repository to your local machine.
-git clone https://github.com/username/cochannel-speech-detector.git
-
-Navigate to the project directory and install the required packages.
+cd cochannel-speech-detector/release
 pip install -r requirements.txt
+```
 
+### Running
+#### Live prediction using GUI
+`python livePredict.py`
 
-## Using the model
+#### Predicting audio wav (in either file or folder) 
+The following arguments can be passed to the script:
+--path: Required. The path to the file or folder to predict.
+--model: Optional. The type of model to use for prediction (either 'speech' or 'radio'). Default is 'speech'.
 
-The trained model can be used to detect and separate multiple speakers in a noisy environment. To use the model, navigate to the project directory and run the following command:
-python predict.py --audio path/to/audiofile
+Cochannel speech detection
+`python filename.py --path /path/to/file/or/folder`
+
+Cochannel radio detection
+`python filename.py --path /path/to/file/or/folder --model radio`
+
 
 
 ## Built With
 
-* [TensorFlow](https://www.tensorflow.org/) - The machine learning framework used
-* [Keras](https://keras.io/) - The deep learning library used
-* [Scikit-learn](https://scikit-learn.org/) - The machine learning library used
+* [PyTorch](https://pytorch.org/) - The machine learning framework used
+* [sounddevice](https://pypi.org/project/sounddevice/) - Interfacing with audio devices
 
 ## Authors
 
