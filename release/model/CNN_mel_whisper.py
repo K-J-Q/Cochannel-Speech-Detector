@@ -2,10 +2,7 @@ import torch_audiomentations as aug
 from torch import nn
 import torch.nn.functional as F
 import torch
-from torchsummary import summary
-from configparser import ConfigParser
 import torchaudio
-import sys
 
 
 class CNNNetwork_mel_whisper(nn.Module):
@@ -19,9 +16,6 @@ class CNNNetwork_mel_whisper(nn.Module):
             sample_rate=8000, n_fft=nfft, n_mels=int(nfft / 4))
 
         self.normParam = normParam
-
-        # self.augmentSpec = nn.Sequential(torchaudio.transforms.FrequencyM2asking(
-        #     30, True), torchaudio.transforms.TimeMasking(20, True))
 
         self.conv1 = nn.Conv2d(1, 32, 4, stride=2)
         self.conv2 = nn.Conv2d(32, 64, 3, stride=2)
@@ -45,31 +39,11 @@ class CNNNetwork_mel_whisper(nn.Module):
         self.fc2 = nn.Linear(120, outputClasses, bias=False)
 
     def __normaliseSpec(self, x):
-        # normalisation method 1: whisper
         x = torch.clamp(x, min=1e-10).log10()
         max_val = x.reshape(
             x.shape[0], -1).amax(1).view(x.shape[0], 1, 1, 1)
         x = torch.maximum(x, max_val - self.normParam)
         return x
-
-        # normalisation method 2: min 0, max 1
-        # x = x.log10()
-        # min_val = x.reshape(
-        #     x.shape[0], 1, -1).amin(2).view(x.shape[0], 1, 1, 1)
-        # x -= min_val
-        # max_val = x.reshape(
-        #     x.shape[0], 1, -1).amax(2).view(x.shape[0], 1, 1, 1)
-        # x /= max_val
-
-        # normalisation method 3: mean 0, std 1
-        # x = (x - x.mean()) / x.std()
-
-        # normalisation method 4: median
-        # median_val = x.reshape(
-        #     x.shape[0], 1, -1).median(2).values.view(x.shape[0], 1, 1, 1)
-        # x = x/(x+10*median_val+1e-12)
-        # return x
-
 
     def __audioNormalisation(self, wav):
         wav = self.audioNorm.train()(wav)
@@ -83,9 +57,6 @@ class CNNNetwork_mel_whisper(nn.Module):
         x = self.__normaliseSpec(x)
         if not self.training:
             spec = x
-
-        # if self.training:
-        #     x = self.augmentSpec(x)
 
         x = self.convBN1(F.elu(self.conv1(x)))
 
@@ -110,30 +81,3 @@ class CNNNetwork_mel_whisper(nn.Module):
             return x
 
         return x, spec
-
-
-def testModel():
-    for nfft in [128, 256, 512, 1024, 2048]:
-        for duration in [1000]:
-            print(f"nfft: {nfft}, duration: {duration}")
-            cnn = CNNNetwork_mel_whisper(nfft)
-            sampleLength = int(8000*duration/1000)
-            summary(cnn, (1, sampleLength), device="cpu")
-
-
-if __name__ == "__main__":
-    testModel()
-    config = ConfigParser()
-    config.read('config.ini')
-
-    nfft = int(config['data']['n_fft'])
-    duration = int(config['augmentations']['duration'])
-    sampleLength = int(8000*duration/1000)
-
-    cnn = CNNNetwork_mel(nfft)
-
-    summary(cnn, (1, sampleLength), device="cpu")
-    # print(cnn)
-    print(cnn(torch.randn(2, 1, sampleLength)).shape)
-    cnn.eval()
-    print(cnn(torch.randn(2, 1, sampleLength)).shape)

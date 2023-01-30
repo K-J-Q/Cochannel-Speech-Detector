@@ -6,14 +6,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torchaudio.functional
-from torchvision.models.feature_extraction import get_graph_node_names, create_feature_extractor
-import torch_audiomentations as aug
 import loader
 
 maxPred = 2
 windowLength = 1
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 sm = torch.nn.Softmax(dim=1)
+
 
 def predictFolders(folderPath):
     folderPath = list(Path(folderPath).glob('**/'))
@@ -24,6 +23,7 @@ def predictFolders(folderPath):
             print(f'\n---------------{folder}---------------')
             for path in filepaths:
                 predictFile(str(path))
+
 
 def predictFile(filePath):
     audioProcessor = loader.AudioLoader()
@@ -79,7 +79,7 @@ def predictFile(filePath):
         gt_vec = torch.zeros(predLength)
 
         pred_graph = torch.tensor(pred_graph)
-        for i, startTime in enumerate(range(0, (predLength) * windowLength, windowLength)):
+        for i, startTime in enumerate(range(0, predLength * windowLength, windowLength)):
             gt_vec[i] = percentageMode(get_percentage_in_window(
                 ground_truth, startTime, startTime + windowLength))
 
@@ -106,7 +106,7 @@ class specFeatures:
         assert wav.shape[0] == 1
         modelOut = model(
             torch.unsqueeze(wav[:, 0:int(sr * windowLength)], dim=0).to(device))
-    
+
         self.windowOutputShape = modelOut[1].shape
         self.audioLength = len(wav[0]) / sr
 
@@ -114,16 +114,15 @@ class specFeatures:
             [self.windowOutputShape[2], int(self.windowOutputShape[3] * self.audioLength / windowLength)])
 
     def addSpec(self, modelOutput):
-            batchFeatures = modelOutput[1]
-            for i, feature in enumerate(batchFeatures):
-                self.spec[:, self.specIndex: self.specIndex +
-                          self.windowOutputShape[3]] = feature[0]
-                self.specIndex += self.windowOutputShape[3]
-            return sm(modelOutput[0])
+        batchFeatures = modelOutput[1]
+        for i, feature in enumerate(batchFeatures):
+            self.spec[:, self.specIndex: self.specIndex + self.windowOutputShape[3]] = feature[0]
+            self.specIndex += self.windowOutputShape[3]
+        return sm(modelOutput[0])
 
     def plotSpec(self, axes):
         axes.imshow(self.spec, origin='lower',
-                   aspect='auto', extent=[0, self.audioLength, 0, self.windowOutputShape[2]])
+                    aspect='auto', extent=[0, self.audioLength, 0, self.windowOutputShape[2]])
         self.specIndex = 0
 
 
@@ -140,7 +139,6 @@ def get_percentage_in_window(groundTruth, startTime, endTime):
     gt_x, gt_y = np.array(gt_x), np.array(gt_y)
     overlap = np.logical_and([gt_x > startTime], [gt_x <= endTime])
     overlapIndex = overlap.nonzero()[1]
-    
 
     if len(overlapIndex):
         lastTime = startTime
@@ -190,13 +188,16 @@ def getGroundTruth(file, maxPred):
 
     return gt_x, gt_y
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run a prediction on either a folder or a file.")
     parser.add_argument("--path", required=True, type=str, help="The path to the file or folder to predict.")
-    parser.add_argument("--model", default="speech", type=str, choices=["speech", "radio"], help="The type of model to use for prediction (either 'speech' or 'radio').")
+    parser.add_argument("--model", default="speech", type=str, choices=["speech", "radio"],
+                        help="The type of model to use for prediction (either 'speech' or 'radio').")
     args = parser.parse_args()
 
-    model = torch.load('resources/speechModel.pt' if args.model == "speech" else 'resources/radio.pt', map_location=device)
+    model = torch.load('resources/speechModel.pt' if args.model == "speech" else 'resources/radio.pt',
+                       map_location=device)
     model.eval()
 
     if os.path.isdir(args.path):

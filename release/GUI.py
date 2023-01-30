@@ -1,8 +1,9 @@
 import sys
 import os
 import PySide6
-from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout,QLabel
-from PySide6.QtCore import QFile, QObject, QThread, Signal, Qt
+import sounddevice
+from PySide6.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QLabel
+from PySide6.QtCore import QThread, Signal, Qt
 from resources.ui_livePred import Ui_MainWindow
 from pyqtgraph import BarGraphItem, ImageItem, QtGui
 import torch
@@ -15,29 +16,31 @@ os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = plugin_path
 
 windowLength = 1
 
+
 class Worker(QThread):
     updatePrediction = Signal(torch.Tensor, torch.Tensor)
     audioProcessor = loader.AudioLoader()
     sm = torch.nn.Softmax(dim=1)
     device = torch.device(
         "cuda" if torch.cuda.is_available() else "cpu")
+
     def __init__(self, model, mic):
         super(Worker, self).__init__()
         self.model = model.to(self.device)
         self.stream = sd.InputStream(device=mic)
-    
+
     def run(self):
         print("Thread start")
         self.stream.start()
-        sampleRate =  int(self.stream.samplerate)
+        sampleRate = int(self.stream.samplerate)
         while not self.isInterruptionRequested():
             wav = torch.Tensor(self.stream.read(sampleRate)[0]).T
             wav, sr = self.audioProcessor.audio_preprocessing([wav, sampleRate])
-            wav = wav/wav.abs().max()
+            wav = wav / wav.abs().max()
             pred, spec = self.model(torch.unsqueeze(wav, dim=0).to(self.device))
             pred = self.sm(pred)
             spec = spec.reshape(spec.shape[-2:])
-            
+
             self.updatePrediction.emit(pred, spec)
 
         self.stream.stop()
@@ -50,23 +53,26 @@ class PredWindow(QWidget):
         self.setFixedSize(200, 200)
         self.setWindowFlags(Qt.WindowStaysOnTopHint | Qt.CustomizeWindowHint | Qt.WindowCloseButtonHint)
         layout = QVBoxLayout()
+        self.setWindowTitle("Prediction")
         self.label = QLabel("")
         self.label.setAlignment(Qt.AlignCenter)
         self.label.setStyleSheet("font-size: 80px;")
         layout.addWidget(self.label)
         self.setLayout(layout)
 
+
 class MainWindow(QMainWindow):
     historyLength = 10
 
     class SpectrogramShape:
-        def __init__(self, width:int, height:int):
+        def __init__(self, width: int, height: int):
             self.width = width
             self.height = height
-            
 
     def __init__(self):
         super(MainWindow, self).__init__()
+        self.mic = None
+        self.worker = None
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
 
@@ -93,7 +99,6 @@ class MainWindow(QMainWindow):
         self.confidenceGraph.setXRange(1, self.historyLength, padding=0)
         self.confidenceGraph.getAxis('bottom').setTicks([[(i, str(i)) for i in range(self.historyLength + 1)]])
         self.confidenceGraph.getAxis('left').setTicks([[(0.33, '0.33'), (0.5, '0.5'), (1, '1')]])
-        
 
         # Prediction Graph
         self.numClass = len(modelOutput[0][0])
@@ -106,40 +111,44 @@ class MainWindow(QMainWindow):
         self.labelGraph.setXRange(0, self.historyLength, padding=0)
         self.labelGraph.getAxis('bottom').setTicks([[(i, str(i)) for i in range(self.historyLength + 1)]])
         self.labelGraph.getAxis('left').setTicks([[(i, str(i)) for i in range(self.numClass)]])
-        
+
         # Spectrogram Graph
         spectrogramShape = modelOutput[1].shape[-2:]
 
         self.specShape = self.SpectrogramShape(height=spectrogramShape[0], width=spectrogramShape[1])
-        self.specHistory = torch.zeros((self.specShape.height, self.specShape.width*10))
+        self.specHistory = torch.zeros((self.specShape.height, self.specShape.width * 10))
         self.specGraph = self.ui.spectrogramGraphWidget
         self.specGraph.setBackground(brush)
         self.specGraph.showAxes(False)
-        self.specGraph.setXRange(0, self.specShape.width*10, padding=0)
+        self.specGraph.setXRange(0, self.specShape.width * 10, padding=0)
         self.specGraph.setYRange(0, self.specShape.height, padding=0)
-        
+
         self.predWindow = PredWindow()
 
-    def __getDevices(self):
-        devlst = str(sd.query_devices())
-        return devlst.splitlines()
+    @staticmethod
+    def __getDevices():
+        deviceList = str(sd.query_devices())
+        return deviceList.splitlines()
 
     def updateMicrophones(self):
+        if self.ui.startStopButton.text() == "Stop":
+            print('aaa')
+            self.buttonPressed()
         micName = self.__getDevices()
         self.ui.mic_selector.clear()
         self.ui.mic_selector.addItem("Select microphone")
         self.ui.mic_selector.addItems(micName)
 
     def getMicrophone(self):
-        if self.ui.startStopButton.text == "Stop":
-            self.ui.startStopButton.click()
+        if self.ui.startStopButton.text() == "Stop":
+            print('aaa')
+            self.buttonPressed()
         if self.ui.mic_selector.currentIndex():
             self.mic = self.ui.mic_selector.currentIndex() - 1
-            print(f'Current index: {self.mic}')
             self.ui.startStopButton.setEnabled(True)
         else:
             self.ui.startStopButton.setEnabled(False)
-    
+
     def updatePrediction(self, predictions, spectrogram):
         argmax = predictions.argmax().item()
         maxProb = predictions.max().item()
@@ -156,7 +165,7 @@ class MainWindow(QMainWindow):
 
         self.updateGraph()
 
-    def onTop(self):              
+    def onTop(self):
         self.predWindow.show()
 
     def appendProbHistory(self, prob):
@@ -169,7 +178,6 @@ class MainWindow(QMainWindow):
         if len(self.predHistory) > self.historyLength:
             self.predHistory = self.predHistory[-self.historyLength:]
 
-
     def appendSpectralData(self, spec):
         spec = spec.cpu()
         self.specHistory = torch.cat((spec, self.specHistory), dim=1)
@@ -177,29 +185,31 @@ class MainWindow(QMainWindow):
 
     def updateGraph(self):
         x = list(range(len(self.predHistory), 0, -1))
-        
+
         self.confidenceGraph.clear()
-        self.confidenceGraph.plot(x=x, y=self.probHistory, brush = 'b', pen='b')
+        self.confidenceGraph.plot(x=x, y=self.probHistory, brush='b', pen='b')
 
         self.labelGraph.clear()
         self.labelGraph.addItem(BarGraphItem(
             x=x, height=self.predHistory, width=1, brush='r', pen='r'))
 
-        
         spec = ImageItem(self.specHistory.T.numpy())
         spec.setColorMap('viridis')
 
         self.specGraph.clear()
         self.specGraph.addItem(spec)
 
-
     def buttonPressed(self):
         if self.ui.startStopButton.text() == "Start":
             self.ui.startStopButton.setText("Stop")
-            self.worker = Worker(self.model, self.mic)
+            try:
+                self.worker = Worker(self.model, self.mic)
+            except sounddevice.PortAudioError:
+                self.ui.startStopButton.setText("Start")
+                print("Device cannot be opened. Please select another device.")
+                return
             self.worker.updatePrediction.connect(self.updatePrediction)
             self.worker.start()
-
         else:
             self.ui.startStopButton.setText("Start")
             self.worker.requestInterruption()
