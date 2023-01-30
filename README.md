@@ -28,10 +28,10 @@ The following arguments can be passed to the script:
 --model: Optional. The type of model to use for prediction (either 'speech' or 'radio'). Default is 'speech'.
 
 Cochannel speech detection
-`python filename.py --path /path/to/file/or/folder`
+`python predict.py --path /path/to/file/or/folder`
 
 Cochannel radio detection
-`python filename.py --path /path/to/file/or/folder --model radio`
+`python predict.py --path /path/to/file/or/folder --model radio`
 
 
 
