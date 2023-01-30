@@ -13,7 +13,7 @@ These instructions will get you a copy of the project up and running on your loc
 ### Installing
 
 ```
-git clone https://github.com/username/cochannel-speech-detector.git
+git clone https://github.com/K-J-Q/cochannel-speech-detector.git
 cd cochannel-speech-detector/release
 pip install -r requirements.txt
 ```
