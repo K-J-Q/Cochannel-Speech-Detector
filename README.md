@@ -30,7 +30,7 @@ The following arguments can be passed to the script:
 Ground Truths (.txt) can be added in the same directory, and filename as wav file.
 
 Cochannel speech detection
-`python predict.py --path /path/to/file/or/folder`
+`python predict.py --path exampleAudio/trump.wav`
 
 Cochannel radio detection
 `python predict.py --path /path/to/file/or/folder --model radio`
