@@ -27,11 +27,13 @@ The following arguments can be passed to the script:
 --path: Required. The path to the file or folder to predict.
 --model: Optional. The type of model to use for prediction (either 'speech' or 'radio'). Default is 'speech'.
 
+Ground Truths (.txt) can be added in the same directory, and filename as wav file.
+
 Cochannel speech detection
-`python filename.py --path /path/to/file/or/folder`
+`python predict.py --path exampleAudio/trump.wav`
 
 Cochannel radio detection
-`python filename.py --path /path/to/file/or/folder --model radio`
+`python predict.py --path /path/to/file/or/folder --model radio`
 
 
 
