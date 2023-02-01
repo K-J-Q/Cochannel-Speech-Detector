@@ -16,10 +16,10 @@ class CNNNetwork_mel_median(nn.Module):
         self.audioNorm = aug.PeakNormalization(p=1)
         self.augmentor = augmentations
 
-        self.generateSpec = torchaudio.transforms.MelSpectrogram(
-            sample_rate=8000, n_fft=nfft, n_mels=int(nfft / 4))
+        # self.generateSpec = torchaudio.transforms.MelSpectrogram(
+        #     sample_rate=8000, n_fft=nfft, n_mels=int(nfft / 4))
 
-        # self.generateSpec = torchaudio.transforms.Spectrogram(n_fft=nfft)
+        self.generateSpec = torchaudio.transforms.Spectrogram(n_fft=nfft)
 
         self.normParam = normParam
 

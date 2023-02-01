@@ -20,7 +20,7 @@ class CNNNetwork_mel_whisper(nn.Module):
 
         self.normParam = normParam
 
-        # self.augmentSpec = nn.Sequential(torchaudio.transforms.FrequencyM2asking(
+        # self.augmentSpec = nn.Sequential(torchaudio.transforms.FrequencyMasking(
         #     30, True), torchaudio.transforms.TimeMasking(20, True))
 
         self.conv1 = nn.Conv2d(1, 32, 4, stride=2)

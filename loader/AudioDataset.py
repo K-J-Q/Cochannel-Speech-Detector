@@ -91,8 +91,7 @@ class AudioDataset(Dataset):
                  isTraining,
                  add_noise=0,
                  gain_div=0,
-                 num_merge=2,
-                 mergePercentage=(1, 1)):
+                 num_merge=2):
 
         self.isTraining = isTraining
         if not isTraining:
@@ -108,9 +107,6 @@ class AudioDataset(Dataset):
         self.sampleLength = int(self.windowLength * 8000)
         self.add_noise = add_noise
         self.gain_div = gain_div
-
-        self.mergePercentage = mergePercentage if mergePercentage[0] < mergePercentage[1] else None
-
 
     def __len__(self):
         return min(len(self.env_paths), len(self.speech_paths))
@@ -156,7 +152,7 @@ class AudioDataset(Dataset):
                     if random.random() < 0.05:
                         length = random.randint(20,100)
                         randomIndex = random.randint(0, wav.shape[1] - length)
-                        wav[:, randomIndex:randomIndex+length]*=random.uniform(2, 10)          
+                        wav[:, randomIndex:randomIndex+length]*=random.uniform(2, 6)          
                     # torchaudio.save(utils.uniquify(f'test.wav'), wav, 8000)
             if 'reverb' in augments:
                 wav = torchaudio.sox_effects.apply_effects_tensor(wav, sample_rate=sampleRate,
@@ -178,10 +174,7 @@ class AudioDataset(Dataset):
 
     def __merge_audio(self, *auds):
         merged_aud = torch.zeros(auds[0].shape)
-        if self.mergePercentage is None:
-            audioLength = len(auds[0][0])
-        else:
-            audioLength = int(random.uniform(self.mergePercentage[0], self.mergePercentage[1])*len(auds[0][0]))
+        audioLength = len(auds[0][0])
 
         for i, aud in enumerate(auds):
             gain = 1

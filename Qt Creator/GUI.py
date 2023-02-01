@@ -85,10 +85,10 @@ class MainWindow(QMainWindow):
         self.updateMicrophones()
 
         # Load model
-        model,_, _ = machineLearning.selectTrainedModel()
+        model, device, _ = machineLearning.selectTrainedModel()
         self.model = model.eval()
-        self.model = self.model.cpu()
-        modelOutput = self.model(torch.rand([1, 1, 8000 * windowLength]))
+        # self.model.cpu()
+        modelOutput = self.model(torch.rand([1, 1, 8000 * windowLength], device=device)-0.5)
 
         # Confidence Graph
         self.probHistory = []
@@ -153,7 +153,7 @@ class MainWindow(QMainWindow):
         self.ui.class0.setText(f"{round(predictions[0][0].item(), 2)}")
         self.ui.class1.setText(f"{round(predictions[0][1].item(), 2)}")
         self.ui.class2.setText(f"{round(predictions[0][2].item(), 2)}")
-        if self.numClass == 3:
+        if self.numClass == 4:
             self.ui.class3.setText(f"{round(predictions[0][3].item(), 2)}")
         self.appendProbHistory(maxProb)
         self.appendPredHistory(argmax)
