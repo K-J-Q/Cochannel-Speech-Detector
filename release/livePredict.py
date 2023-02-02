@@ -191,7 +191,7 @@ class MainWindow(QMainWindow):
 
         self.labelGraph.clear()
         self.labelGraph.addItem(BarGraphItem(
-            x=x,height=self.predHistory, width=1, brush='r', pen='r', ))
+            x=[i - 0.5 for i in x],height=self.predHistory, width=1, brush='r', pen='r', ))
 
         spec = ImageItem(self.specHistory.T.numpy())
         spec.setColorMap('viridis')
