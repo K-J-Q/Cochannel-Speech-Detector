@@ -155,7 +155,7 @@ class MainWindow(QMainWindow):
         self.ui.class0.setText(f"{round(predictions[0][0].item(), 2)}")
         self.ui.class1.setText(f"{round(predictions[0][1].item(), 2)}")
         self.ui.class2.setText(f"{round(predictions[0][2].item(), 2)}")
-        if self.numClass == 3:
+        if self.numClass == 4:
             self.ui.class3.setText(f"{round(predictions[0][3].item(), 2)}")
         self.appendProbHistory(maxProb)
         self.appendPredHistory(argmax)
@@ -191,7 +191,7 @@ class MainWindow(QMainWindow):
 
         self.labelGraph.clear()
         self.labelGraph.addItem(BarGraphItem(
-            x=x, height=self.predHistory, width=1, brush='r', pen='r'))
+            x=x,height=self.predHistory, width=1, brush='r', pen='r', ))
 
         spec = ImageItem(self.specHistory.T.numpy())
         spec.setColorMap('viridis')
