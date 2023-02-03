@@ -30,13 +30,12 @@ augmentations = aug.Compose(
 
 augmentations = None
 
-
 def create_data(audio_path, train_test_split, num_merge, batch_size, workers, addNoise, gainDiv):
     audio_train_paths, audio_val_paths = utils.getAudioPaths(audio_path, train_test_split)
     audio_train_dataset = AudioDataset(
         audio_train_paths, outputAudio=True, isTraining=True, num_merge=num_merge, add_noise=addNoise, gain_div=gainDiv)
     audio_val_dataset = AudioDataset(
-        audio_val_paths, outputAudio=True, isTraining=False, num_merge=num_merge, add_noise=addNoise, gain_div=0.2)
+        audio_val_paths, outputAudio=True, isTraining=False, num_merge=num_merge, add_noise=addNoise, gain_div=gainDiv)
 
     train_dataloader = DataLoader(
         audio_train_dataset,
@@ -76,6 +75,8 @@ def initiateModel(load_pretrained, nfft=None, augmentations=None, num_merge=None
 
     return model, device, startEpoch
 
+
+
 if __name__ == '__main__':
     config = ConfigParser()
     config.read('config.ini')
@@ -99,8 +100,8 @@ if __name__ == '__main__':
 
     utils.clearUselesslogs(minFiles=3)
 
-    train_dataloader, val_dataloader = create_data(trainPath, percent, num_merge, bsize, workers, augment_noise, gain_div, (1, 1))
-    model, device, startEpoch = initiateModel(load_pretrained, nfft, augmentations, num_merge, 12)
+    train_dataloader, val_dataloader = create_data(trainPath, percent, num_merge, bsize, workers, augment_noise, gain_div)
+    model, device, startEpoch = initiateModel(load_pretrained, nfft, augmentations, num_merge, 20)
 
     logTitle, modelIndex = utils.uniquify(f'./logs/{title}', True)
 
@@ -165,9 +166,9 @@ if __name__ == '__main__':
                            {'Accuracy': val_accuracy, 'Loss': val_loss, 'Test Accuracy': test_acc})
 
     # delete models starting with title variable using glob
-    for file in glob.glob(f'saved_model/{title} ({modelIndex})*'):
-        print(f'Deleting {file}')
-        os.remove(file)
+    # for file in glob.glob(f'saved_model/{title} ({modelIndex})*'):
+    #     print(f'Deleting {file}')
+    #     os.remove(file)
 
     torch.save(model, utils.uniquify(
         f'saved_model/{title} ({modelIndex})_epoch{epoch}.pt'))

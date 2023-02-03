@@ -127,15 +127,17 @@ class AudioDataset(Dataset):
             aud2 = self.__split(speech2_aud)
             merged_aud = self.__merge_audio(aud1, aud2)
             X[self.samplesPerClass * i][0] = self.__augmentAudio(env, augments=['addImpulsiveNoise', 'add_noise'])
-            X[self.samplesPerClass * i + 1][0] = self.__augmentAudio(aud1, augments=['addImpulsiveNoise', 'add_noise'])
-            X[self.samplesPerClass * i + 2][0] = self.__augmentAudio(merged_aud, augments=['addImpulsiveNoise', 'add_noise'])
+            X[self.samplesPerClass * i + 1][0] = self.__augmentAudio(aud1, augments=['add_noise'])
+            X[self.samplesPerClass * i + 2][0] = self.__augmentAudio(merged_aud, augments=['add_noise'])
             if self.samplesPerClass == 4:
                 aud3 = self.__split(speech3_aud)
                 merged_aud = self.__merge_audio(aud1, aud2, aud3)
                 X[self.samplesPerClass * i + 3][0] = self.__augmentAudio(merged_aud)
-
-            # torchaudio.save(utils.uniquify(f'test.wav'), X[self.samplesPerClass*i+1], 8000)
-
+            
+            # torchaudio.save(utils.uniquify(f'test_class0.wav'), X[self.samplesPerClass*i], 8000)
+            # torchaudio.save(utils.uniquify(f'test_class1.wav'), X[self.samplesPerClass*i+1], 8000)
+            # torchaudio.save(utils.uniquify(f'test_class2.wav'), X[self.samplesPerClass*i+2], 8000)
+            # torchaudio.save(utils.uniquify(f'test_class3.wav'), X[self.samplesPerClass*i+3], 8000)
         return [X, Y]
 
     def __augmentAudio(self, wav, augments=['add_noise']):
@@ -152,7 +154,7 @@ class AudioDataset(Dataset):
                     if random.random() < 0.05:
                         length = random.randint(20,100)
                         randomIndex = random.randint(0, wav.shape[1] - length)
-                        wav[:, randomIndex:randomIndex+length]*=random.uniform(2, 6)          
+                        wav[:, randomIndex:randomIndex+length]*=random.uniform(6, 10)          
                     # torchaudio.save(utils.uniquify(f'test.wav'), wav, 8000)
             if 'reverb' in augments:
                 wav = torchaudio.sox_effects.apply_effects_tensor(wav, sample_rate=sampleRate,
@@ -184,6 +186,7 @@ class AudioDataset(Dataset):
             aud = aud[:, :audioLength] if i else aud
             # torchaudio.save(f'aud{i}.wav', self.__normaliseAudio(aud), 8000)
             merged_aud[:, -len(aud[0]):] += aud * gain
+            
         # torchaudio.save('merged.wav', merged_aud, 8000)
         return merged_aud
 

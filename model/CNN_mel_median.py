@@ -23,8 +23,7 @@ class CNNNetwork_mel_median(nn.Module):
 
         self.normParam = normParam
 
-        self.augmentSpec = nn.Sequential(torchaudio.transforms.FrequencyMasking(30, True),
-            torchvision.transforms.RandomVerticalFlip())
+        self.augmentSpec = nn.Sequential(torchvision.transforms.RandomVerticalFlip())
     
         self.conv1 = nn.Conv2d(1, 32, 4, stride=2)
         self.conv2 = nn.Conv2d(32, 64, 3, stride=2)

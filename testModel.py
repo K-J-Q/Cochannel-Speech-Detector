@@ -113,6 +113,7 @@ def predictFile(model, device, filePath, plotPredicton=True):
     with torch.no_grad():
         wav, sr = augmentor.resample(
             augmentor.rechannel(torchaudio.load(filePath)))
+        wav = torch.cat((wav, wav), 1)
         if plotPredicton:
             specData = specFeatures(model, device, wav, sr, windowLength)
 
@@ -120,6 +121,7 @@ def predictFile(model, device, filePath, plotPredicton=True):
         wav = torchaudio.functional.highpass_biquad(wav, sr, 50)
         sampleLength = windowLength * sr
         wav = wav[0]
+        
         batch_length = batch_size * sampleLength
 
         for batch in range(0, len(wav) - sampleLength, batch_length):
@@ -206,12 +208,12 @@ class specFeatures:
             [self.windowOutputShape[2], int(self.windowOutputShape[3] * self.audioLength / windowLength)])
 
     def addSpec(self, modelOutput):
-            batchFeatures = modelOutput[1]
-            for i, feature in enumerate(batchFeatures):
-                self.spec[:, self.specIndex: self.specIndex +
-                          self.windowOutputShape[3]] = feature[0]
-                self.specIndex += self.windowOutputShape[3]
-            return sm(modelOutput[0])
+        batchFeatures = modelOutput[1]
+        for i, feature in enumerate(batchFeatures):
+            self.spec[:, self.specIndex: self.specIndex +
+                      self.windowOutputShape[3]] = feature[0]
+            self.specIndex += self.windowOutputShape[3]
+        return sm(modelOutput[0])
 
     def plotSpec(self, axes):
         axes.imshow(self.spec, origin='lower',
@@ -376,7 +378,7 @@ if __name__ == "__main__":
         nfft = int(config['data']['n_fft'])
         outputClasses = int(config['augmentations']['num_merge'])+1
         print(f'Using nfft: {nfft}, outputClasses: {outputClasses}')
-        model = model(nfft, outputClasses, 8)
+        model = model(nfft, outputClasses, 20)
 
     model = model.to(device)
     model.eval()
@@ -387,7 +389,7 @@ if __name__ == "__main__":
     # filePath = 'testNorm.wav'
     folderPath = 'E:/Processed Audio/test'
     labeledFolderPath = 'E:\Original Audio\HF spec\LSB_noenh'
-    # labeledFolderPath = './'
+    # labeledFolderPath = 'C:/Users/Jian Quan/Desktop/testData'
 
     while True:
         print('Select Function:')
