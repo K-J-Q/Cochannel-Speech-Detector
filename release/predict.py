@@ -192,11 +192,11 @@ def getGroundTruth(file, maxPred):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run a prediction on either a folder or a file.")
     parser.add_argument("--path", required=True, type=str, help="The path to the file or folder to predict.")
-    parser.add_argument("--model", default="speech", type=str, choices=["speech", "radio"],
-                        help="The type of model to use for prediction (either 'speech' or 'radio').")
+    parser.add_argument("--model", default="speech", type=str, choices=["speech", "signal"],
+                        help="The type of model to use for prediction (either 'speech' or 'signal').")
     args = parser.parse_args()
 
-    model = torch.load('resources/speechModel.pt' if args.model == "speech" else 'resources/radio.pt',
+    model = torch.load('resources/speechModel.pt' if args.model == "speech" else 'resources/signalModel.pt',
                        map_location=device)
     model.eval()
 
