@@ -116,9 +116,6 @@ if __name__ == '__main__':
 
     writer.close()
 
-    # testModel.predictFolder(model, device, testPath,
-    #                         f'records/{title}({modelIndex})_epoch0')
-
     lossFn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr, weight_decay=decay)
     
@@ -155,7 +152,6 @@ if __name__ == '__main__':
             print(f'Time to complete epoch: {end - start}')
             print(
                 f'Estimated time to complete training: {(end - start) * epochs}({end + (end - start) * epochs})')
-        # scheduler.step(val_loss)
 
     test_acc, _ = testModel.predictFolder(
         model, device, testPath, f'records/{title}({modelIndex})_epoch{epoch}_acc({val_accuracy})')
@@ -166,9 +162,9 @@ if __name__ == '__main__':
                            {'Accuracy': val_accuracy, 'Loss': val_loss, 'Test Accuracy': test_acc})
 
     # delete models starting with title variable using glob
-    # for file in glob.glob(f'saved_model/{title} ({modelIndex})*'):
-    #     print(f'Deleting {file}')
-    #     os.remove(file)
+    for file in glob.glob(f'saved_model/{title} ({modelIndex})*'):
+        print(f'Deleting {file}')
+        os.remove(file)
 
     torch.save(model, utils.uniquify(
         f'saved_model/{title} ({modelIndex})_epoch{epoch}.pt'))
