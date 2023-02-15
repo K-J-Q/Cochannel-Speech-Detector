@@ -2,6 +2,12 @@
 
 This project aims to develop a cochannel speech detector using machine learning techniques. The goal is to accurately count the number of speakers talking.
 
+## Example of cochannel noise (class 2)
+<audio controls>
+  <source src="combinedWAV.wav" type="audio/wav">
+  Your browser does not support the audio element.
+</audio>
+
 ## Getting Started
 
 These instructions will get you a copy of the project up and running on your local machine for *testing*
