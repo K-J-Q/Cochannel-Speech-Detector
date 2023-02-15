@@ -2,7 +2,7 @@
 
 This project aims to develop a cochannel speech detector using machine learning techniques. The goal is to accurately count the number of speakers talking. This model aims to be lightweight with 0.7M parameters. It is capable of identifying cochannel noise with **92 %** accuracy and three simultanious speakers with **80 %** accuracy. 
 
-Disclaimer: this accuracy metric was from high-quality audio, with little to no background noise .
+Disclaimer: this accuracy metric was from high-quality audio, with little to no background noise.
 
 ## Getting Started
 
