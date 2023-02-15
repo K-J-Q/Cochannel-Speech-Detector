@@ -21,10 +21,8 @@ pip install -r requirements.txt
 ```
 
 ### Running
-#### 
+#### Live prediction using GUI
 ![GUI](https://user-images.githubusercontent.com/71882072/218946682-e8f47490-19c4-4ef6-a7c3-7dcd9d6cfa5c.png)
-Live prediction using GUI
-
 `python livePredict.py`
 
 #### Predicting audio wav (in either file or folder) 
