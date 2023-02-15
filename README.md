@@ -4,7 +4,7 @@ This project aims to develop a cochannel speech detector using machine learning 
 
 ## Example of cochannel noise (class 2)
 <audio controls>
-  <source src="combinedWAV.wav" type="audio/wav">
+  <source src="Media1.wav" type="audio/m4a">
   Your browser does not support the audio element.
 </audio>
 
@@ -41,7 +41,8 @@ Cochannel speech detection
 Cochannel radio detection
 `python predict.py --path /path/to/file/or/folder --model radio`
 
-
+## Dataset
+National Speech Corpus was used for model development (https://www.imda.gov.sg/nationalspeechcorpus)
 
 ## Built With
 
