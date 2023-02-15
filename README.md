@@ -21,10 +21,14 @@ pip install -r requirements.txt
 ```
 
 ### Running
-#### Live prediction using GUI
+#### 
+![GUI](https://user-images.githubusercontent.com/71882072/218946682-e8f47490-19c4-4ef6-a7c3-7dcd9d6cfa5c.png)
+Live prediction using GUI
+
 `python livePredict.py`
 
 #### Predicting audio wav (in either file or folder) 
+![Picture1](https://user-images.githubusercontent.com/71882072/218946427-bedcf57b-6697-4cb8-a763-e37579ad615a.png)
 The following arguments can be passed to the script:
 --path: Required. The path to the file or folder to predict.
 --model: Optional. The type of model to use for prediction (either 'speech' or 'radio'). Default is 'speech'.
