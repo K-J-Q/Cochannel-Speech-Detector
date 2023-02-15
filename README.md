@@ -2,11 +2,16 @@
 
 This project aims to develop a cochannel speech detector using machine learning techniques. The goal is to accurately count the number of speakers talking.
 
-## Example of cochannel noise (class 2)
-<audio controls>
-  <source src="Media1.wav" type="audio/m4a">
-  Your browser does not support the audio element.
-</audio>
+## Dataset
+National Speech Corpus was used for model development (https://www.imda.gov.sg/nationalspeechcorpus)
+### Class 0: no speakers/environmental noise
+https://user-images.githubusercontent.com/71882072/218943570-f8aa053e-53da-4bfb-9671-d82f58bb850a.mp4
+### Class 1: one speaker
+https://user-images.githubusercontent.com/71882072/218943714-ad34cd1d-d5e5-494e-ab42-ccf9e60dfb74.mp4
+### Class 2: two simultaneous speakers
+https://user-images.githubusercontent.com/71882072/218943726-6bfecf45-27cb-4ea7-8b2d-a56a59088966.mp4
+### Class 3: three simultaneous speakers
+https://user-images.githubusercontent.com/71882072/218943737-117a9080-1ef3-4ee4-a9b0-a1b1ad7d2d9a.mp4
 
 ## Getting Started
 
@@ -40,9 +45,6 @@ Cochannel speech detection
 
 Cochannel radio detection
 `python predict.py --path /path/to/file/or/folder --model radio`
-
-## Dataset
-National Speech Corpus was used for model development (https://www.imda.gov.sg/nationalspeechcorpus)
 
 ## Built With
 
