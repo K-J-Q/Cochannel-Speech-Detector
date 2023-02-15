@@ -6,7 +6,7 @@ This project aims to develop a cochannel speech detector using machine learning 
 National Speech Corpus was used for model development (https://www.imda.gov.sg/nationalspeechcorpus)
 | Class 0: no speakers/environmental noise | Column 2 Header | Column 3 Header |
 | --------------- | --------------- | --------------- |
-| (https://user-images.githubusercontent.com/71882072/218943570-f8aa053e-53da-4bfb-9671-d82f58bb850a.mp4)  | Row 1 Column 2  | Row 1 Column 3  |
+| https://user-images.githubusercontent.com/71882072/218943570-f8aa053e-53da-4bfb-9671-d82f58bb850a.mp4 | Row 1 Column 2  | Row 1 Column 3  |
 
 ### Class 1: one speaker
 https://user-images.githubusercontent.com/71882072/218943714-ad34cd1d-d5e5-494e-ab42-ccf9e60dfb74.mp4
