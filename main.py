@@ -126,8 +126,12 @@ if __name__ == '__main__':
         train_loss, train_accuracy = machineLearning.train(
             model, train_dataloader, lossFn, optimizer, device)
         if epoch % checkpoint_interval == 0:
+            if not os.path.exists('saved_model'):
+                os.mkdir('saved_model')
             torch.save(model, utils.uniquify(
                 f'saved_model/{title} ({modelIndex})_epoch{epoch}.pt'))
+            if not os.path.exists('records'):
+                os.mkdir('records')
             test_acc, _ = testModel.predictFolder(
                 model, device, testPath,f'records/{title}({modelIndex})_epoch{epoch}')
 
