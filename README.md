@@ -12,11 +12,12 @@ These instructions will get you a copy of the project up and running on your loc
 
 - Python 3.x
 
+### Download
+Download the latest release
 ### Installing
 
 ```
-git clone https://github.com/K-J-Q/cochannel-speech-detector.git
-cd cochannel-speech-detector/release
+cd path/to/release
 pip install -r requirements.txt
 ```
 
