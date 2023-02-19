@@ -23,6 +23,7 @@ pip install -r requirements.txt
 
 ### Running
 #### Live prediction using GUI
+A loopback audiodevice will be needed for tapping into audio output.
 `python livePredict.py`
 
 ![GUI](https://user-images.githubusercontent.com/71882072/218946682-e8f47490-19c4-4ef6-a7c3-7dcd9d6cfa5c.png)
